@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `9`
-- current_phase_title: `MCP Server + Claude Desktop`
+- current_phase: `10`
+- current_phase_title: `E2E + Tests + README`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `2`
-- last_action: `2026-04-29 — mcp_server.py creato (6 tool MCP, mcp 1.27.0); README.md con setup Claude Desktop. Smoke test OK: list_tools=6, get_risk_profile e get_trade_history funzionano senza MT5, server subprocess non crasha all'avvio, stdout pulito`
-- next_action: `Avvio Fase 10: tests/test_mt5.py + README finale + paper trading test`
+- current_substep: `3`
+- last_action: `2026-04-29 — tests/test_mt5.py creato (skip se no MT5); README.md riscritto in italiano con 13 sezioni; pytest 9 passed + 4 skipped (MT5 non disponibile)`
+- next_action: `Validazione live E2E (utente): MT5 demo + Claude Desktop. Poi tag v1.0.0 e session COMPLETED`
 
 ## File completati per fase
 
@@ -118,9 +118,14 @@ phase_9_mcp_server:
     - "Test live in Claude Desktop richiede config in %APPDATA%\\Claude\\claude_desktop_config.json e riavvio app"
 
 phase_10_e2e:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - tests/test_mt5.py
+    - README.md
+  validated_at: "2026-04-29"
+  notes:
+    - "Test E2E unit-side: 9 risk_engine green, 4 mt5 e2e skipped (MT5 non disponibile in ambiente CI)"
+    - "Validazione live (run main.py shadow su EURUSD/GBPUSD, Claude Desktop con 6 tool, paper trading) demandata all'utente"
 ```
 
 ## Decisioni aperte
@@ -161,3 +166,24 @@ phase_10_e2e:
 |-----------|------|------|-------------|
 | `2026-04-29T00:00:00+02:00` | BOOT | 1 | Sessione aperta, completate fasi 1-4 in sequenza |
 | `2026-04-29T00:00:00+02:00` | HANDOFF | 4 | Pausa volontaria utente dopo fase 4 validata, pronto per fase 5 |
+| `2026-04-29T00:00:00+02:00` | RESUME | 5 | Ripresa, fasi 5-10 completate end-to-end |
+
+## Checklist finale
+
+Verifiche automatizzate (eseguite dall'orchestrator):
+
+- [x] **Risk engine ha rifiutato almeno un trade per ogni branch.** Coperto da `tests/test_risk.py`: kill switch, SL stretto, SL largo, margine sotto minimo, sessione fuori orario.
+- [x] **Logger registra 100% delle decisioni.** `execution.run_once` chiama `log_trade_decision` *prima* del branch shadow/paper, quindi anche i reject finiscono in `trades_log`.
+- [x] **`pytest tests/`** verde con skip MT5 se non disponibile (9 passed, 4 skipped).
+- [x] **`README.md` ha tutte le 13 sezioni** richieste dallo spec di Fase 10.
+
+Verifiche manuali (richiedono ambiente live, demandate all'utente):
+
+- [ ] **MCP server riconosciuto da Claude Desktop, 6 tool visibili** dopo registrazione in `claude_desktop_config.json` e riavvio dell'app.
+- [ ] **`claude_agent.run_cycle` produce proposte coerenti senza loop infinito** — il bound dei 6 cicli è imposto da codice; resta da verificare che il modello rispetti la regola "propose_trade solo se confidence ≥ 0.6".
+- [ ] **`explain_last_trades(5)` produce riassunto in italiano leggibile.**
+- [ ] **Paper trading**: settare `EXECUTION_MODE=paper` su demo FP Markets e verificare che gli ordini approvati appaiano in MT5.
+
+Quando le 4 voci manuali sono spuntate, l'orchestrator può:
+- Eseguire `git tag -a v1.0.0 -m "Trading agent MVP ready for shadow testing"` e `git push origin v1.0.0`.
+- Aggiornare `session_status` a `COMPLETED`.
