@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `2`
-- current_phase_title: `Config e modelli base`
+- current_phase: `3`
+- current_phase_title: `MT5 Client`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `4`
-- last_action: `2026-04-29 — checkpoint fase 2 superato: Config() istanziabile, models OK`
-- next_action: `Avvio Fase 3: mt5_client.py`
+- current_substep: `1`
+- last_action: `2026-04-29 — mt5_client.py creato; import OK; tzdata aggiunto a requirements (Windows zoneinfo); live test richiede MT5 demo attivo + credenziali .env`
+- next_action: `Avvio Fase 4: risk_engine.py + tests/test_risk.py`
 
 ## File completati per fase
 
@@ -47,9 +47,11 @@ phase_2_config_models:
   validated_at: "2026-04-29"
 
 phase_3_mt5_client:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - mt5_client.py
+    - requirements.txt  # aggiunto tzdata
+  validated_at: "2026-04-29"
 
 phase_4_risk_engine:
   status: NOT_STARTED
