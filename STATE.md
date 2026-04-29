@@ -12,7 +12,7 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
 - last_session_end: `2026-04-29T00:00:00+02:00`
 - last_session_reason: `pausa volontaria utente, fase 4 completata`
 
@@ -20,10 +20,10 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 - current_phase: `5`
 - current_phase_title: `Logger`
-- phase_status: `NOT_STARTED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `0`
-- last_action: `2026-04-29 — fase 4 (Risk Engine) completata e validata: pytest 9/9 verde`
-- next_action: `Eseguire Fase 5 dal prompt .orchestration/phase-prompts/phase-05-logger.md, generare logger.py`
+- phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
+- current_substep: `1`
+- last_action: `2026-04-29 — logger.py creato; checkpoint OK (init_logger), trades_log schema presente, journal_mode=wal`
+- next_action: `Avvio Fase 6: execution.py + main.py (EXECUTION_MODE shadow/paper)`
 
 ## File completati per fase
 
@@ -64,9 +64,13 @@ phase_4_risk_engine:
   validated_at: "2026-04-29"
 
 phase_5_logger:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - logger.py
+  validated_at: "2026-04-29"
+  notes:
+    - "Schema trades_log usa cfg.LOG_FILE come riferimento per la directory; trades.db = parent(LOG_FILE)/trades.db"
+    - "journal_mode=WAL verificato"
 
 phase_6_execution:
   status: NOT_STARTED
