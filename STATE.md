@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `8`
-- current_phase_title: `Claude Agent + Tool Use`
+- current_phase: `9`
+- current_phase_title: `MCP Server + Claude Desktop`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `3`
-- last_action: `2026-04-29 — claude_agent.py + prompts creati; main.py wired al ClaudeAgent. Static checks OK (tools schema, _dispatch_tool, JSON-serializability). Live API checkpoint richiede CLAUDE_API_KEY reale + MT5 vivo`
-- next_action: `Avvio Fase 9: mcp_server.py + integrazione Claude Desktop`
+- current_substep: `2`
+- last_action: `2026-04-29 — mcp_server.py creato (6 tool MCP, mcp 1.27.0); README.md con setup Claude Desktop. Smoke test OK: list_tools=6, get_risk_profile e get_trade_history funzionano senza MT5, server subprocess non crasha all'avvio, stdout pulito`
+- next_action: `Avvio Fase 10: tests/test_mt5.py + README finale + paper trading test`
 
 ## File completati per fase
 
@@ -106,9 +106,16 @@ phase_8_claude_agent:
     - "max 6 iterazioni tool use, 50 barre OHLC nel snapshot, 100 barre per indicatori (limite token)"
 
 phase_9_mcp_server:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - mcp_server.py
+    - README.md
+  validated_at: "2026-04-29"
+  notes:
+    - "API mcp 1.27.0 verificata: list_tools/call_tool decorators, stdio_server, Tool/TextContent"
+    - "stdout pulito (libero per JSON-RPC); logger su file, non stderr/stdout"
+    - "MT5 init in try/except: server vive anche senza MT5 (i tool che lo richiedono ritornano errore)"
+    - "Test live in Claude Desktop richiede config in %APPDATA%\\Claude\\claude_desktop_config.json e riavvio app"
 
 phase_10_e2e:
   status: NOT_STARTED
