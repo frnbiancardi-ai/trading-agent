@@ -12,7 +12,7 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `IDLE`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
 - last_session_end: `<timestamp ISO>`
 - last_session_reason: `<es: handoff per token, fase completata, errore bloccante>`
 
@@ -20,18 +20,23 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 - current_phase: `1`
 - current_phase_title: `Setup ambiente`
-- phase_status: `NOT_STARTED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `0`
-- last_action: `<timestamp ISO> — <descrizione>`
-- next_action: `Eseguire Fase 1 dal prompt .orchestration/phase-prompts/phase-01-setup.md`
+- phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
+- current_substep: `4`
+- last_action: `2026-04-29 — checkpoint fase 1 superato: venv Python 3.12 (64-bit via Anaconda), pip install OK, import MetaTrader5+anthropic+mcp OK`
+- next_action: `Commit fase 1 + avvio Fase 2: .env.example, config.py, models.py`
 
 ## File completati per fase
 
 ```yaml
 phase_1_setup:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - requirements.txt
+    - .gitignore
+    - logs/.gitkeep
+    - prompts/.gitkeep
+    - tests/.gitkeep
+  validated_at: "2026-04-29"
 
 phase_2_config_models:
   status: NOT_STARTED
@@ -81,8 +86,16 @@ phase_10_e2e:
 
 ## Decisioni aperte
 
-- [ ] Versione esatta della libreria `mcp` da usare (verificare API stabile al momento del setup).
-- [ ] Path Python venv su Windows da inserire nel `claude_desktop_config.json` (dipende dall'username).
+(nessuna)
+
+## Decisioni risolte
+
+- [x] **Versione libreria `mcp`** — risolta `2026-04-29`.
+  - Decisione: nessun pin di versione in `requirements.txt` (riga `mcp` semplice).
+  - Motivazione: `mcp` è in evoluzione rapida; pinnare ora rischia di bloccare API incompatibili. In Fase 9, prima di scrivere `mcp_server.py`, eseguire `pip show mcp` per leggere la versione effettivamente installata, adattare l'API al SDK reale e documentare la versione assunta in cima a `mcp_server.py`.
+- [x] **Path Python venv per `claude_desktop_config.json`** — risolta `2026-04-29`.
+  - Decisione: `C:\trading-agent\.venv\Scripts\python.exe`.
+  - Motivazione: path di sistema deterministico ancorato alla root del progetto, non dipendente dall'username Windows. Coerente con la creazione del venv prevista nello Step 0 della Fase 1 (`python -m venv .venv` da `C:\trading-agent`).
 
 ## Configurazione runtime corrente
 

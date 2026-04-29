@@ -1,0 +1,7 @@
+MetaTrader5==5.0.5735
+python-dotenv==1.0.1
+pydantic==2.11.3
+requests==2.32.3
+anthropic
+mcp
+pytest
