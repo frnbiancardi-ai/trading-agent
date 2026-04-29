@@ -12,18 +12,18 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `<timestamp ISO>`
-- last_session_reason: `<es: handoff per token, fase completata, errore bloccante>`
+- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_end: `2026-04-29T00:00:00+02:00`
+- last_session_reason: `pausa volontaria utente, fase 4 completata`
 
 ## Stato fase corrente
 
-- current_phase: `4`
-- current_phase_title: `Risk Engine`
-- phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `1`
-- last_action: `2026-04-29 — pytest tests/test_risk.py: 9/9 verde. risk_engine.py + test_risk.py creati; pytest.ini aggiunto (pythonpath=.)`
-- next_action: `Avvio Fase 5: logger.py`
+- current_phase: `5`
+- current_phase_title: `Logger`
+- phase_status: `NOT_STARTED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
+- current_substep: `0`
+- last_action: `2026-04-29 — fase 4 (Risk Engine) completata e validata: pytest 9/9 verde`
+- next_action: `Eseguire Fase 5 dal prompt .orchestration/phase-prompts/phase-05-logger.md, generare logger.py`
 
 ## File completati per fase
 
@@ -106,6 +106,9 @@ phase_10_e2e:
 - [x] **Path Python venv per `claude_desktop_config.json`** — risolta `2026-04-29`.
   - Decisione: `C:\trading-agent\.venv\Scripts\python.exe`.
   - Motivazione: path di sistema deterministico ancorato alla root del progetto, non dipendente dall'username Windows. Coerente con la creazione del venv prevista nello Step 0 della Fase 1 (`python -m venv .venv` da `C:\trading-agent`).
+- [x] **Python venv su Windows** — risolta `2026-04-29`.
+  - Decisione: usare `C:\Users\Bl4ckBug\anaconda3\python.exe` per creare il venv.
+  - Motivazione: Python di sistema è 3.14 (cp314), senza wheel pre-compilati per pydantic-core. Anaconda ha Python 3.12.4 64-bit con tutti i wheel disponibili. Il venv risultante è `C:\trading-agent\.venv\Scripts\python.exe`.
 
 ## Configurazione runtime corrente
 
@@ -115,16 +118,17 @@ phase_10_e2e:
 
 ## Note di handoff
 
-Compilato dall'orchestrator quando sospende la sessione.
-
-- Ultimo file generato: `<nome>`
-- Prossimo file da generare: `<nome>`
-- Comando di ripresa: `<es: leggi phase-04-risk-engine.md sezione Specifiche, genera risk_engine.py>`
-- Test pendenti: `<es: pytest tests/test_risk.py>`
-- Rischi noti per la prossima sessione: `<es: pip_value su XAUUSD da rivalidare>`
+- Ultimo file generato: `tests/test_risk.py`
+- Prossimo file da generare: `logger.py`
+- Comando di ripresa: `leggi .orchestration/phase-prompts/phase-05-logger.md, genera logger.py`
+- Test pendenti: nessuno (tutti i test esistenti passano: `pytest tests/test_risk.py -v`)
+- Rischi noti per la prossima sessione:
+  - Il checkpoint di fase 5 richiede che `trades.db` venga creato fisicamente su disco: verificare path `logs/trades.db` e permessi di scrittura.
+  - Il live checkpoint di fase 3 (mt5_client) non è stato eseguito: richiede MT5 aperto con credenziali reali in `.env`.
 
 ## Cronologia sessioni
 
 | Timestamp | Tipo | Fase | Descrizione |
 |-----------|------|------|-------------|
-| `<ISO>`   | BOOT | 1    | Sessione aperta, stato vergine |
+| `2026-04-29T00:00:00+02:00` | BOOT | 1 | Sessione aperta, completate fasi 1-4 in sequenza |
+| `2026-04-29T00:00:00+02:00` | HANDOFF | 4 | Pausa volontaria utente dopo fase 4 validata, pronto per fase 5 |
