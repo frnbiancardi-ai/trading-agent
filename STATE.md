@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `6`
-- current_phase_title: `Execution layer + EXECUTION_MODE`
+- current_phase: `7`
+- current_phase_title: `Indicators`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `2`
-- last_action: `2026-04-29 — execution.py + main.py creati; smoke test (shadow, paper, proposal=None) tutti OK; live test richiede MT5 vivo`
-- next_action: `Avvio Fase 7: indicators.py (SMA, EMA, RSI, ATR)`
+- current_substep: `1`
+- last_action: `2026-04-29 — indicators.py creato; checkpoint OK + sanity tests (SMA/EMA/RSI/ATR su trend up/down/oscillante, edge cases, compute_all)`
+- next_action: `Avvio Fase 8: claude_agent.py + prompts/system_prompt.txt + prompts/context_template.txt`
 
 ## File completati per fase
 
@@ -83,9 +83,12 @@ phase_6_execution:
     - "Live checkpoint (shadow→DB row, paper→ordine MT5) richiede MT5 vivo + credenziali in .env, non eseguito automaticamente"
 
 phase_7_indicators:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - indicators.py
+  validated_at: "2026-04-29"
+  notes:
+    - "Validazione manuale ±0.1% vs TradingView NON eseguita: richiede dati OHLC reali da MT5"
 
 phase_8_claude_agent:
   status: NOT_STARTED
