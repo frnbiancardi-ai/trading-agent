@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `1`
-- current_phase_title: `Setup ambiente`
+- current_phase: `2`
+- current_phase_title: `Config e modelli base`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
 - current_substep: `4`
-- last_action: `2026-04-29 — checkpoint fase 1 superato: venv Python 3.12 (64-bit via Anaconda), pip install OK, import MetaTrader5+anthropic+mcp OK`
-- next_action: `Commit fase 1 + avvio Fase 2: .env.example, config.py, models.py`
+- last_action: `2026-04-29 — checkpoint fase 2 superato: Config() istanziabile, models OK`
+- next_action: `Avvio Fase 3: mt5_client.py`
 
 ## File completati per fase
 
@@ -39,9 +39,12 @@ phase_1_setup:
   validated_at: "2026-04-29"
 
 phase_2_config_models:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - .env.example
+    - config.py
+    - models.py
+  validated_at: "2026-04-29"
 
 phase_3_mt5_client:
   status: NOT_STARTED
