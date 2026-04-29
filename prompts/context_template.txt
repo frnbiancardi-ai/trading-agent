@@ -1,0 +1,12 @@
+Analizza un possibile trade su {symbol} timeframe {timeframe}.
+
+Ora locale: {now_local}.
+Modalità esecuzione: {execution_mode}.
+
+Stato account:
+- balance: {balance}
+- equity: {equity}
+- free_margin: {free_margin}
+- posizioni aperte: {open_positions_count}
+
+Usa i tool disponibili (get_account_status, get_market_snapshot, get_indicators) per raccogliere i dati necessari, poi decidi se proporre un trade tramite propose_trade oppure rispondere "NO_TRADE".

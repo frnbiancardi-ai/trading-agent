@@ -50,6 +50,11 @@ class Config:
     # Claude API
     CLAUDE_API_KEY: str = os.getenv("CLAUDE_API_KEY", "")
     CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
+    CLAUDE_MAX_TOKENS: int = int(os.getenv("CLAUDE_MAX_TOKENS", "4096"))
+    CLAUDE_TEMPERATURE: float = float(os.getenv("CLAUDE_TEMPERATURE", "0.5"))
+
+    # Analisi
+    TIMEFRAME: str = os.getenv("TIMEFRAME", "M15")
 
     # Execution
     EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "shadow")

@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `7`
-- current_phase_title: `Indicators`
+- current_phase: `8`
+- current_phase_title: `Claude Agent + Tool Use`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `1`
-- last_action: `2026-04-29 — indicators.py creato; checkpoint OK + sanity tests (SMA/EMA/RSI/ATR su trend up/down/oscillante, edge cases, compute_all)`
-- next_action: `Avvio Fase 8: claude_agent.py + prompts/system_prompt.txt + prompts/context_template.txt`
+- current_substep: `3`
+- last_action: `2026-04-29 — claude_agent.py + prompts creati; main.py wired al ClaudeAgent. Static checks OK (tools schema, _dispatch_tool, JSON-serializability). Live API checkpoint richiede CLAUDE_API_KEY reale + MT5 vivo`
+- next_action: `Avvio Fase 9: mcp_server.py + integrazione Claude Desktop`
 
 ## File completati per fase
 
@@ -91,9 +91,19 @@ phase_7_indicators:
     - "Validazione manuale ±0.1% vs TradingView NON eseguita: richiede dati OHLC reali da MT5"
 
 phase_8_claude_agent:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - prompts/system_prompt.txt
+    - prompts/context_template.txt
+    - claude_agent.py
+    - main.py    # rimosso TODO ClaudeAgent, ora wired
+    - config.py  # aggiunto CLAUDE_MAX_TOKENS, CLAUDE_TEMPERATURE, TIMEFRAME
+    - .env.example
+  validated_at: "2026-04-29"
+  notes:
+    - "Static checks OK con Mt5Client mockato; _dispatch_tool produce risultati JSON-serializzabili per tutti e 3 i tool"
+    - "Live checkpoint NON eseguito: richiede CLAUDE_API_KEY reale + MT5 vivo"
+    - "max 6 iterazioni tool use, 50 barre OHLC nel snapshot, 100 barre per indicatori (limite token)"
 
 phase_9_mcp_server:
   status: NOT_STARTED
