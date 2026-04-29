@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `5`
-- current_phase_title: `Logger`
+- current_phase: `6`
+- current_phase_title: `Execution layer + EXECUTION_MODE`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `1`
-- last_action: `2026-04-29 — logger.py creato; checkpoint OK (init_logger), trades_log schema presente, journal_mode=wal`
-- next_action: `Avvio Fase 6: execution.py + main.py (EXECUTION_MODE shadow/paper)`
+- current_substep: `2`
+- last_action: `2026-04-29 — execution.py + main.py creati; smoke test (shadow, paper, proposal=None) tutti OK; live test richiede MT5 vivo`
+- next_action: `Avvio Fase 7: indicators.py (SMA, EMA, RSI, ATR)`
 
 ## File completati per fase
 
@@ -73,9 +73,14 @@ phase_5_logger:
     - "journal_mode=WAL verificato"
 
 phase_6_execution:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - execution.py
+    - main.py
+  validated_at: "2026-04-29"
+  notes:
+    - "ClaudeAgent rinviato a Fase 8: in main.py c'è un TODO esplicito e proposal=None come placeholder"
+    - "Live checkpoint (shadow→DB row, paper→ordine MT5) richiede MT5 vivo + credenziali in .env, non eseguito automaticamente"
 
 phase_7_indicators:
   status: NOT_STARTED
