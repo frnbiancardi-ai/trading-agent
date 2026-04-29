@@ -22,6 +22,116 @@ _OHLC_BARS_SCAN = 30
 _DEFAULT_MAX_SYMBOLS_TO_DEEPEN = 5
 
 
+def cheap_scan_symbol(
+    mt5_client: Mt5Client,
+    timeframe: str,
+    symbol: str,
+    bars: int = _OHLC_BARS_SCAN,
+) -> SymbolScanCandidate:
+    """Cheap scan stand-alone su un simbolo. Usata da ClaudeAgent e mcp_server."""
+    ohlc = mt5_client.get_ohlc(symbol, timeframe, bars)
+    if not ohlc:
+        return SymbolScanCandidate(
+            symbol=symbol,
+            trend_bias="UNKNOWN",
+            momentum_bias="UNKNOWN",
+            volatility_state="UNKNOWN",
+            spread_state="UNKNOWN",
+            candidate_score=0.0,
+            warnings=["no_ohlc_data"],
+        )
+
+    indicators = compute_all(ohlc)
+    last_close = ohlc[-1]["close"]
+    sma_20 = indicators.get("sma_20")
+    ema_50 = indicators.get("ema_50")
+    rsi = indicators.get("rsi_14")
+    atr = indicators.get("atr_14")
+
+    sym_info = mt5_client.get_symbol_info(symbol)
+    bid = getattr(sym_info, "bid", None) if sym_info is not None else None
+    ask = getattr(sym_info, "ask", None) if sym_info is not None else None
+    point = getattr(sym_info, "point", None) if sym_info is not None else None
+
+    warnings: list[str] = []
+
+    if sma_20 is not None and ema_50 is not None:
+        if last_close > sma_20 and sma_20 > ema_50:
+            trend = "BULLISH"
+        elif last_close < sma_20 and sma_20 < ema_50:
+            trend = "BEARISH"
+        else:
+            trend = "NEUTRAL"
+    else:
+        trend = "UNKNOWN"
+        warnings.append("missing_ma")
+
+    if rsi is not None:
+        if rsi >= 60:
+            momentum = "STRONG_BULL"
+        elif rsi <= 40:
+            momentum = "STRONG_BEAR"
+        elif 45 <= rsi <= 55:
+            momentum = "NEUTRAL"
+        else:
+            momentum = "WEAK"
+    else:
+        momentum = "UNKNOWN"
+        warnings.append("missing_rsi")
+
+    if atr is not None and last_close:
+        atr_pct = atr / last_close * 100.0
+        if atr_pct >= 0.5:
+            vol = "HIGH"
+        elif atr_pct <= 0.1:
+            vol = "LOW"
+        else:
+            vol = "NORMAL"
+    else:
+        vol = "UNKNOWN"
+        warnings.append("missing_atr")
+
+    if bid is not None and ask is not None and point:
+        spread_pips = (ask - bid) / point / 10.0
+        if spread_pips < 1.0:
+            spread_state = "TIGHT"
+        elif spread_pips < 3.0:
+            spread_state = "NORMAL"
+        else:
+            spread_state = "WIDE"
+            warnings.append("wide_spread")
+    else:
+        spread_state = "UNKNOWN"
+        warnings.append("missing_spread")
+
+    score = 0.3
+    if trend == "BULLISH" and momentum == "STRONG_BULL":
+        score = 0.8
+    elif trend == "BEARISH" and momentum == "STRONG_BEAR":
+        score = 0.8
+    elif trend in ("BULLISH", "BEARISH") and momentum == "WEAK":
+        score = 0.5
+    elif trend == "NEUTRAL":
+        score = 0.2
+
+    if vol == "HIGH":
+        score *= 0.9
+    if spread_state == "WIDE":
+        score *= 0.6
+    if "no_ohlc_data" in warnings:
+        score = 0.0
+
+    return SymbolScanCandidate(
+        symbol=symbol,
+        trend_bias=trend,
+        momentum_bias=momentum,
+        volatility_state=vol,
+        spread_state=spread_state,
+        candidate_score=round(score, 3),
+        warnings=warnings,
+    )
+
+
 class ClaudeAgent:
     def __init__(self, cfg: Config, mt5_client: Mt5Client, logger: logging.Logger):
         self.cfg = cfg
@@ -285,107 +395,7 @@ class ClaudeAgent:
         ]
 
     def _cheap_scan_one(self, symbol: str) -> SymbolScanCandidate:
-        ohlc = self.mt5.get_ohlc(symbol, self.cfg.TIMEFRAME, _OHLC_BARS_SCAN)
-        if not ohlc:
-            return SymbolScanCandidate(
-                symbol=symbol,
-                trend_bias="UNKNOWN",
-                momentum_bias="UNKNOWN",
-                volatility_state="UNKNOWN",
-                spread_state="UNKNOWN",
-                candidate_score=0.0,
-                warnings=["no_ohlc_data"],
-            )
-
-        indicators = compute_all(ohlc)
-        last_close = ohlc[-1]["close"]
-        sma_20 = indicators.get("sma_20")
-        ema_50 = indicators.get("ema_50")
-        rsi = indicators.get("rsi_14")
-        atr = indicators.get("atr_14")
-
-        sym_info = self.mt5.get_symbol_info(symbol)
-        bid = getattr(sym_info, "bid", None) if sym_info is not None else None
-        ask = getattr(sym_info, "ask", None) if sym_info is not None else None
-        point = getattr(sym_info, "point", None) if sym_info is not None else None
-
-        warnings: list[str] = []
-
-        if sma_20 is not None and ema_50 is not None:
-            if last_close > sma_20 and sma_20 > ema_50:
-                trend = "BULLISH"
-            elif last_close < sma_20 and sma_20 < ema_50:
-                trend = "BEARISH"
-            else:
-                trend = "NEUTRAL"
-        else:
-            trend = "UNKNOWN"
-            warnings.append("missing_ma")
-
-        if rsi is not None:
-            if rsi >= 60:
-                momentum = "STRONG_BULL"
-            elif rsi <= 40:
-                momentum = "STRONG_BEAR"
-            elif 45 <= rsi <= 55:
-                momentum = "NEUTRAL"
-            else:
-                momentum = "WEAK"
-        else:
-            momentum = "UNKNOWN"
-            warnings.append("missing_rsi")
-
-        if atr is not None and last_close:
-            atr_pct = atr / last_close * 100.0
-            if atr_pct >= 0.5:
-                vol = "HIGH"
-            elif atr_pct <= 0.1:
-                vol = "LOW"
-            else:
-                vol = "NORMAL"
-        else:
-            vol = "UNKNOWN"
-            warnings.append("missing_atr")
-
-        if bid is not None and ask is not None and point:
-            spread_pips = (ask - bid) / point / 10.0
-            if spread_pips < 1.0:
-                spread_state = "TIGHT"
-            elif spread_pips < 3.0:
-                spread_state = "NORMAL"
-            else:
-                spread_state = "WIDE"
-                warnings.append("wide_spread")
-        else:
-            spread_state = "UNKNOWN"
-            warnings.append("missing_spread")
-
-        score = 0.3
-        if trend == "BULLISH" and momentum == "STRONG_BULL":
-            score = 0.8
-        elif trend == "BEARISH" and momentum == "STRONG_BEAR":
-            score = 0.8
-        elif trend in ("BULLISH", "BEARISH") and momentum == "WEAK":
-            score = 0.5
-        elif trend == "NEUTRAL":
-            score = 0.2
-
-        if vol == "HIGH":
-            score *= 0.9
-        if spread_state == "WIDE":
-            score *= 0.6
-        if "no_ohlc_data" in warnings:
-            score = 0.0
-
-        return SymbolScanCandidate(
-            symbol=symbol,
-            trend_bias=trend,
-            momentum_bias=momentum,
-            volatility_state=vol,
-            spread_state=spread_state,
-            candidate_score=round(score, 3),
-            warnings=warnings,
-        )
+        return cheap_scan_symbol(self.mt5, self.cfg.TIMEFRAME, symbol)
 
     def _dispatch_scanner_tool(self, name: str, input_: dict) -> dict:
         if name == "get_account_status":

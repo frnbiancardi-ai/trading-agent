@@ -22,6 +22,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
+from claude_agent import cheap_scan_symbol
 from config import Config
 from execution import run_once
 from indicators import compute_all
@@ -30,22 +31,29 @@ from models import TradeProposal
 from mt5_client import Mt5Client
 from risk_engine import evaluate_trade
 
-# Singleton globali — inizializzati al boot del server.
+# Singleton globali — inizializzati al boot del server (e non al solo import del modulo,
+# così i test possono importare mcp_server senza far partire MT5).
 cfg = Config()
 log = init_logger(cfg)
 mt5 = Mt5Client(cfg)
+_mt5_ready: bool = False
 
-try:
-    _mt5_ready = mt5.initialize() and mt5.login()
-except Exception as exc:
-    log.exception("MCP server: errore durante inizializzazione MT5: %s", exc)
-    _mt5_ready = False
 
-if not _mt5_ready:
-    log.error(
-        "MCP server: MT5 initialize/login fallito; le tool call falliranno "
-        "finché MT5 non è disponibile (controlla credenziali in .env)."
-    )
+def _bootstrap_mt5() -> bool:
+    """Inizializza MT5. Chiamato dal main, NON dall'import del modulo."""
+    global _mt5_ready
+    try:
+        _mt5_ready = mt5.initialize() and mt5.login()
+    except Exception as exc:
+        log.exception("MCP server: errore durante inizializzazione MT5: %s", exc)
+        _mt5_ready = False
+    if not _mt5_ready:
+        log.error(
+            "MCP server: MT5 initialize/login fallito; le tool call falliranno "
+            "finché MT5 non è disponibile (controlla credenziali in .env)."
+        )
+    return _mt5_ready
+
 
 server: Server = Server("trading-agent")
 
@@ -85,6 +93,92 @@ _PROPOSAL_SCHEMA = {
         "confidence", "rationale",
     ],
 }
+
+_PROPOSE_TRADE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "symbol": {"type": "string"},
+        "timeframe": {"type": "string"},
+        "direction": {"type": "string", "enum": ["BUY", "SELL"]},
+        "entry_price": {"type": "number"},
+        "stop_loss_price": {"type": "number"},
+        "take_profit_price": {"type": "number"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "rationale": {"type": "string"},
+    },
+    "required": [
+        "symbol", "direction", "entry_price",
+        "stop_loss_price", "take_profit_price",
+        "confidence", "rationale",
+    ],
+}
+
+
+def handle_get_symbol_universe(filter_asset_class: str | None = None) -> dict:
+    """Restituisce l'universo dei simboli candidati dalla configurazione."""
+    symbols = list(getattr(cfg, "SYMBOLS", []) or [])
+    return {
+        "symbols": symbols,
+        "count": len(symbols),
+        "source": "config.SYMBOLS",
+        "filter_asset_class": filter_asset_class,
+    }
+
+
+def handle_scan_symbol_candidates(symbols: list[str], timeframe: str | None = None) -> dict:
+    """Cheap scan multi-symbol. Output compatto: nessun OHLC completo."""
+    tf = timeframe or cfg.TIMEFRAME
+    candidates = [
+        dataclasses.asdict(cheap_scan_symbol(mt5, tf, sym))
+        for sym in symbols
+    ]
+    return {
+        "timeframe": tf,
+        "count": len(candidates),
+        "candidates": candidates,
+    }
+
+
+def handle_get_symbol_indicators(symbol: str, timeframe: str | None = None) -> dict:
+    """Indicatori approfonditi per un singolo simbolo. SMA(20), EMA(50), RSI(14), ATR(14)."""
+    tf = timeframe or cfg.TIMEFRAME
+    ohlc = mt5.get_ohlc(symbol, tf, 100)
+    if not ohlc:
+        return {"error": "no ohlc data", "symbol": symbol, "timeframe": tf}
+    indicators = compute_all(ohlc)
+    return {
+        "symbol": symbol,
+        "timeframe": tf,
+        "bars_used": len(ohlc),
+        "last_close": ohlc[-1]["close"],
+        "indicators": indicators,
+    }
+
+
+def handle_propose_trade(args: dict) -> dict:
+    """Formalizza una proposta finale dell'agente. NON esegue ordini, NON decide size."""
+    timeframe = args.get("timeframe") or cfg.TIMEFRAME
+    proposal = TradeProposal(
+        symbol=args["symbol"],
+        direction=args["direction"],
+        entry_price=float(args["entry_price"]),
+        stop_loss_price=float(args["stop_loss_price"]),
+        take_profit_price=float(args["take_profit_price"]),
+        timeframe=timeframe,
+        comment="mcp_propose_trade",
+        confidence=float(args["confidence"]),
+        rationale=args["rationale"],
+    )
+    log.info(
+        "MCP propose_trade formalized: symbol=%s direction=%s confidence=%.2f",
+        proposal.symbol, proposal.direction, proposal.confidence,
+    )
+    return {
+        "status": "proposed",
+        "executed": False,
+        "proposal": dataclasses.asdict(proposal),
+        "next_step": "call evaluate_trade_proposal or submit_order_if_approved to act on it",
+    }
 
 
 @server.list_tools()
@@ -142,6 +236,60 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": [],
             },
+        ),
+        Tool(
+            name="get_symbol_universe",
+            description=(
+                "Restituisce l'universo dei simboli candidati dalla configurazione "
+                "(cfg.SYMBOLS). Output compatto: lista, count, source."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "filter_asset_class": {"type": "string"},
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="scan_symbol_candidates",
+            description=(
+                "Cheap scan multi-symbol. Per ogni simbolo: trend_bias, momentum_bias, "
+                "volatility_state, spread_state, candidate_score, warnings. "
+                "Niente OHLC completi."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "symbols": {"type": "array", "items": {"type": "string"}},
+                    "timeframe": {"type": "string"},
+                },
+                "required": ["symbols"],
+            },
+        ),
+        Tool(
+            name="get_symbol_indicators",
+            description=(
+                "Deep analysis su un singolo simbolo: SMA(20), EMA(50), RSI(14), ATR(14) "
+                "calcolati su 100 barre. Tool dedicato alla shortlist."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string"},
+                    "timeframe": {"type": "string"},
+                },
+                "required": ["symbol"],
+            },
+        ),
+        Tool(
+            name="propose_trade",
+            description=(
+                "Formalizza la proposta finale dell'agente. NON esegue ordini e NON decide "
+                "la size. Per eseguire usare submit_order_if_approved; per ottenere il "
+                "verdetto del risk engine usare evaluate_trade_proposal."
+            ),
+            inputSchema=_PROPOSE_TRADE_SCHEMA,
         ),
     ]
 
@@ -220,6 +368,26 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 rows = [dict(r) for r in cur.fetchall()]
             return _text(rows)
 
+        if name == "get_symbol_universe":
+            return _text(handle_get_symbol_universe(
+                filter_asset_class=arguments.get("filter_asset_class"),
+            ))
+
+        if name == "scan_symbol_candidates":
+            return _text(handle_scan_symbol_candidates(
+                symbols=arguments.get("symbols") or [],
+                timeframe=arguments.get("timeframe"),
+            ))
+
+        if name == "get_symbol_indicators":
+            return _text(handle_get_symbol_indicators(
+                symbol=arguments["symbol"],
+                timeframe=arguments.get("timeframe"),
+            ))
+
+        if name == "propose_trade":
+            return _text(handle_propose_trade(arguments))
+
         return _text({"error": f"unknown tool: {name}"})
 
     except Exception as exc:
@@ -234,6 +402,7 @@ async def _serve() -> None:
 
 
 if __name__ == "__main__":
+    _bootstrap_mt5()
     try:
         asyncio.run(_serve())
     finally:

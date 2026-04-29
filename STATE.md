@@ -13,21 +13,20 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 ## Stato sessione
 
 - session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-04-29T21:30:00+02:00`
-- last_session_reason: `Fase 11 (Market Scanner Multi-Symbol) completata e validata. In attesa conferma utente per procedere con fase 12 (MCP Tools Upgrade).`
+- last_session_end: `2026-04-29T22:30:00+02:00`
+- last_session_reason: `Fase 12 (MCP Tools Upgrade) completata e validata. In attesa conferma utente per procedere con fase 13 (Scheduled Orchestrator).`
 
 ## Stato fase corrente
 
-- current_phase: `11`
-- current_phase_title: `Market Scanner Multi-Symbol`
+- current_phase: `12`
+- current_phase_title: `MCP Tools Upgrade`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `5`
-- last_action: `2026-04-29 — Fase 11 chiusa: prompts scanner, models, claude_agent esteso con run_market_scan + scanner_tools, 11 test scanner verdi, suite completa 24/24 passed.`
-- next_action: `Attendere conferma utente per passare a fase 12. Comando: leggi .orchestration/phase-prompts/phase-12-mcp-tools-upgrade.md, estendi mcp_server.py con get_symbol_universe/scan_symbol_candidates/get_symbol_indicators/propose_trade.`
+- current_substep: `4`
+- last_action: `2026-04-29 — Fase 12 chiusa: cheap_scan_symbol estratta come funzione modulo, mcp_server.py esteso con 4 nuovi tool (get_symbol_universe, scan_symbol_candidates, get_symbol_indicators, propose_trade) e bootstrap MT5 spostato in _bootstrap_mt5(), 15 test mcp v2 verdi, suite completa 39/39 passed.`
+- next_action: `Attendere conferma utente per fase 13. Comando: leggi .orchestration/phase-prompts/phase-13-scheduled-orchestrator.md, aggiungi apscheduler a requirements, crea scheduler.py, estendi models.py + claude_agent.py per follow-up, riscrivi main.py come daemon.`
 
 ## Roadmap v1.1.0 (residua, NOT_STARTED)
 
-- **Fase 12 — MCP Tools Upgrade**: aggiunge tool MCP `get_symbol_universe`, `scan_symbol_candidates`, `get_symbol_indicators`, `propose_trade`. Mantiene compatibilità con i 6 tool esistenti. Test `tests/test_mcp_tools_v2.py`.
 - **Fase 13 — Scheduled Orchestrator**: trasforma `main.py` in daemon continuo. APScheduler con cron lun-ven 08-22, slot 08/11/14/17/20 (ogni 3h), follow-up one-shot (delay max 120 min, una volta per opportunità), target giornaliero 5 decisioni finali. Nuovi file: `scheduler.py`, `models.py` esteso (`DelayedFollowUpRequest`, `AgentCycleOutcome`, `DailyRunState`), test `tests/test_scheduler.py` e `tests/test_daily_orchestrator.py`. Risponde alla domanda architetturale sull'autonomia.
 
 ## File completati per fase
@@ -146,6 +145,19 @@ phase_11_market_scanner:
     - "Backward compat: run_cycle single-symbol resta intatto, system_prompt.txt e context_template.txt non modificati"
     - "Anthropic client + Mt5Client mockati nei test, 11 test scanner verdi in 7s. Suite completa 24/24 passed."
     - "MAX_SYMBOLS_TO_DEEPEN letto da Config se presente (cfg.MAX_SYMBOLS_TO_DEEPEN), altrimenti default 5. Sarà reso obbligatorio in fase 13 via .env."
+
+phase_12_mcp_tools_upgrade:
+  status: VALIDATED
+  files:
+    - claude_agent.py       # cheap_scan_symbol estratta come funzione modulo riusabile
+    - mcp_server.py         # 4 nuovi tool + handler functions + _bootstrap_mt5 (init lazy, no MT5 all'import)
+    - tests/test_mcp_tools_v2.py
+  validated_at: "2026-04-29"
+  notes:
+    - "Nuovi tool MCP: get_symbol_universe, scan_symbol_candidates, get_symbol_indicators, propose_trade. I 6 tool legacy preservati."
+    - "propose_trade NON esegue ordini, NON decide size: ritorna proposal echo + status='proposed'/executed=False. Per agire usare evaluate_trade_proposal o submit_order_if_approved."
+    - "_bootstrap_mt5() chiamato solo da __main__ block: import del modulo non blocca senza terminale MT5 (importante per i test)."
+    - "Suite completa 39/39 passed (4 mt5 + 9 risk + 11 scanner + 15 mcp v2)."
 ```
 
 ## Decisioni aperte
@@ -172,10 +184,10 @@ phase_11_market_scanner:
 
 ## Note di handoff
 
-- Ultimo file generato: `tests/test_scanner.py` (fase 11). Tag attivo: `v1.0.0` (fase 11 non ancora taggata).
-- Prossimo file da generare: dipende dalla scelta utente. Se procede fase 12: `mcp_server.py` esteso con i nuovi tool (get_symbol_universe, scan_symbol_candidates, get_symbol_indicators, propose_trade).
-- Comando di ripresa fase 12: `leggi .orchestration/phase-prompts/phase-12-mcp-tools-upgrade.md, estendi mcp_server.py mantenendo i 6 tool esistenti, aggiungi tests/test_mcp_tools_v2.py`.
-- Test pendenti: nessuno (suite completa post-fase-11: 24/24 passed in 7s).
+- Ultimo file generato: `tests/test_mcp_tools_v2.py` (fase 12). Tag attivo: `v1.0.0` (fasi 11-12 non ancora taggate).
+- Prossimo file da generare: dipende dalla scelta utente. Se procede fase 13: `requirements.txt` (+apscheduler), `config.py` esteso (parametri env scheduler), `models.py` esteso (DelayedFollowUpRequest, AgentCycleOutcome, DailyRunState).
+- Comando di ripresa fase 13: `leggi .orchestration/phase-prompts/phase-13-scheduled-orchestrator.md, aggiungi apscheduler, estendi config/models, riscrivi main.py come daemon, scrivi tests`.
+- Test pendenti: nessuno (suite completa post-fase-12: 39/39 passed).
 - Rischi noti per la prossima sessione:
   - `PHASES.md` non contiene ancora le fasi 11-12-13. Aggiornare per coerenza, idealmente prima della fine di fase 13.
   - La fase 13 introduce `apscheduler` (o equivalente) come nuova dipendenza: aggiungere a `requirements.txt`.
@@ -193,6 +205,7 @@ phase_11_market_scanner:
 | `2026-04-29T18:30:00+02:00` | COMPLETED | 10 | Validazione live OK, tag v1.0.0 rilasciato |
 | `2026-04-29T20:00:00+02:00` | HANDOFF | 11 | Pianificate fasi 11-12-13 (roadmap v1.1.0). Esecuzione rinviata. |
 | `2026-04-29T21:30:00+02:00` | RESUME | 11 | Fase 11 (Market Scanner) completata e validata, suite 24/24. |
+| `2026-04-29T22:30:00+02:00` | RESUME | 12 | Fase 12 (MCP Tools Upgrade) completata e validata, suite 39/39. |
 
 ## Checklist finale
 
