@@ -2,7 +2,7 @@ import dataclasses
 import json
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -10,7 +10,14 @@ from anthropic import Anthropic
 
 from config import Config
 from indicators import compute_all
-from models import AccountState, ScannerDecision, SymbolScanCandidate, TradeProposal
+from models import (
+    AccountState,
+    AgentCycleOutcome,
+    DelayedFollowUpRequest,
+    ScannerDecision,
+    SymbolScanCandidate,
+    TradeProposal,
+)
 from mt5_client import Mt5Client
 
 _TZ_ROME = ZoneInfo("Europe/Rome")
@@ -392,6 +399,24 @@ class ClaudeAgent:
                     ],
                 },
             },
+            {
+                "name": "request_followup",
+                "description": (
+                    "Richiedi un singolo rinvio del ciclo per un simbolo promettente. "
+                    "Usabile solo se followup_mode=false e c'è un setup vicino al pronto. "
+                    "Massimo un follow-up per opportunità, delay tra 1 e 120 minuti."
+                ),
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string"},
+                        "delay_minutes": {"type": "integer", "minimum": 1, "maximum": 120},
+                        "reason": {"type": "string"},
+                        "focus_prompt": {"type": "string"},
+                    },
+                    "required": ["symbol", "delay_minutes", "reason", "focus_prompt"],
+                },
+            },
         ]
 
     def _cheap_scan_one(self, symbol: str) -> SymbolScanCandidate:
@@ -425,27 +450,61 @@ class ClaudeAgent:
 
         return {"error": f"unknown scanner tool: {name}"}
 
+    def _format_open_positions(self, account_state: AccountState) -> str:
+        if not account_state.open_positions:
+            return "nessuna"
+        parts = [
+            f"{p.symbol} {p.direction} {p.lots:.2f}lots @ {p.entry_price}"
+            for p in account_state.open_positions
+        ]
+        return "; ".join(parts)
+
     def run_market_scan(
         self,
         candidate_symbols: list[str],
         timeframe: str,
         account_state: AccountState,
     ) -> TradeProposal | None:
-        decision = self._run_market_scan_internal(candidate_symbols, timeframe, account_state)
-        return decision.proposal
+        outcome = self._run_market_scan_internal(candidate_symbols, timeframe, account_state)
+        return outcome.proposal
+
+    def run_market_cycle(
+        self,
+        candidate_symbols: list[str],
+        timeframe: str,
+        account_state: AccountState,
+        *,
+        followup: DelayedFollowUpRequest | None = None,
+    ) -> AgentCycleOutcome:
+        return self._run_market_scan_internal(
+            candidate_symbols, timeframe, account_state, followup=followup
+        )
 
     def _run_market_scan_internal(
         self,
         candidate_symbols: list[str],
         timeframe: str,
         account_state: AccountState,
-    ) -> ScannerDecision:
+        *,
+        followup: DelayedFollowUpRequest | None = None,
+    ) -> AgentCycleOutcome:
         if not candidate_symbols:
             self.log.warning("ClaudeAgent scanner: empty candidate_symbols")
-            return ScannerDecision(proposal=None, stop_reason="no_candidates")
+            return AgentCycleOutcome(
+                outcome_type="NO_TRADE",
+                note="empty_candidate_universe",
+                decided_at=datetime.now(tz=_TZ_ROME),
+            )
 
         max_to_deepen = getattr(self.cfg, "MAX_SYMBOLS_TO_DEEPEN", _DEFAULT_MAX_SYMBOLS_TO_DEEPEN)
+        max_delay_cap = getattr(self.cfg, "MAX_DELAY_MINUTES", 120)
         now_local = datetime.now(tz=_TZ_ROME).strftime("%Y-%m-%d %H:%M:%S")
+
+        followup_mode = followup is not None
+        followup_symbol = followup.symbol if followup else "-"
+        followup_delay = followup.delay_minutes if followup else 0
+        followup_focus = followup.focus_prompt if followup else "-"
+
         context = self.context_template_scanner.format(
             candidate_symbols=", ".join(candidate_symbols),
             timeframe=timeframe,
@@ -458,10 +517,16 @@ class ClaudeAgent:
             equity=account_state.equity,
             free_margin=account_state.free_margin,
             open_positions_count=len(account_state.open_positions),
+            open_positions_summary=self._format_open_positions(account_state),
+            followup_mode="true" if followup_mode else "false",
+            followup_symbol=followup_symbol,
+            followup_delay_minutes=followup_delay,
+            followup_focus_prompt=followup_focus,
         )
 
         messages: list[dict] = [{"role": "user", "content": context}]
         proposal: TradeProposal | None = None
+        follow_up_req: DelayedFollowUpRequest | None = None
 
         for iteration in range(_MAX_ITERATIONS_SCANNER):
             response = self.client.messages.create(
@@ -478,10 +543,10 @@ class ClaudeAgent:
                     "ClaudeAgent scanner NO_TRADE stop_reason=%s iter=%d",
                     response.stop_reason, iteration,
                 )
-                return ScannerDecision(
-                    proposal=None,
-                    iterations_used=iteration + 1,
-                    stop_reason=response.stop_reason or "end_turn",
+                return AgentCycleOutcome(
+                    outcome_type="NO_TRADE",
+                    note=f"stop_reason={response.stop_reason or 'end_turn'} iter={iteration}",
+                    decided_at=datetime.now(tz=_TZ_ROME),
                 )
 
             messages.append({"role": "assistant", "content": response.content})
@@ -490,7 +555,10 @@ class ClaudeAgent:
             for block in response.content:
                 if getattr(block, "type", None) != "tool_use":
                     continue
-                if block.name == "propose_trade" and proposal is None:
+
+                outcome_already_set = proposal is not None or follow_up_req is not None
+
+                if block.name == "propose_trade" and not outcome_already_set:
                     proposal = TradeProposal(
                         symbol=block.input["symbol"],
                         direction=block.input["direction"],
@@ -507,11 +575,45 @@ class ClaudeAgent:
                         "tool_use_id": block.id,
                         "content": json.dumps({"received": True}),
                     })
-                elif block.name == "propose_trade":
+                elif block.name == "request_followup" and not outcome_already_set:
+                    if followup_mode:
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": json.dumps({
+                                "error": "already_delayed: cannot request a second follow-up for the same opportunity",
+                            }),
+                        })
+                    else:
+                        try:
+                            requested_delay = int(block.input["delay_minutes"])
+                        except (TypeError, ValueError):
+                            requested_delay = 1
+                        clamped_delay = max(1, min(requested_delay, max_delay_cap))
+                        created = datetime.now(tz=_TZ_ROME)
+                        follow_up_req = DelayedFollowUpRequest(
+                            symbol=block.input["symbol"],
+                            timeframe=timeframe,
+                            delay_minutes=clamped_delay,
+                            reason=block.input["reason"],
+                            focus_prompt=block.input["focus_prompt"],
+                            created_at=created,
+                            expires_at=created + timedelta(minutes=clamped_delay),
+                            already_delayed=False,
+                        )
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": json.dumps({
+                                "received": True,
+                                "delay_minutes_clamped": clamped_delay,
+                            }),
+                        })
+                elif block.name in ("propose_trade", "request_followup"):
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
-                        "content": json.dumps({"error": "max one proposal per scan"}),
+                        "content": json.dumps({"error": "max one outcome per cycle"}),
                     })
                 else:
                     try:
@@ -534,20 +636,33 @@ class ClaudeAgent:
                     "ClaudeAgent scanner PROPOSAL symbol=%s direction=%s confidence=%.2f iter=%d",
                     proposal.symbol, proposal.direction, proposal.confidence, iteration,
                 )
-                return ScannerDecision(
+                return AgentCycleOutcome(
+                    outcome_type="TRADE",
                     proposal=proposal,
-                    iterations_used=iteration + 1,
-                    stop_reason="proposal_received",
+                    note=f"iter={iteration}",
+                    decided_at=datetime.now(tz=_TZ_ROME),
+                )
+
+            if follow_up_req is not None:
+                self.log.info(
+                    "ClaudeAgent scanner WAIT_FOLLOW_UP symbol=%s delay=%d iter=%d",
+                    follow_up_req.symbol, follow_up_req.delay_minutes, iteration,
+                )
+                return AgentCycleOutcome(
+                    outcome_type="WAIT_FOLLOW_UP",
+                    follow_up=follow_up_req,
+                    note=f"iter={iteration}",
+                    decided_at=datetime.now(tz=_TZ_ROME),
                 )
 
         self.log.warning(
             "ClaudeAgent scanner: max iterations (%d) reached without proposal",
             _MAX_ITERATIONS_SCANNER,
         )
-        return ScannerDecision(
-            proposal=None,
-            iterations_used=_MAX_ITERATIONS_SCANNER,
-            stop_reason="max_iterations",
+        return AgentCycleOutcome(
+            outcome_type="NO_TRADE",
+            note="max_iterations",
+            decided_at=datetime.now(tz=_TZ_ROME),
         )
 
     def explain_last_trades(self, n: int = 5) -> str:

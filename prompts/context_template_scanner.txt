@@ -1,4 +1,4 @@
-Analizza un universo di simboli candidati e decidi al massimo UN trade.
+Analizza un universo di simboli candidati e decidi al massimo UN esito tra TRADE, NO_TRADE, WAIT_FOLLOW_UP.
 
 Universo candidato: {candidate_symbols}
 Timeframe operativo: {timeframe}
@@ -16,17 +16,29 @@ Stato account atteso dal caller (verifica con i tool prima di decidere):
 - balance: {balance}
 - equity: {equity}
 - free_margin: {free_margin}
-- posizioni aperte: {open_positions_count}
+- posizioni aperte (count): {open_positions_count}
+- posizioni aperte (riassunto): {open_positions_summary}
+
+Contesto follow-up:
+- followup_mode: {followup_mode}
+- followup_symbol: {followup_symbol}
+- followup_delay_minutes: {followup_delay_minutes}
+- followup_focus_prompt: {followup_focus_prompt}
+
+Regole di decisione:
+- Se followup_mode = false: ciclo ordinario. Esegui market scan completo e produci uno tra TRADE, NO_TRADE, WAIT_FOLLOW_UP.
+- Se followup_mode = true: dai priorità al simbolo followup_symbol con focus su followup_focus_prompt. Per quella opportunità NON puoi richiedere un altro follow-up (è già stato esercitato). L'esito deve essere TRADE o NO_TRADE.
 
 Workflow richiesto:
 1. account state e risk profile dai tool;
-2. cheap scan su tutto l'universo;
+2. cheap scan su tutto l'universo (o focus sul simbolo prioritario in followup_mode);
 3. shortlist (max max_symbols_to_deepen);
 4. deep analysis sulla shortlist;
-5. al massimo una proposta tramite propose_trade, altrimenti NO_TRADE.
+5. UNA decisione finale.
 
 Output atteso:
-- Se c'è edge chiaro su UN solo simbolo con confidence >= 0.60: chiama propose_trade.
+- Edge chiaro su un solo simbolo, confidence >= 0.60: chiama propose_trade.
+- Setup non ancora pronto ma probabile entro 120 minuti, e non sei in followup_mode: chiama request_followup con symbol, delay_minutes, reason, focus_prompt.
 - Altrimenti: rispondi
 NO_TRADE
 <breve motivazione in italiano basata sui dati osservati>

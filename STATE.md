@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `12`
-- current_phase_title: `MCP Tools Upgrade`
-- phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `4`
-- last_action: `2026-04-29 — Fase 12 chiusa: cheap_scan_symbol estratta come funzione modulo, mcp_server.py esteso con 4 nuovi tool (get_symbol_universe, scan_symbol_candidates, get_symbol_indicators, propose_trade) e bootstrap MT5 spostato in _bootstrap_mt5(), 15 test mcp v2 verdi, suite completa 39/39 passed.`
-- next_action: `Attendere conferma utente per fase 13. Comando: leggi .orchestration/phase-prompts/phase-13-scheduled-orchestrator.md, aggiungi apscheduler a requirements, crea scheduler.py, estendi models.py + claude_agent.py per follow-up, riscrivi main.py come daemon.`
+- current_phase: `13`
+- current_phase_title: `Scheduled Orchestrator`
+- phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
+- current_substep: `0`
+- last_action: `2026-04-29 — Fase 12 pushata (commit 0293f6e). Avviata fase 13 con conferma utente. Decisioni: DailyRunState persistito in SQLite (tabella daily_run_state in logs/trades.db); PHASES.md non aggiornato in questa fase.`
+- next_action: `Aggiornare requirements.txt (+apscheduler), .env.example, config.py con parametri scheduler. Estendere models.py con DelayedFollowUpRequest/AgentCycleOutcome/DailyRunState. Aggiornare prompts scanner per follow-up. Estendere claude_agent.py con outcome WAIT_FOLLOW_UP. Creare scheduler.py (BlockingScheduler + persistenza SQLite). Riscrivere main.py come daemon. Test scheduler + daily orchestrator.`
 
 ## Roadmap v1.1.0 (residua, NOT_STARTED)
 

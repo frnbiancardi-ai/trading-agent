@@ -19,6 +19,22 @@ def _get_list(name: str, default: list[str]) -> list[str]:
     return [p for p in parts if p]
 
 
+def _get_int_list(name: str, default: list[int]) -> list[int]:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    out: list[int] = []
+    for p in val.split(","):
+        p = p.strip()
+        if not p:
+            continue
+        try:
+            out.append(int(p))
+        except ValueError:
+            continue
+    return out or default
+
+
 class Config:
     # MT5
     MT5_LOGIN: int = int(os.getenv("MT5_LOGIN", "0"))
@@ -58,3 +74,15 @@ class Config:
 
     # Execution
     EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "shadow")
+
+    # Scheduler / Daily orchestrator (fase 13)
+    OPERATING_TIMEZONE: str = os.getenv("OPERATING_TIMEZONE", "Europe/Rome")
+    OPERATING_START_HOUR: int = int(os.getenv("OPERATING_START_HOUR", "8"))
+    OPERATING_END_HOUR: int = int(os.getenv("OPERATING_END_HOUR", "22"))
+    OPERATING_WEEKDAYS: list[int] = _get_int_list("OPERATING_WEEKDAYS", [0, 1, 2, 3, 4])
+    MAIN_CYCLE_HOURS: int = max(1, int(os.getenv("MAIN_CYCLE_HOURS", "3")))
+    DAILY_TARGET_DECISIONS: int = max(1, int(os.getenv("DAILY_TARGET_DECISIONS", "5")))
+    MAX_DELAY_MINUTES: int = min(120, max(1, int(os.getenv("MAX_DELAY_MINUTES", "120"))))
+    MAX_SYMBOLS_TO_DEEPEN: int = max(1, int(os.getenv("MAX_SYMBOLS_TO_DEEPEN", "3")))
+    FOLLOWUP_ENABLED: bool = _get_bool("FOLLOWUP_ENABLED", True)
+    SCHEDULER_POLL_SECONDS: int = max(1, int(os.getenv("SCHEDULER_POLL_SECONDS", "5")))

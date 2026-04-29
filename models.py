@@ -1,4 +1,6 @@
 from dataclasses import dataclass, field
+from datetime import date as _date, datetime
+from typing import Literal
 
 
 @dataclass
@@ -69,3 +71,32 @@ class ScannerDecision:
     candidates: list[SymbolScanCandidate] = field(default_factory=list)
     iterations_used: int = 0
     stop_reason: str = ""
+
+
+@dataclass
+class DelayedFollowUpRequest:
+    symbol: str
+    timeframe: str
+    delay_minutes: int
+    reason: str
+    focus_prompt: str
+    created_at: datetime
+    expires_at: datetime
+    already_delayed: bool = False
+
+
+@dataclass
+class AgentCycleOutcome:
+    outcome_type: Literal["TRADE", "NO_TRADE", "WAIT_FOLLOW_UP"]
+    proposal: TradeProposal | None = None
+    follow_up: DelayedFollowUpRequest | None = None
+    note: str = ""
+    decided_at: datetime | None = None
+
+
+@dataclass
+class DailyRunState:
+    date: _date
+    decisions_count: int = 0
+    trade_count: int = 0
+    no_trade_count: int = 0
