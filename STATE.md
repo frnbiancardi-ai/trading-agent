@@ -12,18 +12,24 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `COMPLETED`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-04-29T18:30:00+02:00`
-- last_session_reason: `MVP v1.0.0 completato e validato live (shadow). Paper/live trading sono gate futuri non bloccanti per il tag.`
+- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_end: `2026-04-29T20:00:00+02:00`
+- last_session_reason: `MVP v1.0.0 resta valido e taggato. Pianificate fasi 11 (Market Scanner Multi-Symbol), 12 (MCP Tools Upgrade) e 13 (Scheduled Orchestrator) come evoluzione verso v1.1.0. Esecuzione rinviata alla prossima sessione su richiesta utente.`
 
 ## Stato fase corrente
 
-- current_phase: `10`
-- current_phase_title: `E2E + Tests + README`
-- phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `4`
-- last_action: `2026-04-29 — Validazione live in Claude Desktop completata: MCP+6 tool, get_account_state, evaluate_trade_proposal, submit_order_if_approved (shadow), get_trade_history, spiegazione italiana del trade #3 — tutti OK. Tag v1.0.0 creato.`
-- next_action: `Operatività shadow ≥ 1 settimana → poi paper trading → eventuale bump a v1.1.0`
+- current_phase: `11`
+- current_phase_title: `Market Scanner Multi-Symbol`
+- phase_status: `NOT_STARTED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
+- current_substep: `0`
+- last_action: `2026-04-29 — Aggiunti i prompt di fase phase-11-market-scanner.md, phase-12-mcp-tools-upgrade.md e phase-13-scheduled-orchestrator.md (file untracked). Modifiche pendenti su prompts/system_prompt.txt e prompts/context_template.txt da revisionare insieme alla fase 11.`
+- next_action: `Aprire phase-11-market-scanner.md, decidere se le modifiche pendenti su prompts/*.txt vanno mantenute o scartate (la spec di fase 11 richiede di CREARE prompts/system_prompt_scanner.txt e prompts/context_template_scanner.txt come file nuovi, lasciando intatti quelli single-symbol). Poi eseguire fasi 11 → 12 → 13 in sequenza.`
+
+## Roadmap v1.1.0 (pianificata, NOT_STARTED)
+
+- **Fase 11 — Market Scanner Multi-Symbol**: estende `claude_agent.py` con workflow scanner multi-symbol (cheap scan → shortlist → deep analysis → max 1 trade), nuovi prompt `_scanner.txt`, modelli `SymbolScanCandidate`/`ScannerDecision`, test `tests/test_scanner.py`.
+- **Fase 12 — MCP Tools Upgrade**: aggiunge tool MCP `get_symbol_universe`, `scan_symbol_candidates`, `get_symbol_indicators`, `propose_trade`. Mantiene compatibilità con i 6 tool esistenti. Test `tests/test_mcp_tools_v2.py`.
+- **Fase 13 — Scheduled Orchestrator**: trasforma `main.py` in daemon continuo. APScheduler con cron lun-ven 08-22, slot 08/11/14/17/20 (ogni 3h), follow-up one-shot (delay max 120 min, una volta per opportunità), target giornaliero 5 decisioni finali. Nuovi file: `scheduler.py`, `models.py` esteso (`DelayedFollowUpRequest`, `AgentCycleOutcome`, `DailyRunState`), test `tests/test_scheduler.py` e `tests/test_daily_orchestrator.py`. Risponde alla domanda architetturale sull'autonomia (scenario daemon + agent-driven follow-up).
 
 ## File completati per fase
 
@@ -152,13 +158,19 @@ phase_10_e2e:
 
 ## Note di handoff
 
-- Ultimo file generato: `tests/test_risk.py`
-- Prossimo file da generare: `logger.py`
-- Comando di ripresa: `leggi .orchestration/phase-prompts/phase-05-logger.md, genera logger.py`
-- Test pendenti: nessuno (tutti i test esistenti passano: `pytest tests/test_risk.py -v`)
+- Ultimo file generato: `tests/test_mt5.py` (fase 10) e `README.md`. Tag `v1.0.0` rilasciato.
+- Prossimo file da generare: `prompts/system_prompt_scanner.txt` (primo step della fase 11).
+- Comando di ripresa: `leggi .orchestration/phase-prompts/phase-11-market-scanner.md, decidi cosa fare con le modifiche pendenti a prompts/system_prompt.txt e prompts/context_template.txt, poi inizia la fase 11`.
+- Modifiche pendenti nel working tree (da revisionare prima della fase 11):
+  - `prompts/system_prompt.txt` — modificato (origine sconosciuta, da diff prima di committare)
+  - `prompts/context_template.txt` — modificato (origine sconosciuta, da diff prima di committare)
+  - File untracked: `phase-11-market-scanner.md`, `phase-12-mcp-tools-upgrade.md`, `phase-13-scheduled-orchestrator.md` (specifiche di fase, da committare insieme al primo passo della fase 11).
+- Test pendenti: nessuno (suite v1.0.0 verde: 9 passed, 4 skipped).
 - Rischi noti per la prossima sessione:
-  - Il checkpoint di fase 5 richiede che `trades.db` venga creato fisicamente su disco: verificare path `logs/trades.db` e permessi di scrittura.
-  - Il live checkpoint di fase 3 (mt5_client) non è stato eseguito: richiede MT5 aperto con credenziali reali in `.env`.
+  - Le tre nuove fasi non sono in `PHASES.md`. Aggiornare `PHASES.md` per coerenza prima di iniziare la fase 11.
+  - La fase 13 introduce `apscheduler` (o equivalente) come nuova dipendenza: aggiungere a `requirements.txt`.
+  - La fase 13 ridefinisce il comportamento di `main.py`: passare da single-shot a daemon continuo. Verificare che i percorsi di test esistenti non si rompano.
+  - Il follow-up one-shot della fase 13 richiede persistenza di `DailyRunState` tra restart? Decidere prima di implementare (default: in-memory per v1.1.0, persistenza in v1.2.0).
 
 ## Cronologia sessioni
 
@@ -168,6 +180,7 @@ phase_10_e2e:
 | `2026-04-29T00:00:00+02:00` | HANDOFF | 4 | Pausa volontaria utente dopo fase 4 validata, pronto per fase 5 |
 | `2026-04-29T00:00:00+02:00` | RESUME | 5 | Ripresa, fasi 5-10 completate end-to-end |
 | `2026-04-29T18:30:00+02:00` | COMPLETED | 10 | Validazione live OK, tag v1.0.0 rilasciato |
+| `2026-04-29T20:00:00+02:00` | HANDOFF | 11 | Pianificate fasi 11-12-13 (roadmap v1.1.0). Esecuzione rinviata. |
 
 ## Checklist finale
 
