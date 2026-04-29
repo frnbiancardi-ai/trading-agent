@@ -31,11 +31,17 @@ class Config:
     MIN_SL_PIPS: int = int(os.getenv("MIN_SL_PIPS", "8"))
     MAX_SL_PIPS: int = int(os.getenv("MAX_SL_PIPS", "80"))
     RISK_MODE: str = os.getenv("RISK_MODE", "CONSERVATIVE")
+    RISK_AMOUNT_MODE: str = os.getenv("RISK_AMOUNT_MODE", "PERCENT")
+    RISK_PER_TRADE_AMOUNT: float = float(os.getenv("RISK_PER_TRADE_AMOUNT", "100.0"))
+    MAX_LOTS_PER_TRADE: float = float(os.getenv("MAX_LOTS_PER_TRADE", "0"))
 
     # Symbols / Session
     SYMBOLS: list[str] = _get_list("SYMBOLS", ["EURUSD"])
     SESSION_START: str = os.getenv("SESSION_START", "08:00")
     SESSION_END: str = os.getenv("SESSION_END", "20:00")
+    SESSION_START_HOUR: int = int(os.getenv("SESSION_START", "08:00").split(":")[0])
+    SESSION_END_HOUR: int = int(os.getenv("SESSION_END", "20:00").split(":")[0])
+    USE_SESSION_FILTER: bool = _get_bool("USE_SESSION_FILTER", True)
 
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")

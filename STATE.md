@@ -18,12 +18,12 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato fase corrente
 
-- current_phase: `3`
-- current_phase_title: `MT5 Client`
+- current_phase: `4`
+- current_phase_title: `Risk Engine`
 - phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
 - current_substep: `1`
-- last_action: `2026-04-29 — mt5_client.py creato; import OK; tzdata aggiunto a requirements (Windows zoneinfo); live test richiede MT5 demo attivo + credenziali .env`
-- next_action: `Avvio Fase 4: risk_engine.py + tests/test_risk.py`
+- last_action: `2026-04-29 — pytest tests/test_risk.py: 9/9 verde. risk_engine.py + test_risk.py creati; pytest.ini aggiunto (pythonpath=.)`
+- next_action: `Avvio Fase 5: logger.py`
 
 ## File completati per fase
 
@@ -54,9 +54,14 @@ phase_3_mt5_client:
   validated_at: "2026-04-29"
 
 phase_4_risk_engine:
-  status: NOT_STARTED
-  files: []
-  validated_at: null
+  status: VALIDATED
+  files:
+    - risk_engine.py
+    - tests/test_risk.py
+    - pytest.ini
+    - config.py   # aggiunto USE_SESSION_FILTER, SESSION_START/END_HOUR, RISK_AMOUNT_MODE, MAX_LOTS_PER_TRADE
+    - .env.example
+  validated_at: "2026-04-29"
 
 phase_5_logger:
   status: NOT_STARTED
