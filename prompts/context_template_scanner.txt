@@ -1,0 +1,32 @@
+Analizza un universo di simboli candidati e decidi al massimo UN trade.
+
+Universo candidato: {candidate_symbols}
+Timeframe operativo: {timeframe}
+Ora locale: {now_local}
+Modalità esecuzione: {execution_mode}
+
+Vincoli del risk engine:
+- MIN_SL_PIPS: {min_sl_pips}
+- MAX_SL_PIPS: {max_sl_pips}
+
+Limiti operativi del workflow scanner:
+- max_symbols_to_deepen: {max_symbols_to_deepen}
+
+Stato account atteso dal caller (verifica con i tool prima di decidere):
+- balance: {balance}
+- equity: {equity}
+- free_margin: {free_margin}
+- posizioni aperte: {open_positions_count}
+
+Workflow richiesto:
+1. account state e risk profile dai tool;
+2. cheap scan su tutto l'universo;
+3. shortlist (max max_symbols_to_deepen);
+4. deep analysis sulla shortlist;
+5. al massimo una proposta tramite propose_trade, altrimenti NO_TRADE.
+
+Output atteso:
+- Se c'è edge chiaro su UN solo simbolo con confidence >= 0.60: chiama propose_trade.
+- Altrimenti: rispondi
+NO_TRADE
+<breve motivazione in italiano basata sui dati osservati>

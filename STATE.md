@@ -12,24 +12,23 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-04-29T20:00:00+02:00`
-- last_session_reason: `MVP v1.0.0 resta valido e taggato. Pianificate fasi 11 (Market Scanner Multi-Symbol), 12 (MCP Tools Upgrade) e 13 (Scheduled Orchestrator) come evoluzione verso v1.1.0. Esecuzione rinviata alla prossima sessione su richiesta utente.`
+- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_end: `2026-04-29T21:30:00+02:00`
+- last_session_reason: `Fase 11 (Market Scanner Multi-Symbol) completata e validata. In attesa conferma utente per procedere con fase 12 (MCP Tools Upgrade).`
 
 ## Stato fase corrente
 
 - current_phase: `11`
 - current_phase_title: `Market Scanner Multi-Symbol`
-- phase_status: `NOT_STARTED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `0`
-- last_action: `2026-04-29 — Aggiunti i prompt di fase phase-11-market-scanner.md, phase-12-mcp-tools-upgrade.md e phase-13-scheduled-orchestrator.md (file untracked). Modifiche pendenti su prompts/system_prompt.txt e prompts/context_template.txt da revisionare insieme alla fase 11.`
-- next_action: `Aprire phase-11-market-scanner.md, decidere se le modifiche pendenti su prompts/*.txt vanno mantenute o scartate (la spec di fase 11 richiede di CREARE prompts/system_prompt_scanner.txt e prompts/context_template_scanner.txt come file nuovi, lasciando intatti quelli single-symbol). Poi eseguire fasi 11 → 12 → 13 in sequenza.`
+- phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
+- current_substep: `5`
+- last_action: `2026-04-29 — Fase 11 chiusa: prompts scanner, models, claude_agent esteso con run_market_scan + scanner_tools, 11 test scanner verdi, suite completa 24/24 passed.`
+- next_action: `Attendere conferma utente per passare a fase 12. Comando: leggi .orchestration/phase-prompts/phase-12-mcp-tools-upgrade.md, estendi mcp_server.py con get_symbol_universe/scan_symbol_candidates/get_symbol_indicators/propose_trade.`
 
-## Roadmap v1.1.0 (pianificata, NOT_STARTED)
+## Roadmap v1.1.0 (residua, NOT_STARTED)
 
-- **Fase 11 — Market Scanner Multi-Symbol**: estende `claude_agent.py` con workflow scanner multi-symbol (cheap scan → shortlist → deep analysis → max 1 trade), nuovi prompt `_scanner.txt`, modelli `SymbolScanCandidate`/`ScannerDecision`, test `tests/test_scanner.py`.
 - **Fase 12 — MCP Tools Upgrade**: aggiunge tool MCP `get_symbol_universe`, `scan_symbol_candidates`, `get_symbol_indicators`, `propose_trade`. Mantiene compatibilità con i 6 tool esistenti. Test `tests/test_mcp_tools_v2.py`.
-- **Fase 13 — Scheduled Orchestrator**: trasforma `main.py` in daemon continuo. APScheduler con cron lun-ven 08-22, slot 08/11/14/17/20 (ogni 3h), follow-up one-shot (delay max 120 min, una volta per opportunità), target giornaliero 5 decisioni finali. Nuovi file: `scheduler.py`, `models.py` esteso (`DelayedFollowUpRequest`, `AgentCycleOutcome`, `DailyRunState`), test `tests/test_scheduler.py` e `tests/test_daily_orchestrator.py`. Risponde alla domanda architetturale sull'autonomia (scenario daemon + agent-driven follow-up).
+- **Fase 13 — Scheduled Orchestrator**: trasforma `main.py` in daemon continuo. APScheduler con cron lun-ven 08-22, slot 08/11/14/17/20 (ogni 3h), follow-up one-shot (delay max 120 min, una volta per opportunità), target giornaliero 5 decisioni finali. Nuovi file: `scheduler.py`, `models.py` esteso (`DelayedFollowUpRequest`, `AgentCycleOutcome`, `DailyRunState`), test `tests/test_scheduler.py` e `tests/test_daily_orchestrator.py`. Risponde alla domanda architetturale sull'autonomia.
 
 ## File completati per fase
 
@@ -132,6 +131,21 @@ phase_10_e2e:
   notes:
     - "Test E2E unit-side: 9 risk_engine green, 4 mt5 e2e skipped (MT5 non disponibile in ambiente CI)"
     - "Validazione live (run main.py shadow su EURUSD/GBPUSD, Claude Desktop con 6 tool, paper trading) demandata all'utente"
+
+phase_11_market_scanner:
+  status: VALIDATED
+  files:
+    - prompts/system_prompt_scanner.txt
+    - prompts/context_template_scanner.txt
+    - models.py             # aggiunti SymbolScanCandidate, ScannerDecision
+    - claude_agent.py       # aggiunti build_scanner_tools, run_market_scan, _cheap_scan_one, _dispatch_scanner_tool
+    - tests/test_scanner.py
+  validated_at: "2026-04-29"
+  notes:
+    - "Workflow scanner: account state → risk profile → cheap scan → shortlist (max MAX_SYMBOLS_TO_DEEPEN=5 default) → deep analysis → max 1 propose_trade"
+    - "Backward compat: run_cycle single-symbol resta intatto, system_prompt.txt e context_template.txt non modificati"
+    - "Anthropic client + Mt5Client mockati nei test, 11 test scanner verdi in 7s. Suite completa 24/24 passed."
+    - "MAX_SYMBOLS_TO_DEEPEN letto da Config se presente (cfg.MAX_SYMBOLS_TO_DEEPEN), altrimenti default 5. Sarà reso obbligatorio in fase 13 via .env."
 ```
 
 ## Decisioni aperte
@@ -158,19 +172,16 @@ phase_10_e2e:
 
 ## Note di handoff
 
-- Ultimo file generato: `tests/test_mt5.py` (fase 10) e `README.md`. Tag `v1.0.0` rilasciato.
-- Prossimo file da generare: `prompts/system_prompt_scanner.txt` (primo step della fase 11).
-- Comando di ripresa: `leggi .orchestration/phase-prompts/phase-11-market-scanner.md, decidi cosa fare con le modifiche pendenti a prompts/system_prompt.txt e prompts/context_template.txt, poi inizia la fase 11`.
-- Modifiche pendenti nel working tree (da revisionare prima della fase 11):
-  - `prompts/system_prompt.txt` — modificato (origine sconosciuta, da diff prima di committare)
-  - `prompts/context_template.txt` — modificato (origine sconosciuta, da diff prima di committare)
-  - File untracked: `phase-11-market-scanner.md`, `phase-12-mcp-tools-upgrade.md`, `phase-13-scheduled-orchestrator.md` (specifiche di fase, da committare insieme al primo passo della fase 11).
-- Test pendenti: nessuno (suite v1.0.0 verde: 9 passed, 4 skipped).
+- Ultimo file generato: `tests/test_scanner.py` (fase 11). Tag attivo: `v1.0.0` (fase 11 non ancora taggata).
+- Prossimo file da generare: dipende dalla scelta utente. Se procede fase 12: `mcp_server.py` esteso con i nuovi tool (get_symbol_universe, scan_symbol_candidates, get_symbol_indicators, propose_trade).
+- Comando di ripresa fase 12: `leggi .orchestration/phase-prompts/phase-12-mcp-tools-upgrade.md, estendi mcp_server.py mantenendo i 6 tool esistenti, aggiungi tests/test_mcp_tools_v2.py`.
+- Test pendenti: nessuno (suite completa post-fase-11: 24/24 passed in 7s).
 - Rischi noti per la prossima sessione:
-  - Le tre nuove fasi non sono in `PHASES.md`. Aggiornare `PHASES.md` per coerenza prima di iniziare la fase 11.
+  - `PHASES.md` non contiene ancora le fasi 11-12-13. Aggiornare per coerenza, idealmente prima della fine di fase 13.
   - La fase 13 introduce `apscheduler` (o equivalente) come nuova dipendenza: aggiungere a `requirements.txt`.
-  - La fase 13 ridefinisce il comportamento di `main.py`: passare da single-shot a daemon continuo. Verificare che i percorsi di test esistenti non si rompano.
-  - Il follow-up one-shot della fase 13 richiede persistenza di `DailyRunState` tra restart? Decidere prima di implementare (default: in-memory per v1.1.0, persistenza in v1.2.0).
+  - La fase 13 ridefinisce `main.py`: da single-shot a daemon continuo. Verificare che i test esistenti non si rompano.
+  - Persistenza di `DailyRunState` tra restart per fase 13: decisione aperta (default proposto: in-memory v1.1.0, SQLite in v1.2.0).
+  - `MAX_SYMBOLS_TO_DEEPEN` non è ancora in `config.py`/`.env.example`: in fase 13 va aggiunto come parametro env obbligatorio (lo scanner attuale legge fallback hardcodato 5).
 
 ## Cronologia sessioni
 
@@ -181,6 +192,7 @@ phase_10_e2e:
 | `2026-04-29T00:00:00+02:00` | RESUME | 5 | Ripresa, fasi 5-10 completate end-to-end |
 | `2026-04-29T18:30:00+02:00` | COMPLETED | 10 | Validazione live OK, tag v1.0.0 rilasciato |
 | `2026-04-29T20:00:00+02:00` | HANDOFF | 11 | Pianificate fasi 11-12-13 (roadmap v1.1.0). Esecuzione rinviata. |
+| `2026-04-29T21:30:00+02:00` | RESUME | 11 | Fase 11 (Market Scanner) completata e validata, suite 24/24. |
 
 ## Checklist finale
 

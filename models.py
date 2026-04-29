@@ -49,3 +49,23 @@ class OrderResult:
     success: bool
     order_id: int | None = None
     error_message: str | None = None
+
+
+@dataclass
+class SymbolScanCandidate:
+    symbol: str
+    trend_bias: str
+    momentum_bias: str
+    volatility_state: str
+    spread_state: str
+    candidate_score: float
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ScannerDecision:
+    proposal: TradeProposal | None
+    shortlist: list[str] = field(default_factory=list)
+    candidates: list[SymbolScanCandidate] = field(default_factory=list)
+    iterations_used: int = 0
+    stop_reason: str = ""
