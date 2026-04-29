@@ -3,10 +3,24 @@ Analizza un possibile trade su {symbol} timeframe {timeframe}.
 Ora locale: {now_local}.
 Modalità esecuzione: {execution_mode}.
 
-Stato account:
+Vincoli attivi:
+- MIN_SL_PIPS: {min_sl_pips}
+- MAX_SL_PIPS: {max_sl_pips}
+
+Stato account atteso dal caller:
 - balance: {balance}
 - equity: {equity}
 - free_margin: {free_margin}
 - posizioni aperte: {open_positions_count}
 
-Usa i tool disponibili (get_account_status, get_market_snapshot, get_indicators) per raccogliere i dati necessari, poi decidi se proporre un trade tramite propose_trade oppure rispondere "NO_TRADE".
+Istruzioni operative:
+- Usa i tool disponibili per raccogliere i dati aggiornati prima di decidere.
+- Verifica se i dati live confermano o smentiscono i valori attesi passati dal caller.
+- Proponi al massimo un solo trade.
+- Se i dati non supportano confidence >= 0.60, rispondi:
+NO_TRADE
+<breve motivazione in italiano>
+
+Output atteso:
+- Se c'è edge chiaro: usa propose_trade.
+- Altrimenti: NO_TRADE con breve motivazione.

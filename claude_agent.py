@@ -138,6 +138,8 @@ class ClaudeAgent:
             free_margin=account_state.free_margin,
             open_positions_count=len(account_state.open_positions),
             now_local=now_local,
+            min_sl_pips=self.cfg.MIN_SL_PIPS,
+            max_sl_pips=self.cfg.MAX_SL_PIPS,
         )
 
         messages: list[dict] = [{"role": "user", "content": context}]
