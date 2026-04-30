@@ -150,23 +150,21 @@ class Mt5Client:
         order_type = mt5.ORDER_TYPE_BUY if direction.upper() == "BUY" else mt5.ORDER_TYPE_SELL
         price = tick.ask if order_type == mt5.ORDER_TYPE_BUY else tick.bid
 
-        for filling in (mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK, mt5.ORDER_FILLING_RETURN):
-            request = {
-                "action": mt5.TRADE_ACTION_DEAL,
-                "symbol": symbol,
-                "volume": lots,
-                "type": order_type,
-                "price": price,
-                "sl": sl,
-                "tp": tp,
-                "comment": comment,
-                "type_filling": filling,
-                "type_time": mt5.ORDER_TIME_GTC,
-            }
-            result = mt5.order_send(request)
-            if result is None:
-                continue
-            if result.retcode == mt5.TRADE_RETCODE_DONE:
-                return OrderResult(success=True, order_id=result.order)
-
-        return OrderResult(success=False, error_message="all filling modes rejected")
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": lots,
+            "type": order_type,
+            "price": price,
+            "sl": sl,
+            "tp": tp,
+            "comment": comment,
+            "type_filling": mt5.ORDER_FILLING_RETURN,
+            "type_time": mt5.ORDER_TIME_GTC,
+        }
+        result = mt5.order_send(request)
+        if result is None:
+            return OrderResult(success=False, error_message=f"order_send returned None: {mt5.last_error()}")
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            return OrderResult(success=True, order_id=result.order)
+        return OrderResult(success=False, error_message=f"order rejected retcode={result.retcode} comment={result.comment}")
