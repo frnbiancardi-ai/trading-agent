@@ -211,11 +211,10 @@ phase_13_scheduled_orchestrator:
 
 ## Note di handoff
 
-- Ultimo file generato: `tests/test_daily_orchestrator.py` (fase 13). Tag attivo: `v1.0.0`. Fasi 11-12-13 non ancora taggate (candidate per `v1.1.0`).
-- Prossimo file da generare: nessuno per la fase 13. Eventuali next step (non bloccanti):
-  - aggiornare `PHASES.md` con fasi 11-12-13 per coerenza documentale;
-  - taggare `v1.1.0` su `main` se l'utente lo conferma;
-  - live checkpoint del daemon su demo FP Markets per ≥1 giornata operativa.
+- Ultimo file generato: `PHASES.md` (aggiornato con fasi 11-12-13). Tag attivi: `v1.0.0`, `v1.1.0`. Roadmap v1.1.0 chiusa e taggata.
+- Prossimo file da generare: nessuno. Eventuali next step (non bloccanti):
+  - live checkpoint del daemon su demo FP Markets per ≥1 giornata operativa (`python main.py` con MT5 vivo);
+  - eventuale roadmap v1.2.0 (es. paper trading sustain, persistenza `_followup_done` in SQLite, dashboard log).
 - Test pendenti: nessuno (suite completa post-fase-13: 72/72 passed).
 - Rischi noti per la prossima sessione:
   - `PHASES.md` non contiene ancora le fasi 11-12-13.
@@ -234,6 +233,7 @@ phase_13_scheduled_orchestrator:
 | `2026-04-29T21:30:00+02:00` | RESUME | 11 | Fase 11 (Market Scanner) completata e validata, suite 24/24. |
 | `2026-04-29T22:30:00+02:00` | RESUME | 12 | Fase 12 (MCP Tools Upgrade) completata e validata, suite 39/39. |
 | `2026-04-30T18:00:00+02:00` | RESUME | 13 | Fase 13 (Scheduled Orchestrator) completata e validata, suite 72/72. Roadmap v1.1.0 chiusa. |
+| `2026-04-30T18:30:00+02:00` | COMPLETED | 13 | PHASES.md aggiornato con fasi 11-12-13. Tag `v1.1.0` rilasciato su `main`. |
 
 ## Checklist finale
 
