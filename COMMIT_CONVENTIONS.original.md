@@ -17,7 +17,7 @@ Stile Conventional Commits adattato al progetto.
 - `test` — aggiunta o modifica test
 - `docs` — documentazione (README, prompts)
 - `chore` — config, .gitignore, requirements, handoff
-- `refactor` — refactoring senza cambio comportamento
+- `refactor` — refactoring senza cambio di comportamento
 
 ## Scope ammessi
 
@@ -25,7 +25,7 @@ Stile Conventional Commits adattato al progetto.
 
 ## Esempi
 
-### Durante sviluppo
+### Durante lo sviluppo
 ```
 feat(config): add Config class with typed properties
 feat(models): add TradeProposal, AccountState, RiskDecision dataclasses
@@ -38,7 +38,7 @@ feat(mcp): mcp server stdio with 6 tools
 docs(readme): add claude desktop setup section
 ```
 
-### Checkpoint fase
+### Checkpoint di fase
 ```
 feat(phase-2): complete and validated
 feat(phase-4): complete and validated
@@ -53,6 +53,6 @@ chore(state): update progress before token reset
 ## Regole
 
 1. Una sola fase per commit. Mai mescolare file di fasi diverse.
-2. `STATE.md` sempre incluso nel commit con file applicativi che descrive.
+2. `STATE.md` va sempre incluso nel commit insieme ai file applicativi che descrive.
 3. Mai committare `.env`, credenziali, `logs/*.db`, `logs/*.log`.
-4. Push origin dopo ogni `feat(phase-N): complete` e ogni `chore(handoff)`.
+4. Push su origin dopo ogni `feat(phase-N): complete` e ogni `chore(handoff)`.
