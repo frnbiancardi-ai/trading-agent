@@ -7,23 +7,24 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 - Nome: trading-agent
 - Path locale: `C:\trading-agent`
 - Ambiente: Windows + Python 3.12+ + MetaTrader5 5.0.5735
-- Broker: FP Markets (conto demo)
+- Broker: TenTrade (conto demo)
 - Repo Git: `<da compilare al primo setup>`
 
 ## Stato sessione
 
-- session_status: `COMPLETED`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-04-30T18:00:00+02:00`
-- last_session_reason: `Fase 13 (Scheduled Orchestrator) completata e validata. Suite completa 72/72 passed. In attesa conferma utente per chiusura roadmap v1.1.0 e tag v1.1.0.`
+- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_end: `2026-04-30T19:00:00+02:00`
+- last_session_reason: `Avviata roadmap v1.2.0. Fase 14 (Python Pure Strategy Engine) IN_PROGRESS su branch feature/python-pure-strategy.`
 
 ## Stato fase corrente
 
-- current_phase: `13`
-- current_phase_title: `Scheduled Orchestrator`
-- phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `final`
-- last_action: `2026-04-30 — main.py riscritto come daemon (signal handlers SIGINT/SIGTERM, BlockingScheduler.start). Creati tests/test_scheduler.py (24 test) e tests/test_daily_orchestrator.py (9 test). Checkpoint: 33/33 fase 13, 72/72 suite intera.`
-- next_action: `Decidere se taggare v1.1.0 (fasi 11-12-13 incluse) e aggiornare PHASES.md con fasi 11-12-13.`
+- current_phase: `14`
+- current_phase_title: `Python Pure Strategy Engine`
+- phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
+- current_substep: `0`
+- branch: `feature/python-pure-strategy`
+- last_action: `2026-04-30 — Pianificate fasi 14-15 (commit 28d45ae). Creato branch feature/python-pure-strategy. STATE.md aggiornato per transizione di fase.`
+- next_action: `Decidere policy su scheduler MAIN_CYCLE_HOURS, claude_agent riduzione e mcp_server compatibilità (vedi unresolved_decisions). Poi iniziare con config.py + .env.example + models.py.`
 
 ## Roadmap v1.1.0 (completata)
 
@@ -190,6 +191,15 @@ phase_13_scheduled_orchestrator:
 ## Decisioni aperte
 
 (nessuna)
+
+## Decisioni di fase 14 (risolte 2026-04-30)
+
+- **A — Cadenza scheduler intraday**: ciclo ogni `INTRADAY_CYCLE_MINUTES=5` minuti per tutta la finestra operativa lun-ven 08:00-22:00. CronTrigger con `minute=*/5`, `hour=START_HOUR..END_HOUR-1`, `day_of_week=0-4`. `MAIN_CYCLE_HOURS` deprecato (commentato in .env.example).
+- **B — claude_agent.py**: ridotto a sola `explain_last_trades` (post-trade explanation opzionale). `cheap_scan_symbol` spostato in `scanner.py`.
+- **C — mcp_server.py**: mantiene i 10 tool v2 invariati. Import di `cheap_scan_symbol` migra da `claude_agent` a `scanner`. Tool che dipendono dal workflow Claude scanner (es. `evaluate_trade_proposal`) restano: continuano a funzionare via `risk_engine` direttamente.
+- **D — tests/test_scanner.py**: sostituito completamente con test su `MultiSymbolScanner` Python. Vecchi test Claude scanner workflow rimossi (workflow obsoleto).
+- **E — PHASES.md**: aggiornato a fine fase 15 (un solo commit di docs roadmap v1.2.0).
+- **F — Smoke test**: prima del checkpoint, eseguo `scripts/smoke_test.py` che esegue 1 ciclo `Orchestrator.execute_ordinary_cycle()` in shadow. Se MT5 non disponibile, skippa graceful con exit 0.
 
 ## Decisioni risolte
 
