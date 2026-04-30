@@ -168,10 +168,5 @@ class Mt5Client:
                 continue
             if result.retcode == mt5.TRADE_RETCODE_DONE:
                 return OrderResult(success=True, order_id=result.order)
-            if result.retcode not in (
-                mt5.TRADE_RETCODE_INVALID_FILL,
-                mt5.TRADE_RETCODE_UNSUPPORTED,
-            ):
-                return OrderResult(success=False, error_message=f"retcode={result.retcode} comment={result.comment}")
 
         return OrderResult(success=False, error_message="all filling modes rejected")
