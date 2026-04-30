@@ -100,3 +100,40 @@ class DailyRunState:
     decisions_count: int = 0
     trade_count: int = 0
     no_trade_count: int = 0
+
+
+@dataclass
+class TechnicalSetup:
+    symbol: str
+    timeframe: str
+    setup_type: Literal["READY", "FORMING", "NONE"]
+    direction: str | None
+    entry_price: float | None
+    stop_loss: float | None
+    take_profit: float | None
+    confidence: float
+    reason: str
+    indicators: dict = field(default_factory=dict)
+    support_resistance: dict | None = None
+
+
+@dataclass
+class ScanResult:
+    symbol: str
+    trend_bias: Literal["BULLISH", "BEARISH", "NEUTRAL"]
+    momentum_bias: str
+    volatility_state: Literal["LOW", "NORMAL", "HIGH"]
+    spread_state: Literal["ACCEPTABLE", "WIDE"]
+    regime: Literal["TREND", "RANGE", "BREAKOUT"]
+    candidate_score: float
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
+class StrategyOutcome:
+    outcome_type: Literal["TRADE", "NO_TRADE", "WAIT_FOLLOW_UP"]
+    proposal: TradeProposal | None = None
+    follow_up: DelayedFollowUpRequest | None = None
+    scan_results: list[ScanResult] = field(default_factory=list)
+    timestamp: datetime | None = None
+    note: str = ""

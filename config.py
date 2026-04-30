@@ -86,3 +86,40 @@ class Config:
     MAX_SYMBOLS_TO_DEEPEN: int = max(1, int(os.getenv("MAX_SYMBOLS_TO_DEEPEN", "3")))
     FOLLOWUP_ENABLED: bool = _get_bool("FOLLOWUP_ENABLED", True)
     SCHEDULER_POLL_SECONDS: int = max(1, int(os.getenv("SCHEDULER_POLL_SECONDS", "5")))
+    INTRADAY_CYCLE_MINUTES: int = max(1, int(os.getenv("INTRADAY_CYCLE_MINUTES", "5")))
+
+    # Strategia Intraday (fase 14)
+    STRATEGY_MODE: str = os.getenv("STRATEGY_MODE", "intraday")
+    INTRADAY_SYMBOLS: list[str] = _get_list("INTRADAY_SYMBOLS", ["EURUSD", "GBPUSD"])
+    INTRADAY_TIMEFRAME: str = os.getenv("INTRADAY_TIMEFRAME", "M15")
+    INTRADAY_LOOKBACK_BARS: int = max(50, int(os.getenv("INTRADAY_LOOKBACK_BARS", "200")))
+    INTRADAY_SCAN_TOP_N: int = max(1, int(os.getenv("INTRADAY_SCAN_TOP_N", "3")))
+    INTRADAY_START_HOUR: int = int(os.getenv("INTRADAY_START_HOUR", "8"))
+    INTRADAY_END_HOUR: int = int(os.getenv("INTRADAY_END_HOUR", "20"))
+    AVOID_MAJOR_NEWS_TIMES: bool = _get_bool("AVOID_MAJOR_NEWS_TIMES", True)
+
+    # Parametri tecnici intraday
+    MIN_ATR_PIPS: float = float(os.getenv("MIN_ATR_PIPS", "3"))
+    MAX_ATR_PIPS: float = float(os.getenv("MAX_ATR_PIPS", "50"))
+    MIN_TREND_STRENGTH: float = float(os.getenv("MIN_TREND_STRENGTH", "0.65"))
+    MIN_BREAKOUT_VOLUME_RATIO: float = float(os.getenv("MIN_BREAKOUT_VOLUME_RATIO", "1.3"))
+    MIN_RISK_REWARD_RATIO: float = float(os.getenv("MIN_RISK_REWARD_RATIO", "1.5"))
+    MAX_RSI_OVERBOUGHT: int = int(os.getenv("MAX_RSI_OVERBOUGHT", "75"))
+    MIN_RSI_OVERSOLD: int = int(os.getenv("MIN_RSI_OVERSOLD", "25"))
+    MIN_CONFIDENCE_TO_PROPOSE: float = float(os.getenv("MIN_CONFIDENCE_TO_PROPOSE", "0.60"))
+
+    # Pattern recognition
+    ENABLE_CANDLESTICK_PATTERNS: bool = _get_bool("ENABLE_CANDLESTICK_PATTERNS", True)
+    PATTERN_CONFIRMATION_BARS: int = max(1, int(os.getenv("PATTERN_CONFIRMATION_BARS", "2")))
+
+    # Support / Resistance
+    SR_LOOKBACK_BARS: int = max(20, int(os.getenv("SR_LOOKBACK_BARS", "100")))
+    SR_TOLERANCE_PIPS: float = float(os.getenv("SR_TOLERANCE_PIPS", "5"))
+
+
+_VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
+if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
+    raise ValueError(
+        f"INTRADAY_TIMEFRAME={Config.INTRADAY_TIMEFRAME} non valido. "
+        f"Ammessi: {sorted(_VALID_INTRADAY_TIMEFRAMES)}"
+    )

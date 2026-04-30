@@ -21,10 +21,10 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 - current_phase: `14`
 - current_phase_title: `Python Pure Strategy Engine`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `0`
+- current_substep: `1`
 - branch: `feature/python-pure-strategy`
-- last_action: `2026-04-30 — Pianificate fasi 14-15 (commit 28d45ae). Creato branch feature/python-pure-strategy. STATE.md aggiornato per transizione di fase.`
-- next_action: `Decidere policy su scheduler MAIN_CYCLE_HOURS, claude_agent riduzione e mcp_server compatibilità (vedi unresolved_decisions). Poi iniziare con config.py + .env.example + models.py.`
+- last_action: `2026-04-30 — Substep 1 fase 14: estesi config.py (+22 var intraday), .env.example (sezione strategia + INTRADAY_CYCLE_MINUTES, broker→TenTrade), models.py (+TechnicalSetup, ScanResult, StrategyOutcome). Smoke import verde.`
+- next_action: `Substep 2: estendere indicators.py (trend_strength, find_support_resistance, check_breakout_quality, avg_volume, calculate_risk_reward, check_rsi_divergence) + creare patterns.py + tests/test_patterns.py.`
 
 ## Roadmap v1.1.0 (completata)
 
