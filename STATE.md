@@ -12,19 +12,19 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-04-30T19:00:00+02:00`
-- last_session_reason: `Avviata roadmap v1.2.0. Fase 14 (Python Pure Strategy Engine) IN_PROGRESS su branch feature/python-pure-strategy.`
+- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_end: `2026-04-30T20:30:00+02:00`
+- last_session_reason: `Substep 1+2 fase 14 completati: config/env/models + indicators helpers + patterns.py + test_patterns (14/14). Suite completa 86/86. Handoff per Regola 3 prima di substep 3 (strategy.py + scanner.py).`
 
 ## Stato fase corrente
 
 - current_phase: `14`
 - current_phase_title: `Python Pure Strategy Engine`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `1`
+- current_substep: `2`
 - branch: `feature/python-pure-strategy`
-- last_action: `2026-04-30 — Substep 1 fase 14: estesi config.py (+22 var intraday), .env.example (sezione strategia + INTRADAY_CYCLE_MINUTES, broker→TenTrade), models.py (+TechnicalSetup, ScanResult, StrategyOutcome). Smoke import verde.`
-- next_action: `Substep 2: estendere indicators.py (trend_strength, find_support_resistance, check_breakout_quality, avg_volume, calculate_risk_reward, check_rsi_divergence) + creare patterns.py + tests/test_patterns.py.`
+- last_action: `2026-04-30 — Substep 2 fase 14: indicators.py esteso (calculate_trend_strength, find_support_resistance pivot-based, avg_volume, check_breakout_quality, calculate_risk_reward, check_rsi_divergence). Creato patterns.py (hammer, inverted_hammer, engulfing, doji, pin_bar, scan_patterns). tests/test_patterns.py 14/14 verde. Suite completa 86/86.`
+- next_action: `Substep 3: creare strategy.py (IntradayStrategy.analyze_symbol/identify_entry_setup/build_trade_proposal/build_delayed_followup) + scanner.py (MultiSymbolScanner.light_scan/scan_universe/deep_analyze_top_candidates) + tests/test_strategy.py + tests/test_scanner.py (sostituisce vecchio test scanner Claude). Riferimento: phase-14 sezioni Strategy/Scanner. Mock Mt5Client.`
 
 ## Roadmap v1.1.0 (completata)
 
