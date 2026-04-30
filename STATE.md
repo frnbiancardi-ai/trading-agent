@@ -12,22 +12,22 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-04-29T22:30:00+02:00`
-- last_session_reason: `Fase 12 (MCP Tools Upgrade) completata e validata. In attesa conferma utente per procedere con fase 13 (Scheduled Orchestrator).`
+- session_status: `COMPLETED`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_end: `2026-04-30T18:00:00+02:00`
+- last_session_reason: `Fase 13 (Scheduled Orchestrator) completata e validata. Suite completa 72/72 passed. In attesa conferma utente per chiusura roadmap v1.1.0 e tag v1.1.0.`
 
 ## Stato fase corrente
 
 - current_phase: `13`
 - current_phase_title: `Scheduled Orchestrator`
-- phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `0`
-- last_action: `2026-04-29 — Fase 12 pushata (commit 0293f6e). Avviata fase 13 con conferma utente. Decisioni: DailyRunState persistito in SQLite (tabella daily_run_state in logs/trades.db); PHASES.md non aggiornato in questa fase.`
-- next_action: `Aggiornare requirements.txt (+apscheduler), .env.example, config.py con parametri scheduler. Estendere models.py con DelayedFollowUpRequest/AgentCycleOutcome/DailyRunState. Aggiornare prompts scanner per follow-up. Estendere claude_agent.py con outcome WAIT_FOLLOW_UP. Creare scheduler.py (BlockingScheduler + persistenza SQLite). Riscrivere main.py come daemon. Test scheduler + daily orchestrator.`
+- phase_status: `VALIDATED`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
+- current_substep: `final`
+- last_action: `2026-04-30 — main.py riscritto come daemon (signal handlers SIGINT/SIGTERM, BlockingScheduler.start). Creati tests/test_scheduler.py (24 test) e tests/test_daily_orchestrator.py (9 test). Checkpoint: 33/33 fase 13, 72/72 suite intera.`
+- next_action: `Decidere se taggare v1.1.0 (fasi 11-12-13 incluse) e aggiornare PHASES.md con fasi 11-12-13.`
 
-## Roadmap v1.1.0 (residua, NOT_STARTED)
+## Roadmap v1.1.0 (completata)
 
-- **Fase 13 — Scheduled Orchestrator**: trasforma `main.py` in daemon continuo. APScheduler con cron lun-ven 08-22, slot 08/11/14/17/20 (ogni 3h), follow-up one-shot (delay max 120 min, una volta per opportunità), target giornaliero 5 decisioni finali. Nuovi file: `scheduler.py`, `models.py` esteso (`DelayedFollowUpRequest`, `AgentCycleOutcome`, `DailyRunState`), test `tests/test_scheduler.py` e `tests/test_daily_orchestrator.py`. Risponde alla domanda architetturale sull'autonomia.
+- **Fase 13 — Scheduled Orchestrator**: VALIDATED. `main.py` daemon con APScheduler (cron lun-ven, slot 08/11/14/17/20 every MAIN_CYCLE_HOURS), follow-up one-shot via DateTrigger (max 1 per opportunità, delay clampato 1-120 min), target giornaliero 5 decisioni persistito in SQLite (tabella `daily_run_state`).
 
 ## File completati per fase
 
@@ -158,6 +158,33 @@ phase_12_mcp_tools_upgrade:
     - "propose_trade NON esegue ordini, NON decide size: ritorna proposal echo + status='proposed'/executed=False. Per agire usare evaluate_trade_proposal o submit_order_if_approved."
     - "_bootstrap_mt5() chiamato solo da __main__ block: import del modulo non blocca senza terminale MT5 (importante per i test)."
     - "Suite completa 39/39 passed (4 mt5 + 9 risk + 11 scanner + 15 mcp v2)."
+
+phase_13_scheduled_orchestrator:
+  status: VALIDATED
+  files:
+    - requirements.txt              # +apscheduler
+    - .env.example                  # +12 variabili scheduler/daily orchestrator
+    - config.py                     # OPERATING_*, MAIN_CYCLE_HOURS, DAILY_TARGET_DECISIONS, MAX_DELAY_MINUTES, MAX_SYMBOLS_TO_DEEPEN, FOLLOWUP_ENABLED, SCHEDULER_POLL_SECONDS
+    - models.py                     # DelayedFollowUpRequest, AgentCycleOutcome, DailyRunState
+    - prompts/system_prompt_scanner.txt    # outcome TRADE/NO_TRADE/WAIT_FOLLOW_UP, request_followup
+    - prompts/context_template_scanner.txt # placeholder followup_mode/symbol/delay/focus_prompt
+    - claude_agent.py               # request_followup tool, run_market_cycle, _run_market_scan_internal con outcome strutturato + clamp delay
+    - scheduler.py                  # OperatingWindow, DailyRunStateStore (SQLite), Orchestrator, build_scheduler (CronTrigger + DateTrigger)
+    - main.py                       # daemon: signal handlers + BlockingScheduler.start()
+    - tests/test_scheduler.py
+    - tests/test_daily_orchestrator.py
+  validated_at: "2026-04-30"
+  notes:
+    - "Slot ordinari cron: range(START_HOUR, END_HOUR, MAIN_CYCLE_HOURS) → con default 8/22/3 = [8,11,14,17,20]; OPERATING_END_HOUR esclusivo."
+    - "DailyRunStateStore persiste in SQLite tabella daily_run_state, db_path = parent(LOG_FILE)/trades.db (stessa di trades_log)."
+    - "WAIT_FOLLOW_UP non incrementa decisions_count; il follow-up cycle (TRADE o NO_TRADE) chiude la pratica con +1."
+    - "Una opportunità (date, symbol) può essere ritardata al massimo una volta al giorno (set Orchestrator._followup_done in-memory). Una seconda WAIT sullo stesso simbolo viene downgradata a NO_TRADE."
+    - "FOLLOWUP_ENABLED=false → WAIT_FOLLOW_UP downgrade automatico a NO_TRADE (testato)."
+    - "Delay clampato a [1, MAX_DELAY_MINUTES] lato ClaudeAgent prima di costruire DelayedFollowUpRequest. Test verifica clamp 999→120."
+    - "Lock anti-overlap (threading.Lock + _cycle_active) protegge da run concorrenti su stesso Orchestrator."
+    - "main.py daemon: signal.SIGINT/SIGTERM → scheduler.shutdown(wait=False) + mt5.shutdown() in finally."
+    - "Suite completa 72/72 passed (4 mt5 + 9 risk + 11 scanner + 15 mcp v2 + 24 scheduler + 9 daily_orchestrator)."
+    - "Live checkpoint (lanciare python main.py su demo FP Markets per ≥1 giornata operativa) demandato all'utente; non eseguito in ambiente CI."
 ```
 
 ## Decisioni aperte
@@ -184,16 +211,16 @@ phase_12_mcp_tools_upgrade:
 
 ## Note di handoff
 
-- Ultimo file generato: `tests/test_mcp_tools_v2.py` (fase 12). Tag attivo: `v1.0.0` (fasi 11-12 non ancora taggate).
-- Prossimo file da generare: dipende dalla scelta utente. Se procede fase 13: `requirements.txt` (+apscheduler), `config.py` esteso (parametri env scheduler), `models.py` esteso (DelayedFollowUpRequest, AgentCycleOutcome, DailyRunState).
-- Comando di ripresa fase 13: `leggi .orchestration/phase-prompts/phase-13-scheduled-orchestrator.md, aggiungi apscheduler, estendi config/models, riscrivi main.py come daemon, scrivi tests`.
-- Test pendenti: nessuno (suite completa post-fase-12: 39/39 passed).
+- Ultimo file generato: `tests/test_daily_orchestrator.py` (fase 13). Tag attivo: `v1.0.0`. Fasi 11-12-13 non ancora taggate (candidate per `v1.1.0`).
+- Prossimo file da generare: nessuno per la fase 13. Eventuali next step (non bloccanti):
+  - aggiornare `PHASES.md` con fasi 11-12-13 per coerenza documentale;
+  - taggare `v1.1.0` su `main` se l'utente lo conferma;
+  - live checkpoint del daemon su demo FP Markets per ≥1 giornata operativa.
+- Test pendenti: nessuno (suite completa post-fase-13: 72/72 passed).
 - Rischi noti per la prossima sessione:
-  - `PHASES.md` non contiene ancora le fasi 11-12-13. Aggiornare per coerenza, idealmente prima della fine di fase 13.
-  - La fase 13 introduce `apscheduler` (o equivalente) come nuova dipendenza: aggiungere a `requirements.txt`.
-  - La fase 13 ridefinisce `main.py`: da single-shot a daemon continuo. Verificare che i test esistenti non si rompano.
-  - Persistenza di `DailyRunState` tra restart per fase 13: decisione aperta (default proposto: in-memory v1.1.0, SQLite in v1.2.0).
-  - `MAX_SYMBOLS_TO_DEEPEN` non è ancora in `config.py`/`.env.example`: in fase 13 va aggiunto come parametro env obbligatorio (lo scanner attuale legge fallback hardcodato 5).
+  - `PHASES.md` non contiene ancora le fasi 11-12-13.
+  - DailyRunStateStore persiste lo stato giornaliero su SQLite, ma il set in-memory `Orchestrator._followup_done` (anti-doppio-rinvio per opportunità) si azzera ad ogni restart del daemon: in pratica accettabile (giornata corta), eventualmente promovibile a tabella SQLite in v1.2.0.
+  - `main.py` ora è bloccante: lanciarlo richiede una sessione persistente; per shutdown pulito usare `Ctrl+C` (SIGINT) o `SIGTERM`.
 
 ## Cronologia sessioni
 
@@ -206,6 +233,7 @@ phase_12_mcp_tools_upgrade:
 | `2026-04-29T20:00:00+02:00` | HANDOFF | 11 | Pianificate fasi 11-12-13 (roadmap v1.1.0). Esecuzione rinviata. |
 | `2026-04-29T21:30:00+02:00` | RESUME | 11 | Fase 11 (Market Scanner) completata e validata, suite 24/24. |
 | `2026-04-29T22:30:00+02:00` | RESUME | 12 | Fase 12 (MCP Tools Upgrade) completata e validata, suite 39/39. |
+| `2026-04-30T18:00:00+02:00` | RESUME | 13 | Fase 13 (Scheduled Orchestrator) completata e validata, suite 72/72. Roadmap v1.1.0 chiusa. |
 
 ## Checklist finale
 
