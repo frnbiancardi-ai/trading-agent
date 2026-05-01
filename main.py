@@ -1,18 +1,20 @@
-"""Entry point del trading-agent in modalità daemon (fase 13).
+"""Entry point del trading-agent in modalità daemon (fase 13 + 14).
 
 Avvia un BlockingScheduler APScheduler che esegue cicli di mercato sugli slot
 ordinari (cron) entro la finestra operativa configurata e gestisce follow-up
-one-shot ritardati. Il processo resta vivo finché non riceve SIGINT/SIGTERM.
+one-shot ritardati. Il signal layer è ora un motore Python puro
+(IntradayStrategy + MultiSymbolScanner) senza dipendenza da Claude API.
+Il processo resta vivo finché non riceve SIGINT/SIGTERM.
 """
 from __future__ import annotations
 
 import signal
 import sys
 
-from claude_agent import ClaudeAgent
 from config import Config
 from logger import init_logger
 from mt5_client import Mt5Client
+from scanner import MultiSymbolScanner, StrategyRunner
 from scheduler import (
     DailyRunStateStore,
     Orchestrator,
@@ -20,10 +22,14 @@ from scheduler import (
     daily_db_path,
     operating_slots,
 )
+from strategy import IntradayStrategy
 
 
 def main() -> int:
     cfg = Config()
+    if cfg.STRATEGY_MODE == "intraday":
+        cfg.SYMBOLS = list(cfg.INTRADAY_SYMBOLS)
+        cfg.TIMEFRAME = cfg.INTRADAY_TIMEFRAME
     logger = init_logger(cfg)
 
     mt5 = Mt5Client(cfg)
@@ -33,16 +39,20 @@ def main() -> int:
 
     scheduler = None
     try:
-        agent = ClaudeAgent(cfg, mt5, logger)
+        strategy = IntradayStrategy(cfg, mt5, logger)
+        scanner = MultiSymbolScanner(cfg, mt5, strategy, logger)
+        runner = StrategyRunner(cfg, strategy, scanner, logger)
+
         store = DailyRunStateStore(daily_db_path(cfg))
-        orchestrator = Orchestrator(cfg, agent, mt5, logger, store)
+        orchestrator = Orchestrator(cfg, runner, mt5, logger, store)
         scheduler = build_scheduler(cfg, orchestrator)
 
         slots = operating_slots(cfg)
         weekdays = ",".join(str(d) for d in cfg.OPERATING_WEEKDAYS)
         logger.info(
             "Daemon start: tz=%s weekdays=%s slots=%s execution_mode=%s "
-            "daily_target=%d max_delay_min=%d followup_enabled=%s",
+            "daily_target=%d max_delay_min=%d followup_enabled=%s "
+            "strategy=python_pure timeframe=%s symbols=%s",
             cfg.OPERATING_TIMEZONE,
             weekdays,
             slots,
@@ -50,6 +60,8 @@ def main() -> int:
             cfg.DAILY_TARGET_DECISIONS,
             cfg.MAX_DELAY_MINUTES,
             cfg.FOLLOWUP_ENABLED,
+            cfg.INTRADAY_TIMEFRAME,
+            cfg.INTRADAY_SYMBOLS,
         )
 
         def _graceful_shutdown(signum, _frame):
