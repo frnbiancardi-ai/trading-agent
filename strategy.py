@@ -20,6 +20,7 @@ from indicators import (
 from models import (
     AccountState,
     DelayedFollowUpRequest,
+    SentimentAnalysis,
     TechnicalSetup,
     TradeProposal,
 )
@@ -52,7 +53,16 @@ class IntradayStrategy:
     # Public API
     # ─────────────────────────────────────────────────────────────────────
 
-    def analyze_symbol(self, symbol: str, account_state: AccountState) -> TechnicalSetup:
+    def analyze_symbol(
+        self,
+        symbol: str,
+        account_state: AccountState,
+        sentiment: SentimentAnalysis | None = None,
+    ) -> TechnicalSetup:
+        setup = self._analyze_technical(symbol, account_state)
+        return self._apply_sentiment(setup, sentiment)
+
+    def _analyze_technical(self, symbol: str, account_state: AccountState) -> TechnicalSetup:
         cfg = self.cfg
         timeframe = cfg.INTRADAY_TIMEFRAME
 
@@ -385,6 +395,89 @@ class IntradayStrategy:
 
         total = trend_score + pattern_score + vol_score + rr_score + mtf_score
         return round(min(max(total, 0.0), 1.0), 4)
+
+    def _apply_sentiment(
+        self,
+        setup: TechnicalSetup,
+        sentiment: SentimentAnalysis | None,
+    ) -> TechnicalSetup:
+        cfg = self.cfg
+        if (
+            sentiment is None
+            or not getattr(cfg, "ENABLE_NEWS_SENTIMENT", False)
+            or sentiment.bias == "NEUTRAL"
+            or sentiment.strength < cfg.SENTIMENT_MIN_STRENGTH_FILTER
+        ):
+            return setup
+
+        if setup.setup_type != "READY" or setup.direction is None:
+            return setup
+
+        aligned = (
+            (setup.direction == "BUY" and sentiment.bias == "BULLISH")
+            or (setup.direction == "SELL" and sentiment.bias == "BEARISH")
+        )
+
+        if aligned:
+            boosted = min(
+                0.95,
+                setup.confidence + cfg.SENTIMENT_BOOST_FACTOR * sentiment.strength,
+            )
+            setup.confidence = round(boosted, 4)
+            setup.reason += (
+                f" | Sentiment {sentiment.bias.lower()} conferma "
+                f"({sentiment.relevant_news_count} news, str={sentiment.strength:.2f})"
+            )
+            setup.indicators["sentiment"] = {
+                "bias": sentiment.bias, "strength": sentiment.strength,
+                "news": sentiment.relevant_news_count, "applied": "boost",
+            }
+            return setup
+
+        action = cfg.SENTIMENT_CONFLICT_ACTION
+        setup.indicators["sentiment"] = {
+            "bias": sentiment.bias, "strength": sentiment.strength,
+            "news": sentiment.relevant_news_count, "applied": action,
+        }
+        if action == "skip":
+            return TechnicalSetup(
+                symbol=setup.symbol, timeframe=setup.timeframe,
+                setup_type="NONE", direction=None,
+                entry_price=None, stop_loss=None, take_profit=None,
+                confidence=0.0,
+                reason=(
+                    f"Tecnico {setup.direction} ma sentiment {sentiment.bias} "
+                    f"strong (str={sentiment.strength:.2f}), skip"
+                ),
+                indicators=setup.indicators, support_resistance=setup.support_resistance,
+            )
+        if action == "delay":
+            return TechnicalSetup(
+                symbol=setup.symbol, timeframe=setup.timeframe,
+                setup_type="FORMING", direction=setup.direction,
+                entry_price=None, stop_loss=None, take_profit=None,
+                confidence=min(setup.confidence, 0.6),
+                reason=(
+                    f"Tecnico {setup.direction} vs sentiment {sentiment.bias} "
+                    f"(str={sentiment.strength:.2f}), attendo conferma"
+                ),
+                indicators=setup.indicators, support_resistance=setup.support_resistance,
+            )
+        # reduce_confidence
+        setup.confidence = round(setup.confidence * (1 - sentiment.strength * 0.3), 4)
+        setup.reason += (
+            f" | Sentiment {sentiment.bias.lower()} contrario, "
+            f"confidence ridotta (str={sentiment.strength:.2f})"
+        )
+        if setup.confidence < cfg.MIN_CONFIDENCE_TO_PROPOSE:
+            return TechnicalSetup(
+                symbol=setup.symbol, timeframe=setup.timeframe,
+                setup_type="NONE", direction=None,
+                entry_price=None, stop_loss=None, take_profit=None,
+                confidence=setup.confidence, reason=setup.reason,
+                indicators=setup.indicators, support_resistance=setup.support_resistance,
+            )
+        return setup
 
     def _none_setup(
         self,

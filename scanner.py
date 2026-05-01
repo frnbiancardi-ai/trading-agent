@@ -35,11 +35,15 @@ class MultiSymbolScanner:
         mt5_client: Mt5Client,
         strategy: IntradayStrategy,
         logger: logging.Logger | None = None,
+        news_aggregator=None,
+        sentiment_analyzer=None,
     ):
         self.cfg = cfg
         self.mt5 = mt5_client
         self.strategy = strategy
         self.log = logger or logging.getLogger(__name__)
+        self.news_aggregator = news_aggregator
+        self.sentiment_analyzer = sentiment_analyzer
 
     # ─────────────────────────────────────────────────────────────────────
 
@@ -157,8 +161,11 @@ class MultiSymbolScanner:
         ready_setups: list[TechnicalSetup] = []
         forming_setups: list[TechnicalSetup] = []
 
+        news_items = self._fetch_news_safe()
+
         for r in scan_results:
-            setup = self.strategy.analyze_symbol(r.symbol, account_state)
+            sentiment = self._sentiment_for(r.symbol, news_items)
+            setup = self.strategy.analyze_symbol(r.symbol, account_state, sentiment=sentiment)
             if setup.setup_type == "READY":
                 ready_setups.append(setup)
             elif setup.setup_type == "FORMING":
@@ -234,6 +241,26 @@ class MultiSymbolScanner:
 
         return round(trend_score + rsi_score + atr_score, 4)
 
+    def _fetch_news_safe(self):
+        if not getattr(self.cfg, "ENABLE_NEWS_SENTIMENT", False):
+            return None
+        if self.news_aggregator is None or self.sentiment_analyzer is None:
+            return None
+        try:
+            return self.news_aggregator.fetch_recent_news()
+        except Exception as exc:
+            self.log.warning("news fetch failed, sentiment disabled this cycle: %s", exc)
+            return None
+
+    def _sentiment_for(self, symbol: str, news_items):
+        if news_items is None or self.sentiment_analyzer is None:
+            return None
+        try:
+            return self.sentiment_analyzer.analyze_news(news_items, symbol)
+        except Exception as exc:
+            self.log.warning("sentiment analyze failed for %s: %s", symbol, exc)
+            return None
+
 
 class StrategyRunner:
     """Adapter che espone l'API `run_market_cycle` attesa dall'Orchestrator
@@ -263,7 +290,9 @@ class StrategyRunner:
 
         if followup is not None and candidate_symbols:
             symbol = candidate_symbols[0]
-            setup = self.strategy.analyze_symbol(symbol, account_state)
+            news_items = self.scanner._fetch_news_safe()
+            sentiment = self.scanner._sentiment_for(symbol, news_items)
+            setup = self.strategy.analyze_symbol(symbol, account_state, sentiment=sentiment)
             if (
                 setup.setup_type == "READY"
                 and setup.confidence >= self.cfg.MIN_CONFIDENCE_TO_PROPOSE
