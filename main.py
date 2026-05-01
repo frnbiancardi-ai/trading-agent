@@ -14,6 +14,7 @@ import sys
 from config import Config
 from logger import init_logger
 from mt5_client import Mt5Client
+from news_aggregator import NewsAggregator
 from scanner import MultiSymbolScanner, StrategyRunner
 from scheduler import (
     DailyRunStateStore,
@@ -22,6 +23,7 @@ from scheduler import (
     daily_db_path,
     operating_slots,
 )
+from sentiment import SimpleSentiment
 from strategy import IntradayStrategy
 
 
@@ -40,7 +42,21 @@ def main() -> int:
     scheduler = None
     try:
         strategy = IntradayStrategy(cfg, mt5, logger)
-        scanner = MultiSymbolScanner(cfg, mt5, strategy, logger)
+        news_aggregator = None
+        sentiment_analyzer = None
+        if cfg.ENABLE_NEWS_SENTIMENT and cfg.RSS_FEEDS:
+            news_aggregator = NewsAggregator(cfg, logger)
+            sentiment_analyzer = SimpleSentiment(cfg)
+            logger.info(
+                "News sentiment enabled: feeds=%d action=%s min_strength=%.2f boost=%.2f",
+                len(cfg.RSS_FEEDS), cfg.SENTIMENT_CONFLICT_ACTION,
+                cfg.SENTIMENT_MIN_STRENGTH_FILTER, cfg.SENTIMENT_BOOST_FACTOR,
+            )
+        scanner = MultiSymbolScanner(
+            cfg, mt5, strategy, logger,
+            news_aggregator=news_aggregator,
+            sentiment_analyzer=sentiment_analyzer,
+        )
         runner = StrategyRunner(cfg, strategy, scanner, logger)
 
         store = DailyRunStateStore(daily_db_path(cfg))
