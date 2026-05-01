@@ -13,18 +13,18 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 ## Stato sessione
 
 - session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-04-30T20:30:00+02:00`
-- last_session_reason: `Substep 1+2 fase 14 completati: config/env/models + indicators helpers + patterns.py + test_patterns (14/14). Suite completa 86/86. Handoff per Regola 3 prima di substep 3 (strategy.py + scanner.py).`
+- last_session_end: `2026-05-01T13:30:00+02:00`
+- last_session_reason: `Substep 3 fase 14 completato: strategy.py (IntradayStrategy) + scanner.py (MultiSymbolScanner) + tests/test_strategy.py (16/16) + tests/test_scanner.py riscritto per MultiSymbolScanner (14/14, sostituisce vecchio test Claude scanner). Suite completa 105/105. Handoff prima di substep 4 (refactor main.py + scheduler.py).`
 
 ## Stato fase corrente
 
 - current_phase: `14`
 - current_phase_title: `Python Pure Strategy Engine`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `2`
+- current_substep: `3`
 - branch: `feature/python-pure-strategy`
-- last_action: `2026-04-30 — Substep 2 fase 14: indicators.py esteso (calculate_trend_strength, find_support_resistance pivot-based, avg_volume, check_breakout_quality, calculate_risk_reward, check_rsi_divergence). Creato patterns.py (hammer, inverted_hammer, engulfing, doji, pin_bar, scan_patterns). tests/test_patterns.py 14/14 verde. Suite completa 86/86.`
-- next_action: `Substep 3: creare strategy.py (IntradayStrategy.analyze_symbol/identify_entry_setup/build_trade_proposal/build_delayed_followup) + scanner.py (MultiSymbolScanner.light_scan/scan_universe/deep_analyze_top_candidates) + tests/test_strategy.py + tests/test_scanner.py (sostituisce vecchio test scanner Claude). Riferimento: phase-14 sezioni Strategy/Scanner. Mock Mt5Client.`
+- last_action: `2026-05-01 — Substep 3 fase 14: creato strategy.py (IntradayStrategy.analyze_symbol/identify_entry_setup/build_trade_proposal/build_delayed_followup, confidence scoring 5-fattori, ATR-based SL+SR adjustment, RR target MIN_RISK_REWARD_RATIO). Creato scanner.py (MultiSymbolScanner.light_scan/scan_universe/deep_analyze_top_candidates/calculate_scan_score, ranking top-N, fallback FORMING→follow-up). tests/test_strategy.py 16/16. tests/test_scanner.py riscritto 14/14 (rimuove dipendenza ClaudeAgent scanner). Suite completa 105/105 in 13s.`
+- next_action: `Substep 4: refactor main.py per usare IntradayStrategy+MultiSymbolScanner al posto di ClaudeAgent.run_market_cycle; aggiornare scheduler.py.Orchestrator per chiamare scanner.scan_universe + deep_analyze_top_candidates; opzionalmente ridurre claude_agent.py a solo explain_last_trades. Riferimento: phase-14 sezioni main.py / scheduler.py.`
 
 ## Roadmap v1.1.0 (completata)
 
