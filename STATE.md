@@ -13,18 +13,18 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 ## Stato sessione
 
 - session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-05-01T14:00:00+02:00`
-- last_session_reason: `Substep 4 fase 14 completato: StrategyRunner adapter in scanner.py espone run_market_cycle(symbols, timeframe, account_state, followup=None) -> AgentCycleOutcome. main.py riscritto: IntradayStrategy + MultiSymbolScanner + StrategyRunner sostituiscono ClaudeAgent; cfg.SYMBOLS/TIMEFRAME overridden da INTRADAY_* quando STRATEGY_MODE=intraday. Orchestrator scheduler.py invariato (duck-typed runner). tests/test_strategy_runner.py 6/6. Suite completa 111/111. Handoff prima di validazione finale fase 14.`
+- last_session_end: `2026-05-01T14:30:00+02:00`
+- last_session_reason: `Fase 14 code-complete (live checkpoint utente pendente, doc validazione in .orchestration/VALIDATION_PHASE_14.md). Fase 15 (RSS News Sentiment) code-complete: news_aggregator + sentiment + integrazione strategy/scanner + main.py wiring + 24 nuovi test. Suite completa 142/142. Handoff per validazione utente entrambe le fasi.`
 
 ## Stato fase corrente
 
-- current_phase: `14`
-- current_phase_title: `Python Pure Strategy Engine`
+- current_phase: `15`
+- current_phase_title: `RSS News Sentiment Layer`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `4`
+- current_substep: `5`
 - branch: `feature/python-pure-strategy`
-- last_action: `2026-05-01 — Substep 4 fase 14: aggiunto StrategyRunner in scanner.py (adapter run_market_cycle compatibile API ClaudeAgent fase 13: ordinary → scan_universe + deep_analyze_top_candidates; followup → strategy.analyze_symbol single-symbol con gate MIN_CONFIDENCE_TO_PROPOSE). main.py riscritto per Python pure strategy. tests/test_strategy_runner.py 6/6 (ordinary trade/no_trade, followup ready/low-conf/none, WAIT_FOLLOW_UP propagato). Suite completa 111/111 in 5s.`
-- next_action: `Validazione finale fase 14: live checkpoint utente (python main.py su demo TenTrade per >=1 ciclo end-to-end shadow), poi marcare phase_status=VALIDATED, aggiornare PHASES.md, mergere feature/python-pure-strategy in main e taggare v1.2.0-rc1 (o passare a fase 15 RSS news sentiment).`
+- last_action: `2026-05-01 — Fase 15 code-complete. Aggiunto NewsAggregator (RSS fetch+cache+lookback filter via feedparser, dedupe, parse_date robusto), SimpleSentiment (keyword-based con conjugazioni, currency map per EUR/USD/GBP/JPY/AUD/CAD/CHF/NZD/XAU/XAG, pair-level scoring base-quote). strategy._apply_sentiment integra boost (aligned) e SENTIMENT_CONFLICT_ACTION skip/delay/reduce_confidence (downgrade NONE se sotto MIN_CONFIDENCE_TO_PROPOSE). MultiSymbolScanner+StrategyRunner ricevono news_aggregator+sentiment_analyzer opzionali. main.py li inizializza solo se ENABLE_NEWS_SENTIMENT=true e RSS_FEEDS non vuoto. tests/test_news_aggregator.py 12/12, tests/test_sentiment.py 12/12, +7 test sentiment in test_strategy.py. Suite completa 142/142.`
+- next_action: `Validazione utente fase 14 (vedi .orchestration/VALIDATION_PHASE_14.md) + checkpoint manuale fase 15 con ENABLE_NEWS_SENTIMENT=true (verifica fetch periodico RSS, sentiment loggato, no crash). Poi VALIDATED entrambe, merge feature/python-pure-strategy in main, tag v1.2.0.`
 
 ## Roadmap v1.1.0 (completata)
 
