@@ -137,3 +137,22 @@ class StrategyOutcome:
     scan_results: list[ScanResult] = field(default_factory=list)
     timestamp: datetime | None = None
     note: str = ""
+
+
+@dataclass
+class NewsItem:
+    source: str
+    title: str
+    summary: str
+    link: str
+    published: datetime
+
+
+@dataclass
+class SentimentAnalysis:
+    symbol: str
+    bias: Literal["BULLISH", "BEARISH", "NEUTRAL"]
+    strength: float
+    relevant_news_count: int
+    sample_headlines: list[str] = field(default_factory=list)
+    timestamp: datetime | None = None

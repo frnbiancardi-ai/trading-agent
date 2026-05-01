@@ -123,3 +123,27 @@ if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
         f"INTRADAY_TIMEFRAME={Config.INTRADAY_TIMEFRAME} non valido. "
         f"Ammessi: {sorted(_VALID_INTRADAY_TIMEFRAMES)}"
     )
+
+
+def _attach_news_sentiment(cls):
+    cls.ENABLE_NEWS_SENTIMENT = _get_bool("ENABLE_NEWS_SENTIMENT", False)
+    cls.NEWS_FETCH_INTERVAL_MINUTES = max(1, int(os.getenv("NEWS_FETCH_INTERVAL_MINUTES", "15")))
+    cls.NEWS_LOOKBACK_HOURS = max(1, int(os.getenv("NEWS_LOOKBACK_HOURS", "2")))
+    cls.NEWS_CACHE_MAX_HOURS = max(1, int(os.getenv("NEWS_CACHE_MAX_HOURS", "24")))
+    cls.SENTIMENT_MIN_STRENGTH_FILTER = float(os.getenv("SENTIMENT_MIN_STRENGTH_FILTER", "0.6"))
+    cls.SENTIMENT_BOOST_FACTOR = float(os.getenv("SENTIMENT_BOOST_FACTOR", "0.15"))
+    action = os.getenv("SENTIMENT_CONFLICT_ACTION", "delay").strip().lower()
+    if action not in ("skip", "delay", "reduce_confidence"):
+        raise ValueError(
+            f"SENTIMENT_CONFLICT_ACTION={action} non valido. "
+            f"Ammessi: skip, delay, reduce_confidence"
+        )
+    cls.SENTIMENT_CONFLICT_ACTION = action
+    cls.SENTIMENT_CONFLICT_DELAY_MINUTES = max(
+        1, int(os.getenv("SENTIMENT_CONFLICT_DELAY_MINUTES", "60"))
+    )
+    cls.RSS_FEEDS = _get_list("RSS_FEEDS", [])
+    return cls
+
+
+_attach_news_sentiment(Config)
