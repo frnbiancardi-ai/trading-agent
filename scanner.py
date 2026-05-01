@@ -15,6 +15,7 @@ from indicators import (
 )
 from models import (
     AccountState,
+    AgentCycleOutcome,
     DelayedFollowUpRequest,
     ScanResult,
     StrategyOutcome,
@@ -232,3 +233,61 @@ class MultiSymbolScanner:
             atr_score = 0.0
 
         return round(trend_score + rsi_score + atr_score, 4)
+
+
+class StrategyRunner:
+    """Adapter che espone l'API `run_market_cycle` attesa dall'Orchestrator
+    fase 13, ma usa IntradayStrategy + MultiSymbolScanner Python (no Claude).
+    """
+
+    def __init__(
+        self,
+        cfg: Config,
+        strategy: IntradayStrategy,
+        scanner: MultiSymbolScanner,
+        logger: logging.Logger | None = None,
+    ):
+        self.cfg = cfg
+        self.strategy = strategy
+        self.scanner = scanner
+        self.log = logger or logging.getLogger(__name__)
+
+    def run_market_cycle(
+        self,
+        candidate_symbols: list[str],
+        timeframe: str,
+        account_state: AccountState,
+        followup: DelayedFollowUpRequest | None = None,
+    ) -> AgentCycleOutcome:
+        now = datetime.now()
+
+        if followup is not None and candidate_symbols:
+            symbol = candidate_symbols[0]
+            setup = self.strategy.analyze_symbol(symbol, account_state)
+            if (
+                setup.setup_type == "READY"
+                and setup.confidence >= self.cfg.MIN_CONFIDENCE_TO_PROPOSE
+            ):
+                proposal = self.strategy.build_trade_proposal(
+                    symbol, setup, account_state=account_state,
+                )
+                return AgentCycleOutcome(
+                    outcome_type="TRADE", proposal=proposal,
+                    note=f"followup_resolved={symbol} conf={setup.confidence:.2f}",
+                    decided_at=now,
+                )
+            return AgentCycleOutcome(
+                outcome_type="NO_TRADE",
+                note=f"followup_no_edge={symbol} setup={setup.setup_type} reason={setup.reason}",
+                decided_at=now,
+            )
+
+        scan_results = self.scanner.scan_universe(candidate_symbols)
+        outcome = self.scanner.deep_analyze_top_candidates(scan_results, account_state)
+        return AgentCycleOutcome(
+            outcome_type=outcome.outcome_type,
+            proposal=outcome.proposal,
+            follow_up=outcome.follow_up,
+            note=outcome.note,
+            decided_at=outcome.timestamp or now,
+        )
