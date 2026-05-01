@@ -13,18 +13,18 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 ## Stato sessione
 
 - session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-05-01T13:30:00+02:00`
-- last_session_reason: `Substep 3 fase 14 completato: strategy.py (IntradayStrategy) + scanner.py (MultiSymbolScanner) + tests/test_strategy.py (16/16) + tests/test_scanner.py riscritto per MultiSymbolScanner (14/14, sostituisce vecchio test Claude scanner). Suite completa 105/105. Handoff prima di substep 4 (refactor main.py + scheduler.py).`
+- last_session_end: `2026-05-01T14:00:00+02:00`
+- last_session_reason: `Substep 4 fase 14 completato: StrategyRunner adapter in scanner.py espone run_market_cycle(symbols, timeframe, account_state, followup=None) -> AgentCycleOutcome. main.py riscritto: IntradayStrategy + MultiSymbolScanner + StrategyRunner sostituiscono ClaudeAgent; cfg.SYMBOLS/TIMEFRAME overridden da INTRADAY_* quando STRATEGY_MODE=intraday. Orchestrator scheduler.py invariato (duck-typed runner). tests/test_strategy_runner.py 6/6. Suite completa 111/111. Handoff prima di validazione finale fase 14.`
 
 ## Stato fase corrente
 
 - current_phase: `14`
 - current_phase_title: `Python Pure Strategy Engine`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `3`
+- current_substep: `4`
 - branch: `feature/python-pure-strategy`
-- last_action: `2026-05-01 — Substep 3 fase 14: creato strategy.py (IntradayStrategy.analyze_symbol/identify_entry_setup/build_trade_proposal/build_delayed_followup, confidence scoring 5-fattori, ATR-based SL+SR adjustment, RR target MIN_RISK_REWARD_RATIO). Creato scanner.py (MultiSymbolScanner.light_scan/scan_universe/deep_analyze_top_candidates/calculate_scan_score, ranking top-N, fallback FORMING→follow-up). tests/test_strategy.py 16/16. tests/test_scanner.py riscritto 14/14 (rimuove dipendenza ClaudeAgent scanner). Suite completa 105/105 in 13s.`
-- next_action: `Substep 4: refactor main.py per usare IntradayStrategy+MultiSymbolScanner al posto di ClaudeAgent.run_market_cycle; aggiornare scheduler.py.Orchestrator per chiamare scanner.scan_universe + deep_analyze_top_candidates; opzionalmente ridurre claude_agent.py a solo explain_last_trades. Riferimento: phase-14 sezioni main.py / scheduler.py.`
+- last_action: `2026-05-01 — Substep 4 fase 14: aggiunto StrategyRunner in scanner.py (adapter run_market_cycle compatibile API ClaudeAgent fase 13: ordinary → scan_universe + deep_analyze_top_candidates; followup → strategy.analyze_symbol single-symbol con gate MIN_CONFIDENCE_TO_PROPOSE). main.py riscritto per Python pure strategy. tests/test_strategy_runner.py 6/6 (ordinary trade/no_trade, followup ready/low-conf/none, WAIT_FOLLOW_UP propagato). Suite completa 111/111 in 5s.`
+- next_action: `Validazione finale fase 14: live checkpoint utente (python main.py su demo TenTrade per >=1 ciclo end-to-end shadow), poi marcare phase_status=VALIDATED, aggiornare PHASES.md, mergere feature/python-pure-strategy in main e taggare v1.2.0-rc1 (o passare a fase 15 RSS news sentiment).`
 
 ## Roadmap v1.1.0 (completata)
 
