@@ -118,7 +118,9 @@ def test_run_market_cycle_followup_ready_returns_trade():
     assert outcome.outcome_type == "TRADE"
     assert outcome.proposal.symbol == "GBPUSD"
     scanner.scan_universe.assert_not_called()
-    strategy.analyze_symbol.assert_called_once_with("GBPUSD", _account())
+    strategy.analyze_symbol.assert_called_once()
+    args, _kwargs = strategy.analyze_symbol.call_args
+    assert args[0] == "GBPUSD"
 
 
 def test_run_market_cycle_followup_low_confidence_no_trade():

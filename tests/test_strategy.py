@@ -5,7 +5,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from models import AccountState, TechnicalSetup, TradeProposal
+from datetime import datetime, timezone
+
+from models import AccountState, SentimentAnalysis, TechnicalSetup, TradeProposal
 from strategy import IntradayStrategy
 
 
@@ -33,6 +35,10 @@ def _make_cfg(**overrides):
     cfg.SR_TOLERANCE_PIPS = 5.0
     cfg.MAX_DELAY_MINUTES = 120
     cfg.FOLLOWUP_ENABLED = True
+    cfg.ENABLE_NEWS_SENTIMENT = False
+    cfg.SENTIMENT_MIN_STRENGTH_FILTER = 0.6
+    cfg.SENTIMENT_BOOST_FACTOR = 0.15
+    cfg.SENTIMENT_CONFLICT_ACTION = "delay"
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg
@@ -320,6 +326,106 @@ def test_analyze_symbol_returns_valid_setup_object():
     assert setup.timeframe == "M15"
     assert setup.setup_type in ("READY", "FORMING", "NONE")
     assert 0.0 <= setup.confidence <= 1.0
+
+
+def _ready_buy_setup() -> TechnicalSetup:
+    return TechnicalSetup(
+        symbol="EURUSD", timeframe="M15", setup_type="READY", direction="BUY",
+        entry_price=1.10800, stop_loss=1.10700, take_profit=1.10950,
+        confidence=0.70, reason="trend strong",
+        indicators={"risk_reward": 1.5}, support_resistance={"support": 1.0950, "resistance": 1.1050},
+    )
+
+
+def _sent(bias: str, strength: float, n: int = 3) -> SentimentAnalysis:
+    return SentimentAnalysis(
+        symbol="EURUSD", bias=bias, strength=strength,
+        relevant_news_count=n, sample_headlines=[],
+        timestamp=datetime.now(tz=timezone.utc),
+    )
+
+
+def test_apply_sentiment_disabled_passthrough():
+    cfg = _make_cfg(ENABLE_NEWS_SENTIMENT=False)
+    strat = _make_strategy(cfg)
+    setup = _ready_buy_setup()
+    out = strat._apply_sentiment(setup, _sent("BEARISH", 0.9))
+    assert out is setup
+    assert out.setup_type == "READY"
+
+
+def test_apply_sentiment_below_threshold_passthrough():
+    cfg = _make_cfg(ENABLE_NEWS_SENTIMENT=True, SENTIMENT_MIN_STRENGTH_FILTER=0.6)
+    strat = _make_strategy(cfg)
+    setup = _ready_buy_setup()
+    out = strat._apply_sentiment(setup, _sent("BEARISH", 0.3))
+    assert out.setup_type == "READY"
+    assert out.confidence == setup.confidence
+
+
+def test_apply_sentiment_aligned_boosts_confidence():
+    cfg = _make_cfg(
+        ENABLE_NEWS_SENTIMENT=True, SENTIMENT_MIN_STRENGTH_FILTER=0.6,
+        SENTIMENT_BOOST_FACTOR=0.15,
+    )
+    strat = _make_strategy(cfg)
+    setup = _ready_buy_setup()
+    base_conf = setup.confidence
+    out = strat._apply_sentiment(setup, _sent("BULLISH", 0.8))
+    assert out.setup_type == "READY"
+    assert out.confidence > base_conf
+    assert out.confidence <= 0.95
+    assert "sentiment" in out.indicators
+
+
+def test_apply_sentiment_conflict_skip():
+    cfg = _make_cfg(
+        ENABLE_NEWS_SENTIMENT=True, SENTIMENT_MIN_STRENGTH_FILTER=0.6,
+        SENTIMENT_CONFLICT_ACTION="skip",
+    )
+    strat = _make_strategy(cfg)
+    setup = _ready_buy_setup()
+    out = strat._apply_sentiment(setup, _sent("BEARISH", 0.8))
+    assert out.setup_type == "NONE"
+    assert out.direction is None
+
+
+def test_apply_sentiment_conflict_delay():
+    cfg = _make_cfg(
+        ENABLE_NEWS_SENTIMENT=True, SENTIMENT_MIN_STRENGTH_FILTER=0.6,
+        SENTIMENT_CONFLICT_ACTION="delay",
+    )
+    strat = _make_strategy(cfg)
+    setup = _ready_buy_setup()
+    out = strat._apply_sentiment(setup, _sent("BEARISH", 0.8))
+    assert out.setup_type == "FORMING"
+    assert out.direction == "BUY"
+
+
+def test_apply_sentiment_conflict_reduce_confidence():
+    cfg = _make_cfg(
+        ENABLE_NEWS_SENTIMENT=True, SENTIMENT_MIN_STRENGTH_FILTER=0.6,
+        SENTIMENT_CONFLICT_ACTION="reduce_confidence",
+        MIN_CONFIDENCE_TO_PROPOSE=0.30,
+    )
+    strat = _make_strategy(cfg)
+    setup = _ready_buy_setup()
+    base = setup.confidence
+    out = strat._apply_sentiment(setup, _sent("BEARISH", 0.7))
+    assert out.setup_type == "READY"
+    assert out.confidence < base
+
+
+def test_apply_sentiment_conflict_reduce_below_min_downgrades_to_none():
+    cfg = _make_cfg(
+        ENABLE_NEWS_SENTIMENT=True, SENTIMENT_MIN_STRENGTH_FILTER=0.6,
+        SENTIMENT_CONFLICT_ACTION="reduce_confidence",
+        MIN_CONFIDENCE_TO_PROPOSE=0.99,
+    )
+    strat = _make_strategy(cfg)
+    setup = _ready_buy_setup()
+    out = strat._apply_sentiment(setup, _sent("BEARISH", 0.9))
+    assert out.setup_type == "NONE"
 
 
 def test_analyze_symbol_atr_out_of_range_returns_none():
