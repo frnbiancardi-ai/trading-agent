@@ -12,9 +12,9 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-05-02T01:00:00+02:00`
-- last_session_reason: `Fase 16 code-complete. Suite 173/173 (142 fasi 14+15 + 31 nuovi fase 16). Validazione live utente differita a fine fase 16.`
+- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_end: `2026-05-02T12:00:00+02:00`
+- last_session_reason: `Fase 16 code-complete + dry-run weekend OK + merge feature/python-pure-strategy → main + tag v1.2.0. Validazione live giorno feriale a carico utente: in caso di errori apre bug e si patcha.`
 
 ## Stato fase corrente
 
