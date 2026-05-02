@@ -1,4 +1,4 @@
-"""Dry-run di un ciclo H24 — fase 16.
+r"""Dry-run di un ciclo H24 — fase 16.
 
 Esegue un singolo ciclo dello scheduler H24 senza inviare ordini reali a MT5
 (`send_order`/`close_position` sono saltati grazie al flag DRY_RUN=true).
