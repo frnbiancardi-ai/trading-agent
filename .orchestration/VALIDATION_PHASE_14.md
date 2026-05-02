@@ -32,7 +32,7 @@ cd C:\trading-agent
 .\.venv\Scripts\python.exe -m pytest tests/ -v
 ```
 
-Atteso: `111 passed`. Se anche un solo test fallisce, **stop**: aprire issue, non procedere oltre.
+Atteso: `142 passed` (111 fase 14 + 31 fase 15, già sul branch). Se anche un solo test fallisce, **stop**: aprire issue, non procedere oltre.
 
 ---
 
