@@ -1,10 +1,10 @@
-"""Entry point del trading-agent in modalità daemon (fase 13 + 14).
+"""Entry point del trading-agent in modalità daemon (fase 13 → 16).
 
-Avvia un BlockingScheduler APScheduler che esegue cicli di mercato sugli slot
-ordinari (cron) entro la finestra operativa configurata e gestisce follow-up
-one-shot ritardati. Il signal layer è ora un motore Python puro
-(IntradayStrategy + MultiSymbolScanner) senza dipendenza da Claude API.
-Il processo resta vivo finché non riceve SIGINT/SIGTERM.
+Fase 16: il signal layer è un motore Python puro (IntradayStrategy +
+MultiSymbolScanner) e lo scheduler è un loop H24 interno
+(`IntradayLoopScheduler`), senza dipendenze da cron/Task Scheduler/APScheduler.
+Il processo resta vivo finché non riceve SIGINT/SIGTERM, gestendo
+heart-beat e stato in SQLite.
 """
 from __future__ import annotations
 
@@ -15,16 +15,14 @@ from config import Config
 from logger import init_logger
 from mt5_client import Mt5Client
 from news_aggregator import NewsAggregator
-from scanner import MultiSymbolScanner, StrategyRunner
+from scanner import MultiSymbolScanner
 from scheduler import (
-    DailyRunStateStore,
-    Orchestrator,
-    build_scheduler,
-    daily_db_path,
-    operating_slots,
+    HeartbeatStore,
+    IntradayLoopScheduler,
+    heartbeat_db_path,
 )
 from sentiment import SimpleSentiment
-from strategy import IntradayStrategy
+from strategy import IntradayStrategy, StrategyEnvironment
 
 
 def main() -> int:
@@ -35,13 +33,16 @@ def main() -> int:
     logger = init_logger(cfg)
 
     mt5 = Mt5Client(cfg)
+    if cfg.DRY_RUN:
+        logger.info("DRY_RUN=true: nessun ordine reale verrà inviato a MT5")
     if not mt5.initialize() or not mt5.login():
         logger.error("MT5 initialization/login failed: controllare credenziali in .env")
         return 1
 
-    scheduler = None
+    loop = None
     try:
-        strategy = IntradayStrategy(cfg, mt5, logger)
+        environment = StrategyEnvironment(cfg, logger)
+        strategy = IntradayStrategy(cfg, mt5, logger, environment=environment)
         news_aggregator = None
         sentiment_analyzer = None
         if cfg.ENABLE_NEWS_SENTIMENT and cfg.RSS_FEEDS:
@@ -57,44 +58,49 @@ def main() -> int:
             news_aggregator=news_aggregator,
             sentiment_analyzer=sentiment_analyzer,
         )
-        runner = StrategyRunner(cfg, strategy, scanner, logger)
 
-        store = DailyRunStateStore(daily_db_path(cfg))
-        orchestrator = Orchestrator(cfg, runner, mt5, logger, store)
-        scheduler = build_scheduler(cfg, orchestrator)
+        hb_store = HeartbeatStore(heartbeat_db_path(cfg))
+        loop = IntradayLoopScheduler(
+            cfg=cfg,
+            mt5_client=mt5,
+            strategy=strategy,
+            scanner=scanner,
+            log=logger,
+            heartbeat_store=hb_store,
+            environment=environment,
+        )
 
-        slots = operating_slots(cfg)
-        weekdays = ",".join(str(d) for d in cfg.OPERATING_WEEKDAYS)
         logger.info(
-            "Daemon start: tz=%s weekdays=%s slots=%s execution_mode=%s "
-            "daily_target=%d max_delay_min=%d followup_enabled=%s "
-            "strategy=python_pure timeframe=%s symbols=%s",
+            "Daemon H24 start: tz=%s weekdays=%s window=%02d-%02d "
+            "scan_interval=%dmin first_delay=%dmin execution_mode=%s "
+            "pause=%s dry_run=%s strategy=python_pure timeframe=%s symbols=%s",
             cfg.OPERATING_TIMEZONE,
-            weekdays,
-            slots,
+            ",".join(str(d) for d in cfg.OPERATING_WEEKDAYS),
+            cfg.INTRADAY_START_HOUR,
+            cfg.INTRADAY_END_HOUR,
+            cfg.INTRADAY_SCAN_INTERVAL_MINUTES,
+            cfg.INTRADAY_FIRST_CYCLE_DELAY_MINUTES,
             cfg.EXECUTION_MODE,
-            cfg.DAILY_TARGET_DECISIONS,
-            cfg.MAX_DELAY_MINUTES,
-            cfg.FOLLOWUP_ENABLED,
+            cfg.PAUSE_TRADING,
+            cfg.DRY_RUN,
             cfg.INTRADAY_TIMEFRAME,
             cfg.INTRADAY_SYMBOLS,
         )
 
         def _graceful_shutdown(signum, _frame):
-            logger.info("Signal %s received, shutting down scheduler", signum)
-            if scheduler is not None and scheduler.running:
-                scheduler.shutdown(wait=False)
+            logger.info("Signal %s received, stopping H24 loop", signum)
+            if loop is not None:
+                loop.stop()
 
         signal.signal(signal.SIGINT, _graceful_shutdown)
         if hasattr(signal, "SIGTERM"):
             signal.signal(signal.SIGTERM, _graceful_shutdown)
 
         try:
-            scheduler.start()
+            loop.run_forever()
         except (KeyboardInterrupt, SystemExit):
             logger.info("KeyboardInterrupt received, stopping daemon")
-            if scheduler.running:
-                scheduler.shutdown(wait=False)
+            loop.stop()
         return 0
     finally:
         try:

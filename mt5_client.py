@@ -78,6 +78,7 @@ class Mt5Client:
                 stop_loss=p.sl,
                 take_profit=p.tp,
                 profit=p.profit,
+                ticket=int(getattr(p, "ticket", 0)),
             )
             for p in positions_raw
         ]
@@ -168,3 +169,65 @@ class Mt5Client:
         if result.retcode == mt5.TRADE_RETCODE_DONE:
             return OrderResult(success=True, order_id=result.order)
         return OrderResult(success=False, error_message=f"order rejected retcode={result.retcode} comment={result.comment}")
+
+    @_retry(3)
+    def close_position(self, position_id: int) -> OrderResult:
+        """Chiude esplicitamente la posizione con id dato senza aprirne una opposta.
+
+        Usa mt5.order_send con action=TRADE_ACTION_DEAL e campo `position` valorizzato,
+        type opposto alla direzione originale, volume = size residua, price = bid/ask
+        corrente. Conforme alla doc ufficiale MetaTrader5 Python.
+        """
+        positions = mt5.positions_get(ticket=position_id) or []
+        if not positions:
+            return OrderResult(
+                success=False,
+                error_message=f"position {position_id} non trovata",
+            )
+        pos = positions[0]
+
+        tick = mt5.symbol_info_tick(pos.symbol)
+        if tick is None:
+            return OrderResult(
+                success=False,
+                error_message=f"symbol_info_tick failed per {pos.symbol}: {mt5.last_error()}",
+            )
+
+        if pos.type == mt5.POSITION_TYPE_BUY:
+            order_type = mt5.ORDER_TYPE_SELL
+            price = tick.bid
+        else:
+            order_type = mt5.ORDER_TYPE_BUY
+            price = tick.ask
+
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": pos.symbol,
+            "volume": pos.volume,
+            "type": order_type,
+            "position": int(position_id),
+            "price": price,
+            "deviation": 20,
+            "comment": "phase16_close",
+            "type_filling": mt5.ORDER_FILLING_RETURN,
+            "type_time": mt5.ORDER_TIME_GTC,
+        }
+        result = mt5.order_send(request)
+        if result is None:
+            return OrderResult(
+                success=False,
+                error_message=f"order_send returned None: {mt5.last_error()}",
+            )
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            logger.info(
+                "Close position OK ticket=%s symbol=%s volume=%.4f order=%s",
+                position_id, pos.symbol, pos.volume, result.order,
+            )
+            return OrderResult(success=True, order_id=result.order)
+        return OrderResult(
+            success=False,
+            error_message=(
+                f"close rejected retcode={result.retcode} "
+                f"comment={result.comment}"
+            ),
+        )

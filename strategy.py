@@ -1,6 +1,8 @@
 """IntradayStrategy: motore Python puro per generare TradeProposal e follow-up.
 
 Sostituisce ClaudeAgent nel loop critico. Deterministico, testabile, < 500ms per simbolo.
+Fase 16: aggiunge StrategyEnvironment (finestra intraday + news window hook),
+evaluate_open_position (chiusura protettiva) e helper drawdown potenziale.
 """
 import logging
 from datetime import datetime, timedelta
@@ -20,6 +22,8 @@ from indicators import (
 from models import (
     AccountState,
     DelayedFollowUpRequest,
+    OpenPositionVerdict,
+    PositionInfo,
     SentimentAnalysis,
     TechnicalSetup,
     TradeProposal,
@@ -43,11 +47,119 @@ def _pip_size(symbol_info) -> float:
     return point * 10 if digits in (3, 5) else point
 
 
+class StrategyEnvironment:
+    """Verifica i gate di contesto (finestra intraday, weekday, news window).
+
+    Hook esposto dalla fase 16: l'integrazione reale di RSS/calendar per le
+    blackout window news arriverà in una fase successiva. Per ora `is_news_window`
+    ritorna False di default (no blackout) e può essere sostituito iniettando un
+    `news_window_callable` esterno.
+    """
+
+    def __init__(
+        self,
+        cfg: Config,
+        log: logging.Logger | None = None,
+        news_window_callable=None,
+    ) -> None:
+        self.cfg = cfg
+        self.log = log or logging.getLogger(__name__)
+        self._news_window_callable = news_window_callable
+
+    def is_intraday_window(self, now: datetime) -> bool:
+        cfg = self.cfg
+        return cfg.INTRADAY_START_HOUR <= now.hour < cfg.INTRADAY_END_HOUR
+
+    def is_weekday(self, now: datetime) -> bool:
+        return now.weekday() in set(self.cfg.OPERATING_WEEKDAYS)
+
+    def is_weekend(self, now: datetime) -> bool:
+        return not self.is_weekday(now)
+
+    def is_news_window(self, now: datetime) -> bool:
+        cfg = self.cfg
+        if not getattr(cfg, "AVOID_MAJOR_NEWS_TIMES", True):
+            return False
+        if self._news_window_callable is not None:
+            try:
+                return bool(self._news_window_callable(now))
+            except Exception as exc:
+                self.log.warning("news_window_callable failed: %s", exc)
+                return False
+        return False
+
+
+def _pip_value_amount(symbol_info, pip_size: float) -> float:
+    if symbol_info is None or pip_size <= 0:
+        return 0.0
+    tick_value = getattr(symbol_info, "trade_tick_value", 0.0) or 0.0
+    tick_size = getattr(symbol_info, "trade_tick_size", 0.0) or 0.0
+    if tick_size <= 0 or tick_value <= 0:
+        return 0.0
+    return tick_value * pip_size / tick_size
+
+
+def estimate_position_risk_amount(
+    position: PositionInfo, symbol_info,
+) -> float:
+    """Stima la perdita potenziale (account currency) se il SL fosse colpito."""
+    if position is None or position.stop_loss in (0.0, None):
+        return 0.0
+    pip_size = _pip_size(symbol_info)
+    pip_value = _pip_value_amount(symbol_info, pip_size)
+    if pip_value <= 0 or pip_size <= 0:
+        return 0.0
+    distance_pips = abs(position.entry_price - position.stop_loss) / pip_size
+    return position.lots * pip_value * distance_pips
+
+
+def estimate_proposal_risk_amount(
+    proposal: TradeProposal, symbol_info, lots: float,
+) -> float:
+    if symbol_info is None or lots <= 0:
+        return 0.0
+    pip_size = _pip_size(symbol_info)
+    pip_value = _pip_value_amount(symbol_info, pip_size)
+    if pip_value <= 0 or pip_size <= 0:
+        return 0.0
+    distance_pips = abs(proposal.entry_price - proposal.stop_loss_price) / pip_size
+    return lots * pip_value * distance_pips
+
+
+def estimate_proposal_lots(
+    proposal: TradeProposal, account_state: AccountState, cfg: Config, symbol_info,
+) -> float:
+    """Stima della size in lotti coerente col risk_engine, senza chiamare MT5
+    per il margin check. Usato solo per il drawdown potenziale.
+    """
+    pip_size = _pip_size(symbol_info)
+    pip_value = _pip_value_amount(symbol_info, pip_size)
+    if pip_value <= 0 or pip_size <= 0:
+        return 0.0
+    distance_pips = abs(proposal.entry_price - proposal.stop_loss_price) / pip_size
+    if distance_pips <= 0:
+        return 0.0
+    if cfg.RISK_AMOUNT_MODE == "FIXED_AMOUNT":
+        risk_amount = cfg.RISK_PER_TRADE_AMOUNT
+    else:
+        risk_amount = account_state.balance * cfg.RISK_PER_TRADE_PERCENT / 100.0
+    if risk_amount <= 0:
+        return 0.0
+    return risk_amount / (pip_value * distance_pips)
+
+
 class IntradayStrategy:
-    def __init__(self, cfg: Config, mt5_client: Mt5Client, logger: logging.Logger | None = None):
+    def __init__(
+        self,
+        cfg: Config,
+        mt5_client: Mt5Client,
+        logger: logging.Logger | None = None,
+        environment: StrategyEnvironment | None = None,
+    ):
         self.cfg = cfg
         self.mt5 = mt5_client
         self.log = logger or logging.getLogger(__name__)
+        self.env = environment or StrategyEnvironment(cfg, self.log)
 
     # ─────────────────────────────────────────────────────────────────────
     # Public API
@@ -302,6 +414,136 @@ class IntradayStrategy:
             confidence=setup.confidence,
             rationale=rationale,
         )
+
+    def evaluate_open_position(
+        self,
+        position: PositionInfo,
+        account_state: AccountState,
+        now: datetime | None = None,
+    ) -> OpenPositionVerdict:
+        """Decide se chiudere/mantenere una posizione esistente nel ciclo H24.
+
+        - CLOSE_END_OF_DAY: fuori finestra intraday + giorno feriale (no overnight)
+          se CLOSE_BEFORE_END_OF_WINDOW=true.
+        - CLOSE_PROTECT: contesto tecnico negativo + profit ≥ MIN_PROTECT_PROFIT_R_MULTIPLIER * R.
+        - HOLD: altrimenti.
+        """
+        cfg = self.cfg
+        now = now or datetime.now()
+        ticket = int(getattr(position, "ticket", 0) or 0)
+
+        if (
+            getattr(cfg, "CLOSE_BEFORE_END_OF_WINDOW", True)
+            and self.env.is_weekday(now)
+            and not self.env.is_intraday_window(now)
+            and position.symbol in cfg.INTRADAY_SYMBOLS
+        ):
+            return OpenPositionVerdict(
+                symbol=position.symbol, ticket=ticket,
+                action="CLOSE_END_OF_DAY",
+                reason="fuori_finestra_intraday_no_overnight",
+            )
+
+        try:
+            sym_info = self.mt5.get_symbol_info(position.symbol)
+        except Exception as exc:
+            self.log.warning("evaluate_open_position symbol_info fallito %s: %s", position.symbol, exc)
+            sym_info = None
+
+        risk_amount = estimate_position_risk_amount(position, sym_info)
+        profit_r = (position.profit / risk_amount) if risk_amount > 0 else 0.0
+
+        setup = self._analyze_technical(position.symbol, account_state)
+        is_negative = self._is_context_negative_for_position(position, setup)
+
+        if is_negative and profit_r >= cfg.MIN_PROTECT_PROFIT_R_MULTIPLIER:
+            return OpenPositionVerdict(
+                symbol=position.symbol, ticket=ticket,
+                action="CLOSE_PROTECT",
+                reason=(
+                    f"contesto_tecnico_negativo: setup={setup.setup_type} "
+                    f"profitto={profit_r:.2f}R >= {cfg.MIN_PROTECT_PROFIT_R_MULTIPLIER:.2f}R"
+                ),
+                profit_r_multiple=profit_r,
+            )
+
+        return OpenPositionVerdict(
+            symbol=position.symbol, ticket=ticket,
+            action="HOLD",
+            reason=(
+                f"setup={setup.setup_type} negative={is_negative} "
+                f"profit_r={profit_r:.2f}"
+            ),
+            profit_r_multiple=profit_r,
+        )
+
+    def compute_existing_potential_loss_amount(
+        self, account_state: AccountState,
+    ) -> float:
+        total = 0.0
+        for pos in account_state.open_positions:
+            try:
+                sym_info = self.mt5.get_symbol_info(pos.symbol)
+            except Exception:
+                sym_info = None
+            risk = estimate_position_risk_amount(pos, sym_info)
+            unrealized = pos.profit
+            # Worst-case loss = SL distance, ridotta dell'eventuale profitto già maturato
+            # (un trade in profitto a SL invariato non perde l'intero R, ma R - profit).
+            net = max(0.0, risk - max(0.0, unrealized))
+            total += net
+        return total
+
+    def would_proposal_exceed_drawdown(
+        self,
+        proposal: TradeProposal,
+        account_state: AccountState,
+    ) -> tuple[bool, float]:
+        """Ritorna (violation, percent) usando MAX_DAILY_DRAWDOWN_PERCENT come soglia.
+
+        percent = (perdita_potenziale_existing + perdita_potenziale_proposal) / starting_balance_of_day * 100.
+        """
+        cfg = self.cfg
+        starting = account_state.starting_balance_of_day or account_state.balance
+        if starting <= 0:
+            return False, 0.0
+        existing_loss = self.compute_existing_potential_loss_amount(account_state)
+        try:
+            sym_info = self.mt5.get_symbol_info(proposal.symbol)
+        except Exception:
+            sym_info = None
+        lots = estimate_proposal_lots(proposal, account_state, cfg, sym_info)
+        proposal_loss = estimate_proposal_risk_amount(proposal, sym_info, lots)
+        total_loss = existing_loss + proposal_loss
+        percent = total_loss / starting * 100.0
+        return percent > cfg.MAX_DAILY_DRAWDOWN_PERCENT, percent
+
+    def is_addon_for(
+        self,
+        proposal: TradeProposal,
+        account_state: AccountState,
+    ) -> bool:
+        return any(
+            p.symbol == proposal.symbol and p.direction == proposal.direction
+            for p in account_state.open_positions
+        )
+
+    def _is_context_negative_for_position(
+        self,
+        position: PositionInfo,
+        setup: TechnicalSetup,
+    ) -> bool:
+        if setup.setup_type == "READY" and setup.direction is not None:
+            return setup.direction != position.direction
+        indicators = setup.indicators or {}
+        sma20 = indicators.get("sma_20")
+        sma50 = indicators.get("sma_50")
+        last_close = indicators.get("last_close")
+        if sma20 is None or sma50 is None or last_close is None:
+            return False
+        if position.direction == "BUY":
+            return last_close < sma20 < sma50
+        return last_close > sma20 > sma50
 
     def build_delayed_followup(
         self,

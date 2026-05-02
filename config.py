@@ -19,6 +19,28 @@ def _get_list(name: str, default: list[str]) -> list[str]:
     return [p for p in parts if p]
 
 
+def _get_int(name: str, default: int) -> int:
+    """Parse intero da env var. Accetta suffissi comuni (es. '5d', '15m')
+    rimuovendo parte non numerica trailing. Su valore non parsabile, usa default.
+    """
+    val = os.getenv(name)
+    if val is None:
+        return default
+    s = val.strip()
+    digits = ""
+    for ch in s:
+        if ch.isdigit() or (ch == "-" and not digits):
+            digits += ch
+        else:
+            break
+    if not digits or digits == "-":
+        return default
+    try:
+        return int(digits)
+    except ValueError:
+        return default
+
+
 def _get_int_list(name: str, default: list[int]) -> list[int]:
     val = os.getenv(name)
     if val is None:
@@ -86,7 +108,33 @@ class Config:
     MAX_SYMBOLS_TO_DEEPEN: int = max(1, int(os.getenv("MAX_SYMBOLS_TO_DEEPEN", "3")))
     FOLLOWUP_ENABLED: bool = _get_bool("FOLLOWUP_ENABLED", True)
     SCHEDULER_POLL_SECONDS: int = max(1, int(os.getenv("SCHEDULER_POLL_SECONDS", "5")))
-    INTRADAY_CYCLE_MINUTES: int = max(1, int(os.getenv("INTRADAY_CYCLE_MINUTES", "5")))
+    INTRADAY_CYCLE_MINUTES: int = max(1, _get_int("INTRADAY_CYCLE_MINUTES", 5))
+
+    # Scheduler H24 (fase 16)
+    INTRADAY_SCAN_INTERVAL_MINUTES: int = max(
+        1, _get_int("INTRADAY_SCAN_INTERVAL_MINUTES", 15)
+    )
+    INTRADAY_FIRST_CYCLE_DELAY_MINUTES: int = max(
+        0, _get_int("INTRADAY_FIRST_CYCLE_DELAY_MINUTES", 5)
+    )
+    PAUSE_TRADING: bool = _get_bool("PAUSE_TRADING", False)
+    DRY_RUN: bool = _get_bool("DRY_RUN", False)
+    MIN_PROTECT_PROFIT_R_MULTIPLIER: float = float(
+        os.getenv("MIN_PROTECT_PROFIT_R_MULTIPLIER", "1.0")
+    )
+    ROLLING_DRAWDOWN_WINDOW_HOURS: int = max(
+        1, int(os.getenv("ROLLING_DRAWDOWN_WINDOW_HOURS", "24"))
+    )
+    ROLLING_DRAWDOWN_MAX_PERCENT: float = float(
+        os.getenv("ROLLING_DRAWDOWN_MAX_PERCENT", "3.0")
+    )
+    LOG_ROTATION: str = os.getenv("LOG_ROTATION", "weekly").strip().lower()
+    WEEKLY_LOG_BACKUP_COUNT: int = max(
+        1, int(os.getenv("WEEKLY_LOG_BACKUP_COUNT", "8"))
+    )
+    CLOSE_BEFORE_END_OF_WINDOW: bool = _get_bool(
+        "CLOSE_BEFORE_END_OF_WINDOW", True
+    )
 
     # Strategia Intraday (fase 14)
     STRATEGY_MODE: str = os.getenv("STRATEGY_MODE", "intraday")
@@ -122,6 +170,13 @@ if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
     raise ValueError(
         f"INTRADAY_TIMEFRAME={Config.INTRADAY_TIMEFRAME} non valido. "
         f"Ammessi: {sorted(_VALID_INTRADAY_TIMEFRAMES)}"
+    )
+
+_VALID_LOG_ROTATIONS = {"daily", "weekly", "size"}
+if Config.LOG_ROTATION not in _VALID_LOG_ROTATIONS:
+    raise ValueError(
+        f"LOG_ROTATION={Config.LOG_ROTATION} non valido. "
+        f"Ammessi: {sorted(_VALID_LOG_ROTATIONS)}"
     )
 
 

@@ -149,9 +149,24 @@ class MultiSymbolScanner:
         self,
         scan_results: list[ScanResult],
         account_state: AccountState,
+        paused: bool = False,
+        news_blocked: bool = False,
     ) -> StrategyOutcome:
         cfg = self.cfg
         now = datetime.now()
+
+        if paused:
+            return StrategyOutcome(
+                outcome_type="NO_TRADE", proposal=None, follow_up=None,
+                scan_results=scan_results, timestamp=now,
+                note="pause_trading_attivo", paused=True,
+            )
+        if news_blocked:
+            return StrategyOutcome(
+                outcome_type="NO_TRADE", proposal=None, follow_up=None,
+                scan_results=scan_results, timestamp=now,
+                note="news_window_attiva", news_blocked=True,
+            )
         if not scan_results:
             return StrategyOutcome(
                 outcome_type="NO_TRADE", proposal=None, follow_up=None,
@@ -181,10 +196,34 @@ class MultiSymbolScanner:
                     note=f"best_confidence_below_threshold={best.confidence:.2f}",
                 )
             proposal = self.strategy.build_trade_proposal(best.symbol, best, account_state=account_state)
+
+            is_addon = self.strategy.is_addon_for(proposal, account_state)
+            if is_addon:
+                proposal.comment = "python_strategy_addon"
+                proposal.rationale = "ADD-ON: " + proposal.rationale
+
+            exceeds, dd_pct = self.strategy.would_proposal_exceed_drawdown(
+                proposal, account_state,
+            )
+            if exceeds:
+                return StrategyOutcome(
+                    outcome_type="NO_TRADE", proposal=None, follow_up=None,
+                    scan_results=scan_results, timestamp=now,
+                    note=(
+                        f"drawdown_violation symbol={best.symbol} "
+                        f"max_potential={dd_pct:.2f}% > {cfg.MAX_DAILY_DRAWDOWN_PERCENT:.2f}%"
+                    ),
+                    max_potential_drawdown_percent=dd_pct,
+                    drawdown_violation=True,
+                    is_addon=is_addon,
+                )
+
             return StrategyOutcome(
                 outcome_type="TRADE", proposal=proposal, follow_up=None,
                 scan_results=scan_results, timestamp=now,
-                note=f"selected={best.symbol} conf={best.confidence:.2f}",
+                note=f"selected={best.symbol} conf={best.confidence:.2f} addon={is_addon} max_dd={dd_pct:.2f}%",
+                max_potential_drawdown_percent=dd_pct,
+                is_addon=is_addon,
             )
 
         if forming_setups and cfg.FOLLOWUP_ENABLED:
