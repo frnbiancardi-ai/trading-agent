@@ -291,6 +291,25 @@ async def list_tools() -> list[Tool]:
             ),
             inputSchema=_PROPOSE_TRADE_SCHEMA,
         ),
+        Tool(
+            name="close_position",
+            description=(
+                "Chiude esplicitamente la posizione MT5 con il ticket dato, senza aprire "
+                "una posizione opposta. Internamente usa Mt5Client.close_position "
+                "(order_send con campo 'position' valorizzato). In modalità DRY_RUN "
+                "non viene inviato alcun ordine reale."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "position_id": {
+                        "type": "integer",
+                        "description": "Ticket della posizione MT5 da chiudere",
+                    },
+                },
+                "required": ["position_id"],
+            },
+        ),
     ]
 
 
@@ -387,6 +406,25 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         if name == "propose_trade":
             return _text(handle_propose_trade(arguments))
+
+        if name == "close_position":
+            position_id = int(arguments["position_id"])
+            if cfg.DRY_RUN:
+                log.info("MCP close_position DRY_RUN ticket=%d (nessun ordine reale)", position_id)
+                return _text({
+                    "success": True,
+                    "order_id": None,
+                    "error_message": None,
+                    "execution_mode": cfg.EXECUTION_MODE,
+                    "dry_run": True,
+                    "note": "DRY_RUN: nessun ordine inviato a MT5",
+                })
+            result = mt5.close_position(position_id)
+            return _text({
+                **dataclasses.asdict(result),
+                "execution_mode": cfg.EXECUTION_MODE,
+                "dry_run": False,
+            })
 
         return _text({"error": f"unknown tool: {name}"})
 

@@ -1,0 +1,4 @@
+  Per riprendere: apri una nuova sessione Claude Code in C:\trading-agent, leggi STATE.md e .orchestration/phase-prompts/phase-05-logger.md, poi conferma con
+  l'orchestrator prima di generare logger.py.
+
+claude --resume 706a03b6-5f4e-44d2-b810-089f158ca63a

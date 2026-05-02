@@ -19,6 +19,28 @@ def _get_list(name: str, default: list[str]) -> list[str]:
     return [p for p in parts if p]
 
 
+def _get_int(name: str, default: int) -> int:
+    """Parse intero da env var. Accetta suffissi comuni (es. '5d', '15m')
+    rimuovendo parte non numerica trailing. Su valore non parsabile, usa default.
+    """
+    val = os.getenv(name)
+    if val is None:
+        return default
+    s = val.strip()
+    digits = ""
+    for ch in s:
+        if ch.isdigit() or (ch == "-" and not digits):
+            digits += ch
+        else:
+            break
+    if not digits or digits == "-":
+        return default
+    try:
+        return int(digits)
+    except ValueError:
+        return default
+
+
 def _get_int_list(name: str, default: list[int]) -> list[int]:
     val = os.getenv(name)
     if val is None:
@@ -86,3 +108,97 @@ class Config:
     MAX_SYMBOLS_TO_DEEPEN: int = max(1, int(os.getenv("MAX_SYMBOLS_TO_DEEPEN", "3")))
     FOLLOWUP_ENABLED: bool = _get_bool("FOLLOWUP_ENABLED", True)
     SCHEDULER_POLL_SECONDS: int = max(1, int(os.getenv("SCHEDULER_POLL_SECONDS", "5")))
+    INTRADAY_CYCLE_MINUTES: int = max(1, _get_int("INTRADAY_CYCLE_MINUTES", 5))
+
+    # Scheduler H24 (fase 16)
+    INTRADAY_SCAN_INTERVAL_MINUTES: int = max(
+        1, _get_int("INTRADAY_SCAN_INTERVAL_MINUTES", 15)
+    )
+    INTRADAY_FIRST_CYCLE_DELAY_MINUTES: int = max(
+        0, _get_int("INTRADAY_FIRST_CYCLE_DELAY_MINUTES", 5)
+    )
+    PAUSE_TRADING: bool = _get_bool("PAUSE_TRADING", False)
+    DRY_RUN: bool = _get_bool("DRY_RUN", False)
+    MIN_PROTECT_PROFIT_R_MULTIPLIER: float = float(
+        os.getenv("MIN_PROTECT_PROFIT_R_MULTIPLIER", "1.0")
+    )
+    ROLLING_DRAWDOWN_WINDOW_HOURS: int = max(
+        1, int(os.getenv("ROLLING_DRAWDOWN_WINDOW_HOURS", "24"))
+    )
+    ROLLING_DRAWDOWN_MAX_PERCENT: float = float(
+        os.getenv("ROLLING_DRAWDOWN_MAX_PERCENT", "3.0")
+    )
+    LOG_ROTATION: str = os.getenv("LOG_ROTATION", "weekly").strip().lower()
+    WEEKLY_LOG_BACKUP_COUNT: int = max(
+        1, int(os.getenv("WEEKLY_LOG_BACKUP_COUNT", "8"))
+    )
+    CLOSE_BEFORE_END_OF_WINDOW: bool = _get_bool(
+        "CLOSE_BEFORE_END_OF_WINDOW", True
+    )
+
+    # Strategia Intraday (fase 14)
+    STRATEGY_MODE: str = os.getenv("STRATEGY_MODE", "intraday")
+    INTRADAY_SYMBOLS: list[str] = _get_list("INTRADAY_SYMBOLS", ["EURUSD", "GBPUSD"])
+    INTRADAY_TIMEFRAME: str = os.getenv("INTRADAY_TIMEFRAME", "M15")
+    INTRADAY_LOOKBACK_BARS: int = max(50, int(os.getenv("INTRADAY_LOOKBACK_BARS", "200")))
+    INTRADAY_SCAN_TOP_N: int = max(1, int(os.getenv("INTRADAY_SCAN_TOP_N", "3")))
+    INTRADAY_START_HOUR: int = int(os.getenv("INTRADAY_START_HOUR", "8"))
+    INTRADAY_END_HOUR: int = int(os.getenv("INTRADAY_END_HOUR", "20"))
+    AVOID_MAJOR_NEWS_TIMES: bool = _get_bool("AVOID_MAJOR_NEWS_TIMES", True)
+
+    # Parametri tecnici intraday
+    MIN_ATR_PIPS: float = float(os.getenv("MIN_ATR_PIPS", "3"))
+    MAX_ATR_PIPS: float = float(os.getenv("MAX_ATR_PIPS", "50"))
+    MIN_TREND_STRENGTH: float = float(os.getenv("MIN_TREND_STRENGTH", "0.65"))
+    MIN_BREAKOUT_VOLUME_RATIO: float = float(os.getenv("MIN_BREAKOUT_VOLUME_RATIO", "1.3"))
+    MIN_RISK_REWARD_RATIO: float = float(os.getenv("MIN_RISK_REWARD_RATIO", "1.5"))
+    MAX_RSI_OVERBOUGHT: int = int(os.getenv("MAX_RSI_OVERBOUGHT", "75"))
+    MIN_RSI_OVERSOLD: int = int(os.getenv("MIN_RSI_OVERSOLD", "25"))
+    MIN_CONFIDENCE_TO_PROPOSE: float = float(os.getenv("MIN_CONFIDENCE_TO_PROPOSE", "0.60"))
+
+    # Pattern recognition
+    ENABLE_CANDLESTICK_PATTERNS: bool = _get_bool("ENABLE_CANDLESTICK_PATTERNS", True)
+    PATTERN_CONFIRMATION_BARS: int = max(1, int(os.getenv("PATTERN_CONFIRMATION_BARS", "2")))
+
+    # Support / Resistance
+    SR_LOOKBACK_BARS: int = max(20, int(os.getenv("SR_LOOKBACK_BARS", "100")))
+    SR_TOLERANCE_PIPS: float = float(os.getenv("SR_TOLERANCE_PIPS", "5"))
+
+
+_VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
+if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
+    raise ValueError(
+        f"INTRADAY_TIMEFRAME={Config.INTRADAY_TIMEFRAME} non valido. "
+        f"Ammessi: {sorted(_VALID_INTRADAY_TIMEFRAMES)}"
+    )
+
+_VALID_LOG_ROTATIONS = {"daily", "weekly", "size"}
+if Config.LOG_ROTATION not in _VALID_LOG_ROTATIONS:
+    raise ValueError(
+        f"LOG_ROTATION={Config.LOG_ROTATION} non valido. "
+        f"Ammessi: {sorted(_VALID_LOG_ROTATIONS)}"
+    )
+
+
+def _attach_news_sentiment(cls):
+    cls.ENABLE_NEWS_SENTIMENT = _get_bool("ENABLE_NEWS_SENTIMENT", False)
+    cls.NEWS_FETCH_INTERVAL_MINUTES = max(1, int(os.getenv("NEWS_FETCH_INTERVAL_MINUTES", "15")))
+    cls.NEWS_LOOKBACK_HOURS = max(1, int(os.getenv("NEWS_LOOKBACK_HOURS", "2")))
+    cls.NEWS_CACHE_MAX_HOURS = max(1, int(os.getenv("NEWS_CACHE_MAX_HOURS", "24")))
+    cls.SENTIMENT_MIN_STRENGTH_FILTER = float(os.getenv("SENTIMENT_MIN_STRENGTH_FILTER", "0.6"))
+    cls.SENTIMENT_BOOST_FACTOR = float(os.getenv("SENTIMENT_BOOST_FACTOR", "0.15"))
+    action = os.getenv("SENTIMENT_CONFLICT_ACTION", "delay").strip().lower()
+    if action not in ("skip", "delay", "reduce_confidence"):
+        raise ValueError(
+            f"SENTIMENT_CONFLICT_ACTION={action} non valido. "
+            f"Ammessi: skip, delay, reduce_confidence"
+        )
+    cls.SENTIMENT_CONFLICT_ACTION = action
+    cls.SENTIMENT_CONFLICT_DELAY_MINUTES = max(
+        1, int(os.getenv("SENTIMENT_CONFLICT_DELAY_MINUTES", "60"))
+    )
+    cls.RSS_FEEDS = _get_list("RSS_FEEDS", [])
+    return cls
+
+
+_attach_news_sentiment(Config)

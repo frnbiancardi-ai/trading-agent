@@ -1,272 +1,333 @@
-"""Test del workflow scanner multi-symbol di ClaudeAgent.
-
-Mock di Anthropic client e Mt5Client: nessun network, nessun MT5 reale.
-"""
+"""Test MultiSymbolScanner: light_scan, scan_universe, deep_analyze_top_candidates."""
 import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
-from claude_agent import ClaudeAgent, _MAX_ITERATIONS_SCANNER
-from models import AccountState, TradeProposal
+from models import (
+    AccountState,
+    DelayedFollowUpRequest,
+    ScanResult,
+    StrategyOutcome,
+    TechnicalSetup,
+    TradeProposal,
+)
+from scanner import MultiSymbolScanner
 
 
-def _bar(close: float, idx: int = 0, atr_seed: float = 0.0010) -> dict:
-    return {
-        "time": 1700000000 + idx * 60,
-        "open": close - 0.0001,
-        "high": close + atr_seed / 2,
-        "low": close - atr_seed / 2,
-        "close": close,
-        "tick_volume": 100,
-    }
+def _make_cfg(**overrides):
+    cfg = MagicMock()
+    cfg.INTRADAY_TIMEFRAME = "M15"
+    cfg.INTRADAY_LOOKBACK_BARS = 200
+    cfg.INTRADAY_SCAN_TOP_N = 3
+    cfg.MIN_ATR_PIPS = 3.0
+    cfg.MAX_ATR_PIPS = 50.0
+    cfg.MIN_TREND_STRENGTH = 0.65
+    cfg.MIN_BREAKOUT_VOLUME_RATIO = 1.3
+    cfg.MIN_RISK_REWARD_RATIO = 1.5
+    cfg.MAX_RSI_OVERBOUGHT = 75
+    cfg.MIN_RSI_OVERSOLD = 25
+    cfg.MIN_CONFIDENCE_TO_PROPOSE = 0.60
+    cfg.ENABLE_CANDLESTICK_PATTERNS = False
+    cfg.PATTERN_CONFIRMATION_BARS = 2
+    cfg.SR_LOOKBACK_BARS = 100
+    cfg.SR_TOLERANCE_PIPS = 5.0
+    cfg.MAX_DELAY_MINUTES = 120
+    cfg.FOLLOWUP_ENABLED = True
+    for k, v in overrides.items():
+        setattr(cfg, k, v)
+    return cfg
 
 
-def _bullish_ohlc(n: int = 100) -> list[dict]:
-    return [_bar(1.0900 + i * 0.0005, idx=i) for i in range(n)]
-
-
-def _flat_ohlc(n: int = 100) -> list[dict]:
-    return [_bar(1.1000, idx=i) for i in range(n)]
-
-
-def _account_state() -> AccountState:
+def _account() -> AccountState:
     return AccountState(
-        balance=10000.0,
-        equity=10000.0,
-        free_margin=9500.0,
-        open_positions=[],
-        today_realized_pnl=0.0,
+        balance=10000.0, equity=10000.0, free_margin=9500.0,
+        open_positions=[], today_realized_pnl=0.0,
         starting_balance_of_day=10000.0,
     )
 
 
-def _make_cfg() -> MagicMock:
-    cfg = MagicMock()
-    cfg.CLAUDE_API_KEY = "test-key"
-    cfg.CLAUDE_MODEL = "claude-test"
-    cfg.CLAUDE_MAX_TOKENS = 1024
-    cfg.CLAUDE_TEMPERATURE = 0.2
-    cfg.TIMEFRAME = "M15"
-    cfg.EXECUTION_MODE = "shadow"
-    cfg.MIN_SL_PIPS = 8
-    cfg.MAX_SL_PIPS = 80
-    cfg.MAX_LOTS_PER_TRADE = 0.3
-    cfg.RISK_MODE = "CONSERVATIVE"
-    cfg.MAX_SYMBOLS_TO_DEEPEN = 3
-    return cfg
+def _bar(close: float, idx: int, vol: int = 100) -> dict:
+    return {
+        "time": 1700000000 + idx * 900,
+        "open": close - 0.0001,
+        "high": close + 0.0003,
+        "low": close - 0.0003,
+        "close": close,
+        "tick_volume": vol,
+    }
 
 
-def _make_agent(cfg: MagicMock, mt5: MagicMock) -> ClaudeAgent:
-    logger = logging.getLogger("test_scanner")
-    agent = ClaudeAgent(cfg, mt5, logger)
-    agent.client = MagicMock()
-    return agent
+def _trending_bars(start: float, step: float, n: int = 60, vol: int = 100) -> list[dict]:
+    return [_bar(start + i * step, i, vol) for i in range(n)]
 
 
-def _tool_use_block(tool_id: str, name: str, input_: dict):
-    block = SimpleNamespace()
-    block.type = "tool_use"
-    block.id = tool_id
-    block.name = name
-    block.input = input_
-    return block
-
-
-def _text_block(text: str):
-    block = SimpleNamespace()
-    block.type = "text"
-    block.text = text
-    return block
-
-
-def _make_response(stop_reason: str, content: list):
-    resp = SimpleNamespace()
-    resp.stop_reason = stop_reason
-    resp.content = content
-    return resp
-
-
-@pytest.fixture
-def cfg():
-    return _make_cfg()
-
-
-@pytest.fixture
-def mt5(cfg):
-    m = MagicMock()
-    m.get_ohlc.return_value = _bullish_ohlc()
-    m.get_symbol_info.return_value = SimpleNamespace(
-        bid=1.10000, ask=1.10010, point=0.00001, digits=5,
-    )
-    return m
-
-
-def test_cheap_scan_no_data_returns_zero_score(cfg):
-    mt5 = MagicMock()
-    mt5.get_ohlc.return_value = []
-    mt5.get_symbol_info.return_value = None
-    agent = _make_agent(cfg, mt5)
-
-    candidate = agent._cheap_scan_one("EURUSD")
-
-    assert candidate.symbol == "EURUSD"
-    assert candidate.candidate_score == 0.0
-    assert "no_ohlc_data" in candidate.warnings
-
-
-def test_cheap_scan_bullish_trend_yields_positive_score(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-    candidate = agent._cheap_scan_one("EURUSD")
-
-    assert candidate.symbol == "EURUSD"
-    assert candidate.candidate_score > 0.0
-    assert candidate.trend_bias in ("BULLISH", "NEUTRAL")  # depends on EMA-50 init
-
-
-def test_run_market_scan_empty_universe_returns_none(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-
-    proposal = agent.run_market_scan([], "M15", _account_state())
-
-    assert proposal is None
-    agent.client.messages.create.assert_not_called()
-
-
-def test_run_market_scan_returns_proposal_when_propose_trade_called(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-    propose_block = _tool_use_block(
-        "tu_1", "propose_trade",
+def _flat_bars(level: float, n: int = 60) -> list[dict]:
+    return [
         {
-            "symbol": "EURUSD",
-            "direction": "BUY",
-            "entry_price": 1.10000,
-            "stop_loss_price": 1.09800,
-            "take_profit_price": 1.10400,
-            "confidence": 0.75,
-            "rationale": "trend rialzista coerente con EMA50 e RSI > 60",
-        },
-    )
-    end_block = _text_block("done")
-
-    agent.client.messages.create.side_effect = [
-        _make_response("tool_use", [propose_block]),
-        _make_response("end_turn", [end_block]),
+            "time": 1700000000 + i * 900,
+            "open": level, "high": level + 0.00005, "low": level - 0.00005,
+            "close": level, "tick_volume": 100,
+        }
+        for i in range(n)
     ]
 
-    proposal = agent.run_market_scan(["EURUSD", "GBPUSD"], "M15", _account_state())
 
-    assert isinstance(proposal, TradeProposal)
-    assert proposal.symbol == "EURUSD"
-    assert proposal.confidence == pytest.approx(0.75)
-    assert proposal.comment == "claude_scanner"
-    assert agent.client.messages.create.call_count == 1
+def _make_scanner(cfg, mt5_mock=None, strategy_mock=None) -> MultiSymbolScanner:
+    if mt5_mock is None:
+        mt5_mock = MagicMock()
+    if strategy_mock is None:
+        strategy_mock = MagicMock()
+    return MultiSymbolScanner(cfg, mt5_mock, strategy_mock, logging.getLogger("test_scanner"))
 
 
-def test_run_market_scan_returns_none_when_end_turn_immediately(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-    agent.client.messages.create.return_value = _make_response(
-        "end_turn", [_text_block("NO_TRADE\nuniverso ambiguo")]
+# ──────────────────────────────────────────────────────────────────────────────
+# light_scan
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_light_scan_no_data_returns_none():
+    cfg = _make_cfg()
+    mt5 = MagicMock()
+    mt5.get_ohlc.return_value = []
+    scanner = _make_scanner(cfg, mt5)
+
+    result = scanner.light_scan("EURUSD")
+    assert result is None
+
+
+def test_light_scan_bullish_trend_classifies_correctly():
+    cfg = _make_cfg()
+    mt5 = MagicMock()
+    mt5.get_ohlc.return_value = _trending_bars(1.0900, 0.0005, n=60)
+    mt5.get_symbol_info.return_value = SimpleNamespace(
+        bid=1.10000, ask=1.10010, point=0.00001, digits=5,
+    )
+    scanner = _make_scanner(cfg, mt5)
+
+    result = scanner.light_scan("EURUSD")
+    assert isinstance(result, ScanResult)
+    assert result.symbol == "EURUSD"
+    assert result.trend_bias in ("BULLISH", "NEUTRAL")
+    assert result.spread_state == "ACCEPTABLE"
+    assert result.candidate_score >= 0.0
+
+
+def test_light_scan_wide_spread_penalizes_score():
+    cfg = _make_cfg()
+    mt5 = MagicMock()
+    mt5.get_ohlc.return_value = _trending_bars(1.0900, 0.0005, n=60)
+    mt5.get_symbol_info.return_value = SimpleNamespace(
+        bid=1.10000, ask=1.10100, point=0.00001, digits=5,  # 10 pip spread
+    )
+    scanner = _make_scanner(cfg, mt5)
+
+    result = scanner.light_scan("EURUSD")
+    assert result.spread_state == "WIDE"
+    assert any("spread_wide" in w for w in result.warnings)
+
+
+def test_light_scan_low_volatility_flagged():
+    cfg = _make_cfg()
+    mt5 = MagicMock()
+    # Flat bars → atr near zero
+    mt5.get_ohlc.return_value = _flat_bars(1.1000, n=60)
+    mt5.get_symbol_info.return_value = SimpleNamespace(
+        bid=1.10000, ask=1.10010, point=0.00001, digits=5,
+    )
+    scanner = _make_scanner(cfg, mt5)
+
+    result = scanner.light_scan("EURUSD")
+    assert result.volatility_state == "LOW"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# scan_universe
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_scan_universe_returns_top_n_sorted_desc():
+    cfg = _make_cfg(INTRADAY_SCAN_TOP_N=2)
+    scanner = _make_scanner(cfg)
+
+    fake_results = [
+        ScanResult(symbol="A", trend_bias="BULLISH", momentum_bias="BULLISH",
+                   volatility_state="NORMAL", spread_state="ACCEPTABLE",
+                   regime="TREND", candidate_score=0.5, warnings=[]),
+        ScanResult(symbol="B", trend_bias="BULLISH", momentum_bias="BULLISH",
+                   volatility_state="NORMAL", spread_state="ACCEPTABLE",
+                   regime="TREND", candidate_score=0.9, warnings=[]),
+        ScanResult(symbol="C", trend_bias="NEUTRAL", momentum_bias="NEUTRAL",
+                   volatility_state="LOW", spread_state="ACCEPTABLE",
+                   regime="RANGE", candidate_score=0.3, warnings=[]),
+        ScanResult(symbol="D", trend_bias="BEARISH", momentum_bias="BEARISH",
+                   volatility_state="NORMAL", spread_state="ACCEPTABLE",
+                   regime="TREND", candidate_score=0.7, warnings=[]),
+    ]
+    iterator = iter(fake_results)
+    scanner.light_scan = MagicMock(side_effect=lambda s: next(iterator))
+
+    out = scanner.scan_universe(["A", "B", "C", "D"])
+    assert len(out) == 2
+    assert [r.symbol for r in out] == ["B", "D"]
+
+
+def test_scan_universe_skips_none_results():
+    cfg = _make_cfg(INTRADAY_SCAN_TOP_N=3)
+    scanner = _make_scanner(cfg)
+    valid = ScanResult(symbol="X", trend_bias="BULLISH", momentum_bias="BULLISH",
+                       volatility_state="NORMAL", spread_state="ACCEPTABLE",
+                       regime="TREND", candidate_score=0.6, warnings=[])
+    scanner.light_scan = MagicMock(side_effect=[None, valid, None])
+
+    out = scanner.scan_universe(["A", "B", "C"])
+    assert [r.symbol for r in out] == ["X"]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# deep_analyze_top_candidates
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _scan(symbol: str, score: float = 0.7) -> ScanResult:
+    return ScanResult(
+        symbol=symbol, trend_bias="BULLISH", momentum_bias="BULLISH",
+        volatility_state="NORMAL", spread_state="ACCEPTABLE",
+        regime="TREND", candidate_score=score, warnings=[],
     )
 
-    proposal = agent.run_market_scan(["EURUSD"], "M15", _account_state())
 
-    assert proposal is None
-
-
-def test_run_market_scan_caps_at_max_iterations(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-    looping_block = _tool_use_block(
-        "tu_loop", "scan_symbol_candidates", {"symbols": ["EURUSD"]},
-    )
-    agent.client.messages.create.return_value = _make_response(
-        "tool_use", [looping_block]
+def _ready_setup(symbol: str, conf: float) -> TechnicalSetup:
+    return TechnicalSetup(
+        symbol=symbol, timeframe="M15", setup_type="READY", direction="BUY",
+        entry_price=1.10000, stop_loss=1.09900, take_profit=1.10200,
+        confidence=conf, reason="strong",
+        indicators={"risk_reward": 2.0}, support_resistance={"support": 1.0950, "resistance": 1.1050},
     )
 
-    proposal = agent.run_market_scan(["EURUSD"], "M15", _account_state())
 
-    assert proposal is None
-    assert agent.client.messages.create.call_count == _MAX_ITERATIONS_SCANNER
-
-
-def test_run_market_scan_rejects_second_proposal_in_same_response(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-    first_propose = _tool_use_block(
-        "tu_a", "propose_trade",
-        {
-            "symbol": "EURUSD",
-            "direction": "BUY",
-            "entry_price": 1.10000,
-            "stop_loss_price": 1.09800,
-            "take_profit_price": 1.10400,
-            "confidence": 0.7,
-            "rationale": "primo edge chiaro",
-        },
-    )
-    second_propose = _tool_use_block(
-        "tu_b", "propose_trade",
-        {
-            "symbol": "GBPUSD",
-            "direction": "SELL",
-            "entry_price": 1.25000,
-            "stop_loss_price": 1.25200,
-            "take_profit_price": 1.24600,
-            "confidence": 0.65,
-            "rationale": "secondo edge",
-        },
-    )
-    agent.client.messages.create.return_value = _make_response(
-        "tool_use", [first_propose, second_propose]
+def _none_setup(symbol: str) -> TechnicalSetup:
+    return TechnicalSetup(
+        symbol=symbol, timeframe="M15", setup_type="NONE", direction=None,
+        entry_price=None, stop_loss=None, take_profit=None,
+        confidence=0.0, reason="weak",
     )
 
-    proposal = agent.run_market_scan(["EURUSD", "GBPUSD"], "M15", _account_state())
 
-    assert isinstance(proposal, TradeProposal)
-    assert proposal.symbol == "EURUSD"
-    assert agent.client.messages.create.call_count == 1
-
-
-def test_dispatch_scanner_tool_get_risk_profile(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-
-    result = agent._dispatch_scanner_tool("get_risk_profile", {})
-
-    assert result["MIN_SL_PIPS"] == 8
-    assert result["MAX_SL_PIPS"] == 80
-    assert result["EXECUTION_MODE"] == "shadow"
-    assert result["RISK_MODE"] == "CONSERVATIVE"
-
-
-def test_dispatch_scanner_tool_scan_symbol_candidates(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-
-    result = agent._dispatch_scanner_tool(
-        "scan_symbol_candidates", {"symbols": ["EURUSD", "GBPUSD"]}
+def _forming_setup(symbol: str) -> TechnicalSetup:
+    return TechnicalSetup(
+        symbol=symbol, timeframe="M15", setup_type="FORMING", direction="BUY",
+        entry_price=None, stop_loss=None, take_profit=None,
+        confidence=0.55, reason="approaching resistance",
     )
 
-    assert "candidates" in result
-    assert len(result["candidates"]) == 2
-    assert all("symbol" in c for c in result["candidates"])
-    assert all("candidate_score" in c for c in result["candidates"])
+
+def test_deep_analyze_empty_universe_returns_no_trade():
+    cfg = _make_cfg()
+    strategy = MagicMock()
+    scanner = _make_scanner(cfg, strategy_mock=strategy)
+
+    outcome = scanner.deep_analyze_top_candidates([], _account())
+    assert outcome.outcome_type == "NO_TRADE"
+    assert outcome.proposal is None
 
 
-def test_dispatch_scanner_tool_unknown_returns_error(cfg, mt5):
-    agent = _make_agent(cfg, mt5)
-
-    result = agent._dispatch_scanner_tool("nonexistent_tool", {})
-
-    assert "error" in result
-
-
-def test_run_cycle_backward_compat_still_works(cfg, mt5):
-    """run_cycle single-symbol non deve essere rotto dalle aggiunte scanner."""
-    agent = _make_agent(cfg, mt5)
-    agent.client.messages.create.return_value = _make_response(
-        "end_turn", [_text_block("NO_TRADE\nfermo per trend incerto")]
+def test_deep_analyze_selects_highest_confidence():
+    cfg = _make_cfg()
+    strategy = MagicMock()
+    strategy.analyze_symbol.side_effect = [
+        _ready_setup("A", 0.65),
+        _ready_setup("B", 0.85),
+        _ready_setup("C", 0.70),
+    ]
+    strategy.build_trade_proposal.side_effect = lambda sym, setup, account_state=None: TradeProposal(
+        symbol=sym, direction=setup.direction,
+        entry_price=setup.entry_price, stop_loss_price=setup.stop_loss,
+        take_profit_price=setup.take_profit, timeframe="M15",
+        comment="python_strategy", confidence=setup.confidence,
+        rationale=setup.reason,
     )
+    strategy.is_addon_for.return_value = False
+    strategy.would_proposal_exceed_drawdown.return_value = (False, 0.0)
+    scanner = _make_scanner(cfg, strategy_mock=strategy)
 
-    proposal = agent.run_cycle("EURUSD", _account_state())
+    outcome = scanner.deep_analyze_top_candidates(
+        [_scan("A"), _scan("B"), _scan("C")], _account()
+    )
+    assert outcome.outcome_type == "TRADE"
+    assert outcome.proposal.symbol == "B"
+    assert outcome.proposal.confidence == 0.85
 
-    assert proposal is None
-    assert agent.client.messages.create.call_count == 1
+
+def test_deep_analyze_no_trade_if_all_none():
+    cfg = _make_cfg()
+    strategy = MagicMock()
+    strategy.analyze_symbol.side_effect = [_none_setup("A"), _none_setup("B")]
+    scanner = _make_scanner(cfg, strategy_mock=strategy)
+
+    outcome = scanner.deep_analyze_top_candidates([_scan("A"), _scan("B")], _account())
+    assert outcome.outcome_type == "NO_TRADE"
+    assert outcome.proposal is None
+
+
+def test_deep_analyze_wait_followup_when_only_forming():
+    cfg = _make_cfg()
+    strategy = MagicMock()
+    strategy.analyze_symbol.side_effect = [_forming_setup("A"), _none_setup("B")]
+    strategy.build_delayed_followup.return_value = DelayedFollowUpRequest(
+        symbol="A", timeframe="M15", delay_minutes=30, reason="approaching",
+        focus_prompt="re-analyze", created_at=__import__("datetime").datetime.now(),
+        expires_at=__import__("datetime").datetime.now(),
+    )
+    scanner = _make_scanner(cfg, strategy_mock=strategy)
+
+    outcome = scanner.deep_analyze_top_candidates([_scan("A"), _scan("B")], _account())
+    assert outcome.outcome_type == "WAIT_FOLLOW_UP"
+    assert outcome.follow_up.symbol == "A"
+
+
+def test_deep_analyze_no_trade_below_min_confidence():
+    cfg = _make_cfg(MIN_CONFIDENCE_TO_PROPOSE=0.80)
+    strategy = MagicMock()
+    strategy.analyze_symbol.side_effect = [_ready_setup("A", 0.65), _ready_setup("B", 0.70)]
+    scanner = _make_scanner(cfg, strategy_mock=strategy)
+
+    outcome = scanner.deep_analyze_top_candidates([_scan("A"), _scan("B")], _account())
+    assert outcome.outcome_type == "NO_TRADE"
+    assert "below_threshold" in outcome.note
+
+
+def test_deep_analyze_followup_disabled_falls_to_no_trade():
+    cfg = _make_cfg(FOLLOWUP_ENABLED=False)
+    strategy = MagicMock()
+    strategy.analyze_symbol.side_effect = [_forming_setup("A")]
+    scanner = _make_scanner(cfg, strategy_mock=strategy)
+
+    outcome = scanner.deep_analyze_top_candidates([_scan("A")], _account())
+    assert outcome.outcome_type == "NO_TRADE"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# calculate_scan_score
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_calculate_scan_score_trend_clarity():
+    cfg = _make_cfg()
+    scanner = _make_scanner(cfg)
+    bars = _trending_bars(1.0900, 0.0005, n=60)
+    score_strong = scanner.calculate_scan_score(
+        bars, {"sma_20": 1.1010, "ema_50": 1.0950, "rsi_14": 60.0, "atr_pips": 10.0}
+    )
+    score_weak = scanner.calculate_scan_score(
+        bars, {"sma_20": 1.1000, "ema_50": 1.1000, "rsi_14": 60.0, "atr_pips": 10.0}
+    )
+    assert score_strong > score_weak
+
+
+def test_calculate_scan_score_zero_when_indicators_missing():
+    cfg = _make_cfg()
+    scanner = _make_scanner(cfg)
+    score = scanner.calculate_scan_score([], {"sma_20": None, "ema_50": None, "rsi_14": None})
+    assert score == 0.0
