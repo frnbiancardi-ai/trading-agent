@@ -12,19 +12,19 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-05-01T14:30:00+02:00`
-- last_session_reason: `Fase 14 code-complete (live checkpoint utente pendente, doc validazione in .orchestration/VALIDATION_PHASE_14.md). Fase 15 (RSS News Sentiment) code-complete: news_aggregator + sentiment + integrazione strategy/scanner + main.py wiring + 24 nuovi test. Suite completa 142/142. Handoff per validazione utente entrambe le fasi.`
+- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_end: `2026-05-02T01:00:00+02:00`
+- last_session_reason: `Fase 16 code-complete. Suite 173/173 (142 fasi 14+15 + 31 nuovi fase 16). Validazione live utente differita a fine fase 16.`
 
 ## Stato fase corrente
 
-- current_phase: `15`
-- current_phase_title: `RSS News Sentiment Layer`
+- current_phase: `16`
+- current_phase_title: `H24 Strategy Update (intraday H24 scheduler + open-position management + protective close)`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `5`
+- current_substep: `code_complete`
 - branch: `feature/python-pure-strategy`
-- last_action: `2026-05-01 — Fase 15 code-complete. Aggiunto NewsAggregator (RSS fetch+cache+lookback filter via feedparser, dedupe, parse_date robusto), SimpleSentiment (keyword-based con conjugazioni, currency map per EUR/USD/GBP/JPY/AUD/CAD/CHF/NZD/XAU/XAG, pair-level scoring base-quote). strategy._apply_sentiment integra boost (aligned) e SENTIMENT_CONFLICT_ACTION skip/delay/reduce_confidence (downgrade NONE se sotto MIN_CONFIDENCE_TO_PROPOSE). MultiSymbolScanner+StrategyRunner ricevono news_aggregator+sentiment_analyzer opzionali. main.py li inizializza solo se ENABLE_NEWS_SENTIMENT=true e RSS_FEEDS non vuoto. tests/test_news_aggregator.py 12/12, tests/test_sentiment.py 12/12, +7 test sentiment in test_strategy.py. Suite completa 142/142.`
-- next_action: `Validazione utente fase 14 (vedi .orchestration/VALIDATION_PHASE_14.md) + checkpoint manuale fase 15 con ENABLE_NEWS_SENTIMENT=true (verifica fetch periodico RSS, sentiment loggato, no crash). Poi VALIDATED entrambe, merge feature/python-pure-strategy in main, tag v1.2.0.`
+- last_action: `2026-05-02 — Fase 16 code-complete. config.py: aggiunte INTRADAY_SCAN_INTERVAL_MINUTES (15), INTRADAY_FIRST_CYCLE_DELAY_MINUTES (5), PAUSE_TRADING, DRY_RUN, MIN_PROTECT_PROFIT_R_MULTIPLIER (1.0), ROLLING_DRAWDOWN_*, LOG_ROTATION (weekly), CLOSE_BEFORE_END_OF_WINDOW; helper _get_int robusto a suffissi non numerici. models.py: PositionInfo.ticket, StrategyOutcome esteso (drawdown/news/pause/addon flags), nuovi OpenPositionVerdict + SchedulerCycleRecord. mt5_client.close_position(position_id) con campo position (no apertura opposta), get_account_state popola ticket. strategy.py: StrategyEnvironment (is_intraday_window/is_weekend/is_news_window hook), evaluate_open_position (HOLD/CLOSE_PROTECT/CLOSE_END_OF_DAY), compute_existing_potential_loss_amount, would_proposal_exceed_drawdown, is_addon_for. scanner.py: deep_analyze accetta paused/news_blocked, marca is_addon, blocca su drawdown_violation. scheduler.py: nuove classi HeartbeatStore (tabelle heartbeat+scheduler_state) e IntradayLoopScheduler (loop H24 + first_cycle_delay + overrun-skip + ordine ops gestione posizioni→pause→window→news→scan→trade). main.py rifatto su loop H24, no APScheduler. mcp_server.py: tool close_position{position_id} con DRY_RUN bypass. tests/test_phase16.py: 31 test (env, drawdown, evaluate_open_position, scanner flags, heartbeat, run_one_cycle, close_position). scripts/dry_run_cycle.py per smoke test weekend. doc phase-16-h24-strategy-update.md. Test 173/173 verde.`
+- next_action: `Validazione utente integrata fasi 14+15+16: (1) checkpoint live main.py su demo TenTrade ≥1 ora finestra 08-20 lun-ven, verifica heartbeat in trades.db; (2) dry-run weekend con scripts/dry_run_cycle.py; (3) verifica MCP close_position tool da Claude Desktop; (4) se OK → VALIDATED tutte e tre, merge feature/python-pure-strategy in main, tag v1.2.0.`
 
 ## Roadmap v1.1.0 (completata)
 
