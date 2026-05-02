@@ -248,6 +248,8 @@ def test_deep_analyze_selects_highest_confidence():
         comment="python_strategy", confidence=setup.confidence,
         rationale=setup.reason,
     )
+    strategy.is_addon_for.return_value = False
+    strategy.would_proposal_exceed_drawdown.return_value = (False, 0.0)
     scanner = _make_scanner(cfg, strategy_mock=strategy)
 
     outcome = scanner.deep_analyze_top_candidates(
