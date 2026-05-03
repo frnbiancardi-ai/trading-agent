@@ -46,6 +46,14 @@ def _make_cfg(**overrides):
     cfg.BB_SQUEEZE_PERCENTILE = 0.2
     cfg.SQUEEZE_ENTRY_BUFFER_ATR = 0.1
     cfg.SQUEEZE_SL_BUFFER_ATR = 0.2
+    cfg.ENABLE_PULLBACK_SETUP = False
+    cfg.BREAKOUT_LOOKBACK_BARS = 20
+    cfg.PULLBACK_TOLERANCE_ATR_MULTIPLE = 0.5
+    cfg.PULLBACK_MIN_BARS_AFTER_BREAKOUT = 2
+    cfg.PULLBACK_MAX_BARS_AFTER_BREAKOUT = 8
+    cfg.PULLBACK_REQUIRE_VOLUME_CONTRACTION = True
+    cfg.PULLBACK_ENTRY_BUFFER_ATR = 0.1
+    cfg.PULLBACK_SL_BUFFER_ATR = 0.1
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg
@@ -185,6 +193,104 @@ def test_identify_entry_setup_squeeze_skipped_if_no_alignment():
     decision = strat.identify_entry_setup([], indicators, sr, [])
 
     assert decision.get("subtype") != "squeeze"
+
+
+def test_identify_entry_setup_pullback_long_takes_priority_over_squeeze():
+    cfg = _make_cfg(
+        ENABLE_PULLBACK_SETUP=True,
+        ENABLE_VOLATILITY_SQUEEZE_SETUP=True,
+    )
+    strat = _make_strategy(cfg)
+
+    indicators = {
+        "sma_20": 1.1010, "sma_50": 1.0980, "rsi_14": 58.0,
+        "atr_14": 0.0010, "atr_pips": 10.0,
+        "trend_strength": 0.50, "breakout": "NONE",
+        "patterns": [], "last_close": 1.1020, "pip_size": 0.0001,
+        "squeeze": {
+            "squeeze": True, "type": "NR7", "strength": 0.5,
+            "signals": ["NR7"],
+        },
+        "pullback": {
+            "pullback": True, "direction": "BUY",
+            "breakout_level": 1.1010, "breakout_index": 100,
+            "bars_since_breakout": 4,
+            "trigger_pattern": "INSIDE",
+            "reason": "pullback_long_test",
+        },
+    }
+    sr = {"support": 1.0900, "resistance": 1.1100}
+    decision = strat.identify_entry_setup([], indicators, sr, [])
+
+    assert decision["type"] == "READY"
+    assert decision["direction"] == "BUY"
+    assert decision.get("subtype") == "pullback"
+
+
+def test_identify_entry_setup_pullback_short_aligned():
+    cfg = _make_cfg(ENABLE_PULLBACK_SETUP=True)
+    strat = _make_strategy(cfg)
+
+    indicators = {
+        "sma_20": 1.0990, "sma_50": 1.1020, "rsi_14": 42.0,
+        "atr_14": 0.0010, "atr_pips": 10.0,
+        "trend_strength": 0.50, "breakout": "NONE",
+        "patterns": [], "last_close": 1.0980, "pip_size": 0.0001,
+        "squeeze": {"squeeze": False, "type": "NONE", "strength": 0.0, "signals": []},
+        "pullback": {
+            "pullback": True, "direction": "SELL",
+            "breakout_level": 1.0995, "breakout_index": 100,
+            "bars_since_breakout": 3,
+            "trigger_pattern": "INSIDE",
+            "reason": "pullback_short_test",
+        },
+    }
+    sr = {"support": 1.0900, "resistance": 1.1100}
+    decision = strat.identify_entry_setup([], indicators, sr, [])
+
+    assert decision["type"] == "READY"
+    assert decision["direction"] == "SELL"
+    assert decision.get("subtype") == "pullback"
+
+
+def test_identify_entry_setup_pullback_skipped_if_misaligned():
+    cfg = _make_cfg(ENABLE_PULLBACK_SETUP=True)
+    strat = _make_strategy(cfg)
+
+    # pullback BUY ma MAs allineate al ribasso → skip pullback
+    indicators = {
+        "sma_20": 1.0990, "sma_50": 1.1020, "rsi_14": 42.0,
+        "atr_14": 0.0010, "atr_pips": 10.0,
+        "trend_strength": 0.50, "breakout": "NONE",
+        "patterns": [], "last_close": 1.0980, "pip_size": 0.0001,
+        "squeeze": {"squeeze": False, "type": "NONE", "strength": 0.0, "signals": []},
+        "pullback": {
+            "pullback": True, "direction": "BUY",
+            "breakout_level": 1.0995, "breakout_index": 100,
+            "bars_since_breakout": 3,
+            "trigger_pattern": "INSIDE",
+            "reason": "pullback_long_test",
+        },
+    }
+    sr = {"support": 1.0900, "resistance": 1.1100}
+    decision = strat.identify_entry_setup([], indicators, sr, [])
+    assert decision.get("subtype") != "pullback"
+
+
+def test_compute_levels_pullback_uses_last_bar():
+    cfg = _make_cfg(ENABLE_PULLBACK_SETUP=True)
+    strat = _make_strategy(cfg)
+
+    last_bar = {"open": 1.1010, "high": 1.1015, "low": 1.1008, "close": 1.1011}
+    entry, sl, tp = strat._compute_levels(
+        direction="BUY", last_close=1.1011, atr_val=0.0010,
+        sr={"support": 1.0950, "resistance": 1.1100}, pip_size=0.0001,
+        subtype="pullback", last_bar=last_bar,
+    )
+    # entry = 1.1015 + 0.0001 = 1.1016, sl = 1.1008 - 0.0001 = 1.1007
+    assert abs(entry - 1.1016) < 1e-6
+    assert abs(sl - 1.1007) < 1e-6
+    assert tp > entry
 
 
 def test_compute_levels_squeeze_uses_last_bar():

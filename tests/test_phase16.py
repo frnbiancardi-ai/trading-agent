@@ -91,6 +91,14 @@ def _cfg(**overrides):
     cfg.BB_SQUEEZE_PERCENTILE = 0.2
     cfg.SQUEEZE_ENTRY_BUFFER_ATR = 0.1
     cfg.SQUEEZE_SL_BUFFER_ATR = 0.2
+    cfg.ENABLE_PULLBACK_SETUP = False
+    cfg.BREAKOUT_LOOKBACK_BARS = 20
+    cfg.PULLBACK_TOLERANCE_ATR_MULTIPLE = 0.5
+    cfg.PULLBACK_MIN_BARS_AFTER_BREAKOUT = 2
+    cfg.PULLBACK_MAX_BARS_AFTER_BREAKOUT = 8
+    cfg.PULLBACK_REQUIRE_VOLUME_CONTRACTION = True
+    cfg.PULLBACK_ENTRY_BUFFER_ATR = 0.1
+    cfg.PULLBACK_SL_BUFFER_ATR = 0.1
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg

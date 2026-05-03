@@ -20,6 +20,7 @@ from indicators import (
     calculate_risk_reward,
 )
 from indicators_advanced import bollinger_bands
+from pullback_engine import detect_pullback
 from volatility_compression import detect_volatility_squeeze
 from models import (
     AccountState,
@@ -245,6 +246,19 @@ class IntradayStrategy:
                 bb_squeeze_percentile=cfg.BB_SQUEEZE_PERCENTILE,
             )
 
+        pullback_info = {"pullback": False, "direction": None, "reason": "disabled"}
+        if cfg.ENABLE_PULLBACK_SETUP:
+            pullback_info = detect_pullback(
+                bars,
+                atr_value=atr_val,
+                breakout_lookback_bars=cfg.BREAKOUT_LOOKBACK_BARS,
+                history_lookback=cfg.BREAKOUT_LOOKBACK_BARS,
+                tolerance_atr_multiple=cfg.PULLBACK_TOLERANCE_ATR_MULTIPLE,
+                min_bars_after_breakout=cfg.PULLBACK_MIN_BARS_AFTER_BREAKOUT,
+                max_bars_after_breakout=cfg.PULLBACK_MAX_BARS_AFTER_BREAKOUT,
+                require_volume_contraction=cfg.PULLBACK_REQUIRE_VOLUME_CONTRACTION,
+            )
+
         indicators_snapshot = {
             "sma_20": sma20,
             "sma_50": sma50,
@@ -257,6 +271,7 @@ class IntradayStrategy:
             "last_close": last_close,
             "pip_size": pip_size,
             "squeeze": squeeze_info,
+            "pullback": pullback_info,
         }
 
         decision = self.identify_entry_setup(bars, indicators_snapshot, sr, patterns)
@@ -325,6 +340,7 @@ class IntradayStrategy:
         last_close = indicators["last_close"]
         pip_size = indicators["pip_size"]
         squeeze_info = indicators.get("squeeze") or {}
+        pullback_info = indicators.get("pullback") or {}
 
         bullish_align = last_close > sma20 > sma50
         bearish_align = last_close < sma20 < sma50
@@ -343,6 +359,31 @@ class IntradayStrategy:
         resistance = sr.get("resistance")
         support = sr.get("support")
         tol = cfg.SR_TOLERANCE_PIPS * pip_size if pip_size > 0 else 0.0
+
+        if (
+            cfg.ENABLE_PULLBACK_SETUP
+            and pullback_info.get("pullback")
+            and pullback_info.get("direction") == "BUY"
+            and bullish_align
+            and rsi_in_band
+        ):
+            return {
+                "type": "READY", "direction": "BUY",
+                "subtype": "pullback",
+                "reason": pullback_info.get("reason", "pullback_long"),
+            }
+        if (
+            cfg.ENABLE_PULLBACK_SETUP
+            and pullback_info.get("pullback")
+            and pullback_info.get("direction") == "SELL"
+            and bearish_align
+            and rsi_in_band
+        ):
+            return {
+                "type": "READY", "direction": "SELL",
+                "subtype": "pullback",
+                "reason": pullback_info.get("reason", "pullback_short"),
+            }
 
         if (
             cfg.ENABLE_VOLATILITY_SQUEEZE_SETUP
@@ -638,6 +679,21 @@ class IntradayStrategy:
         if subtype == "squeeze" and last_bar is not None:
             entry_buf = cfg.SQUEEZE_ENTRY_BUFFER_ATR * atr_val
             sl_buf = cfg.SQUEEZE_SL_BUFFER_ATR * atr_val
+            if direction == "BUY":
+                entry = last_bar["high"] + entry_buf
+                sl = last_bar["low"] - sl_buf
+                risk = entry - sl
+                tp = entry + rr * risk
+            else:
+                entry = last_bar["low"] - entry_buf
+                sl = last_bar["high"] + sl_buf
+                risk = sl - entry
+                tp = entry - rr * risk
+            return round(entry, digits), round(sl, digits), round(tp, digits)
+
+        if subtype == "pullback" and last_bar is not None:
+            entry_buf = cfg.PULLBACK_ENTRY_BUFFER_ATR * atr_val
+            sl_buf = cfg.PULLBACK_SL_BUFFER_ATR * atr_val
             if direction == "BUY":
                 entry = last_bar["high"] + entry_buf
                 sl = last_bar["low"] - sl_buf

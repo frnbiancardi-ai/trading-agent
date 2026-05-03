@@ -173,6 +173,16 @@ class Config:
     SQUEEZE_ENTRY_BUFFER_ATR: float = float(os.getenv("SQUEEZE_ENTRY_BUFFER_ATR", "0.1"))
     SQUEEZE_SL_BUFFER_ATR: float = float(os.getenv("SQUEEZE_SL_BUFFER_ATR", "0.2"))
 
+    # Strategy v2 fase 17.3 — Pullback engine
+    ENABLE_PULLBACK_SETUP: bool = _get_bool("ENABLE_PULLBACK_SETUP", True)
+    BREAKOUT_LOOKBACK_BARS: int = max(5, int(os.getenv("BREAKOUT_LOOKBACK_BARS", "20")))
+    PULLBACK_TOLERANCE_ATR_MULTIPLE: float = float(os.getenv("PULLBACK_TOLERANCE_ATR_MULTIPLE", "0.5"))
+    PULLBACK_MIN_BARS_AFTER_BREAKOUT: int = max(1, int(os.getenv("PULLBACK_MIN_BARS_AFTER_BREAKOUT", "2")))
+    PULLBACK_MAX_BARS_AFTER_BREAKOUT: int = max(2, int(os.getenv("PULLBACK_MAX_BARS_AFTER_BREAKOUT", "8")))
+    PULLBACK_REQUIRE_VOLUME_CONTRACTION: bool = _get_bool("PULLBACK_REQUIRE_VOLUME_CONTRACTION", True)
+    PULLBACK_ENTRY_BUFFER_ATR: float = float(os.getenv("PULLBACK_ENTRY_BUFFER_ATR", "0.1"))
+    PULLBACK_SL_BUFFER_ATR: float = float(os.getenv("PULLBACK_SL_BUFFER_ATR", "0.1"))
+
 
 _VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
 if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
