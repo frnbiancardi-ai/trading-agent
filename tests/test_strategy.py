@@ -39,6 +39,13 @@ def _make_cfg(**overrides):
     cfg.SENTIMENT_MIN_STRENGTH_FILTER = 0.6
     cfg.SENTIMENT_BOOST_FACTOR = 0.15
     cfg.SENTIMENT_CONFLICT_ACTION = "delay"
+    cfg.ENABLE_VOLATILITY_SQUEEZE_SETUP = False
+    cfg.BB_PERIOD = 20
+    cfg.BB_K = 2.0
+    cfg.BB_SQUEEZE_LOOKBACK = 100
+    cfg.BB_SQUEEZE_PERCENTILE = 0.2
+    cfg.SQUEEZE_ENTRY_BUFFER_ATR = 0.1
+    cfg.SQUEEZE_SL_BUFFER_ATR = 0.2
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg
@@ -114,6 +121,87 @@ def test_identify_entry_setup_ready_buy():
 
     assert decision["type"] == "READY"
     assert decision["direction"] == "BUY"
+    assert decision.get("subtype") == "breakout"
+
+
+def test_identify_entry_setup_squeeze_long_takes_priority():
+    cfg = _make_cfg(ENABLE_VOLATILITY_SQUEEZE_SETUP=True)
+    strat = _make_strategy(cfg)
+
+    indicators = {
+        "sma_20": 1.1010, "sma_50": 1.0980, "rsi_14": 55.0,
+        "atr_14": 0.0010, "atr_pips": 10.0,
+        "trend_strength": 0.50, "breakout": "NONE",
+        "patterns": [], "last_close": 1.1020, "pip_size": 0.0001,
+        "squeeze": {
+            "squeeze": True, "type": "NR7", "strength": 0.5,
+            "signals": ["NR7", "BB_SQUEEZE"],
+        },
+    }
+    sr = {"support": 1.0900, "resistance": 1.1100}
+    decision = strat.identify_entry_setup([], indicators, sr, [])
+
+    assert decision["type"] == "READY"
+    assert decision["direction"] == "BUY"
+    assert decision.get("subtype") == "squeeze"
+
+
+def test_identify_entry_setup_squeeze_disabled_falls_through():
+    cfg = _make_cfg(ENABLE_VOLATILITY_SQUEEZE_SETUP=False)
+    strat = _make_strategy(cfg)
+
+    indicators = {
+        "sma_20": 1.1010, "sma_50": 1.0980, "rsi_14": 55.0,
+        "atr_14": 0.0010, "atr_pips": 10.0,
+        "trend_strength": 0.50, "breakout": "NONE",
+        "patterns": [], "last_close": 1.1020, "pip_size": 0.0001,
+        "squeeze": {
+            "squeeze": True, "type": "NR7", "strength": 0.5,
+            "signals": ["NR7"],
+        },
+    }
+    sr = {"support": 1.0900, "resistance": 1.1100}
+    decision = strat.identify_entry_setup([], indicators, sr, [])
+
+    assert decision["type"] != "READY" or decision.get("subtype") != "squeeze"
+
+
+def test_identify_entry_setup_squeeze_skipped_if_no_alignment():
+    cfg = _make_cfg(ENABLE_VOLATILITY_SQUEEZE_SETUP=True)
+    strat = _make_strategy(cfg)
+
+    # last_close < sma20 < sma50 NON è bullish, MAs non allineate
+    indicators = {
+        "sma_20": 1.1010, "sma_50": 1.0980, "rsi_14": 55.0,
+        "atr_14": 0.0010, "atr_pips": 10.0,
+        "trend_strength": 0.40, "breakout": "NONE",
+        "patterns": [], "last_close": 1.0950, "pip_size": 0.0001,
+        "squeeze": {
+            "squeeze": True, "type": "NR7", "strength": 0.5,
+            "signals": ["NR7"],
+        },
+    }
+    sr = {"support": 1.0900, "resistance": 1.1100}
+    decision = strat.identify_entry_setup([], indicators, sr, [])
+
+    assert decision.get("subtype") != "squeeze"
+
+
+def test_compute_levels_squeeze_uses_last_bar():
+    cfg = _make_cfg(ENABLE_VOLATILITY_SQUEEZE_SETUP=True)
+    strat = _make_strategy(cfg)
+
+    last_bar = {"open": 1.1000, "high": 1.1020, "low": 1.0990, "close": 1.1010}
+    entry, sl, tp = strat._compute_levels(
+        direction="BUY", last_close=1.1010, atr_val=0.0020,
+        sr={"support": 1.0950, "resistance": 1.1100}, pip_size=0.0001,
+        subtype="squeeze", last_bar=last_bar,
+    )
+    # entry = high + 0.1*ATR = 1.1020 + 0.0002 = 1.1022
+    # sl    = low  - 0.2*ATR = 1.0990 - 0.0004 = 1.0986
+    assert abs(entry - 1.1022) < 1e-6
+    assert abs(sl - 1.0986) < 1e-6
+    assert tp > entry  # long TP sopra entry
 
 
 def test_identify_entry_setup_ready_sell():

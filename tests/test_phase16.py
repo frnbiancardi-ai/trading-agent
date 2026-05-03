@@ -84,6 +84,13 @@ def _cfg(**overrides):
     cfg.RISK_PER_TRADE_PERCENT = 0.5
     cfg.RISK_PER_TRADE_AMOUNT = 100.0
     cfg.EXECUTION_MODE = "shadow"
+    cfg.ENABLE_VOLATILITY_SQUEEZE_SETUP = False
+    cfg.BB_PERIOD = 20
+    cfg.BB_K = 2.0
+    cfg.BB_SQUEEZE_LOOKBACK = 100
+    cfg.BB_SQUEEZE_PERCENTILE = 0.2
+    cfg.SQUEEZE_ENTRY_BUFFER_ATR = 0.1
+    cfg.SQUEEZE_SL_BUFFER_ATR = 0.2
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg

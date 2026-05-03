@@ -19,6 +19,8 @@ from indicators import (
     check_breakout_quality,
     calculate_risk_reward,
 )
+from indicators_advanced import bollinger_bands
+from volatility_compression import detect_volatility_squeeze
 from models import (
     AccountState,
     DelayedFollowUpRequest,
@@ -230,6 +232,19 @@ class IntradayStrategy:
 
         last_close = closes[-1]
 
+        bb_bandwidth = None
+        squeeze_info = {"squeeze": False, "type": "NONE", "strength": 0.0, "signals": []}
+        if cfg.ENABLE_VOLATILITY_SQUEEZE_SETUP:
+            bb = bollinger_bands(closes, period=cfg.BB_PERIOD, k=cfg.BB_K)
+            bb_bandwidth = bb["bandwidth"]
+            squeeze_info = detect_volatility_squeeze(
+                bars,
+                atr_series=atr_series,
+                bb_bandwidth_series=bb_bandwidth,
+                bb_squeeze_lookback=cfg.BB_SQUEEZE_LOOKBACK,
+                bb_squeeze_percentile=cfg.BB_SQUEEZE_PERCENTILE,
+            )
+
         indicators_snapshot = {
             "sma_20": sma20,
             "sma_50": sma50,
@@ -241,6 +256,7 @@ class IntradayStrategy:
             "patterns": patterns,
             "last_close": last_close,
             "pip_size": pip_size,
+            "squeeze": squeeze_info,
         }
 
         decision = self.identify_entry_setup(bars, indicators_snapshot, sr, patterns)
@@ -248,11 +264,14 @@ class IntradayStrategy:
         setup_type = decision["type"]
         direction = decision.get("direction")
         reason = decision.get("reason", "")
+        subtype = decision.get("subtype", "breakout")
+        indicators_snapshot["setup_subtype"] = subtype
 
         if setup_type == "READY":
             entry, sl, tp = self._compute_levels(
                 direction=direction, last_close=last_close, atr_val=atr_val,
                 sr=sr, pip_size=pip_size,
+                subtype=subtype, last_bar=bars[-1],
             )
             rr = calculate_risk_reward(entry, sl, tp)
             indicators_snapshot["risk_reward"] = rr
@@ -305,6 +324,7 @@ class IntradayStrategy:
         breakout = indicators["breakout"]
         last_close = indicators["last_close"]
         pip_size = indicators["pip_size"]
+        squeeze_info = indicators.get("squeeze") or {}
 
         bullish_align = last_close > sma20 > sma50
         bearish_align = last_close < sma20 < sma50
@@ -325,6 +345,35 @@ class IntradayStrategy:
         tol = cfg.SR_TOLERANCE_PIPS * pip_size if pip_size > 0 else 0.0
 
         if (
+            cfg.ENABLE_VOLATILITY_SQUEEZE_SETUP
+            and squeeze_info.get("squeeze")
+            and bullish_align
+            and rsi_in_band
+        ):
+            return {
+                "type": "READY", "direction": "BUY",
+                "subtype": "squeeze",
+                "reason": (
+                    f"compressione_volatilita {squeeze_info.get('signals')} "
+                    f"in trend bullish (str={squeeze_info.get('strength', 0):.2f})"
+                ),
+            }
+        if (
+            cfg.ENABLE_VOLATILITY_SQUEEZE_SETUP
+            and squeeze_info.get("squeeze")
+            and bearish_align
+            and rsi_in_band
+        ):
+            return {
+                "type": "READY", "direction": "SELL",
+                "subtype": "squeeze",
+                "reason": (
+                    f"compressione_volatilita {squeeze_info.get('signals')} "
+                    f"in trend bearish (str={squeeze_info.get('strength', 0):.2f})"
+                ),
+            }
+
+        if (
             bullish_align
             and trend_strength > cfg.MIN_TREND_STRENGTH
             and rsi_in_band
@@ -335,6 +384,7 @@ class IntradayStrategy:
         ):
             return {
                 "type": "READY", "direction": "BUY",
+                "subtype": "breakout",
                 "reason": (
                     f"trend_strength={trend_strength:.2f}, MAs allineate, "
                     f"breakout CLEAN sopra resistance={resistance:.5f}"
@@ -352,6 +402,7 @@ class IntradayStrategy:
         ):
             return {
                 "type": "READY", "direction": "SELL",
+                "subtype": "breakout",
                 "reason": (
                     f"trend_strength={trend_strength:.2f}, MAs allineate al ribasso, "
                     f"breakdown CLEAN sotto support={support:.5f}"
@@ -577,11 +628,30 @@ class IntradayStrategy:
         atr_val: float,
         sr: dict,
         pip_size: float,
+        subtype: str = "breakout",
+        last_bar: dict | None = None,
     ) -> tuple[float, float, float]:
         cfg = self.cfg
+        rr = max(cfg.MIN_RISK_REWARD_RATIO, 1.5)
+        digits = 5 if pip_size <= 0.001 else 3
+
+        if subtype == "squeeze" and last_bar is not None:
+            entry_buf = cfg.SQUEEZE_ENTRY_BUFFER_ATR * atr_val
+            sl_buf = cfg.SQUEEZE_SL_BUFFER_ATR * atr_val
+            if direction == "BUY":
+                entry = last_bar["high"] + entry_buf
+                sl = last_bar["low"] - sl_buf
+                risk = entry - sl
+                tp = entry + rr * risk
+            else:
+                entry = last_bar["low"] - entry_buf
+                sl = last_bar["high"] + sl_buf
+                risk = sl - entry
+                tp = entry - rr * risk
+            return round(entry, digits), round(sl, digits), round(tp, digits)
+
         entry = last_close
         atr_buffer = atr_val
-        rr = max(cfg.MIN_RISK_REWARD_RATIO, 1.5)
 
         if direction == "BUY":
             support = sr.get("support")
@@ -600,7 +670,6 @@ class IntradayStrategy:
             risk = sl - entry
             tp = entry - rr * risk
 
-        digits = 5 if pip_size <= 0.001 else 3
         return round(entry, digits), round(sl, digits), round(tp, digits)
 
     def _score_confidence(

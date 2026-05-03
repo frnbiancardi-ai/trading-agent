@@ -35,6 +35,13 @@ def _make_cfg(**overrides):
     cfg.SR_TOLERANCE_PIPS = 5.0
     cfg.MAX_DELAY_MINUTES = 120
     cfg.FOLLOWUP_ENABLED = True
+    cfg.ENABLE_VOLATILITY_SQUEEZE_SETUP = False
+    cfg.BB_PERIOD = 20
+    cfg.BB_K = 2.0
+    cfg.BB_SQUEEZE_LOOKBACK = 100
+    cfg.BB_SQUEEZE_PERCENTILE = 0.2
+    cfg.SQUEEZE_ENTRY_BUFFER_ATR = 0.1
+    cfg.SQUEEZE_SL_BUFFER_ATR = 0.2
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg

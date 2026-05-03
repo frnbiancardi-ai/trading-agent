@@ -164,6 +164,15 @@ class Config:
     SR_LOOKBACK_BARS: int = max(20, int(os.getenv("SR_LOOKBACK_BARS", "100")))
     SR_TOLERANCE_PIPS: float = float(os.getenv("SR_TOLERANCE_PIPS", "5"))
 
+    # Strategy v2 fase 17.2 — Compressione di volatilità
+    ENABLE_VOLATILITY_SQUEEZE_SETUP: bool = _get_bool("ENABLE_VOLATILITY_SQUEEZE_SETUP", True)
+    BB_PERIOD: int = max(2, int(os.getenv("BB_PERIOD", "20")))
+    BB_K: float = float(os.getenv("BB_K", "2.0"))
+    BB_SQUEEZE_LOOKBACK: int = max(20, int(os.getenv("BB_SQUEEZE_LOOKBACK", "100")))
+    BB_SQUEEZE_PERCENTILE: float = float(os.getenv("BB_SQUEEZE_PERCENTILE", "0.2"))
+    SQUEEZE_ENTRY_BUFFER_ATR: float = float(os.getenv("SQUEEZE_ENTRY_BUFFER_ATR", "0.1"))
+    SQUEEZE_SL_BUFFER_ATR: float = float(os.getenv("SQUEEZE_SL_BUFFER_ATR", "0.2"))
+
 
 _VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
 if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
