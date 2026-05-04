@@ -715,8 +715,11 @@ def test_close_position_uses_position_field(monkeypatch):
         order=99999, comment="ok",
     )
 
+    sym_info = SimpleNamespace(visible=True, filling_mode=0)
     fake_mt5 = SimpleNamespace(
         positions_get=MagicMock(return_value=[pos_obj]),
+        symbol_info=MagicMock(return_value=sym_info),
+        symbol_select=MagicMock(return_value=True),
         symbol_info_tick=MagicMock(return_value=tick),
         order_send=MagicMock(return_value=fake_result),
         last_error=MagicMock(return_value=(0, "")),
@@ -725,6 +728,8 @@ def test_close_position_uses_position_field(monkeypatch):
         ORDER_TYPE_BUY=0,
         ORDER_TYPE_SELL=1,
         TRADE_ACTION_DEAL=1,
+        ORDER_FILLING_FOK=0,
+        ORDER_FILLING_IOC=1,
         ORDER_FILLING_RETURN=2,
         ORDER_TIME_GTC=0,
         TRADE_RETCODE_DONE=10009,

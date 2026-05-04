@@ -42,6 +42,7 @@ def _retry(n: int = 3):
 class Mt5Client:
     def __init__(self, cfg: Config):
         self._cfg = cfg
+        self._filling_cache: dict[str, int] = {}
 
     def initialize(self) -> bool:
         ok = mt5.initialize()
@@ -106,6 +107,22 @@ class Mt5Client:
             info = mt5.symbol_info(symbol)
         return info
 
+    def resolve_filling_mode(self, symbol: str) -> int:
+        cached = self._filling_cache.get(symbol)
+        if cached is not None:
+            return cached
+        info = self.get_symbol_info(symbol)
+        mask = int(getattr(info, "filling_mode", 0)) if info is not None else 0
+        if mask & 2:
+            mode = mt5.ORDER_FILLING_IOC
+        elif mask & 1:
+            mode = mt5.ORDER_FILLING_FOK
+        else:
+            mode = mt5.ORDER_FILLING_RETURN
+        self._filling_cache[symbol] = mode
+        logger.info("filling_mode resolved symbol=%s mask=%d mode=%s", symbol, mask, mode)
+        return mode
+
     @_retry(3)
     def get_ohlc(self, symbol: str, timeframe: str, n_bars: int) -> list[dict]:
         tf = TIMEFRAME_MAP.get(timeframe.upper())
@@ -160,7 +177,7 @@ class Mt5Client:
             "sl": sl,
             "tp": tp,
             "comment": comment,
-            "type_filling": mt5.ORDER_FILLING_RETURN,
+            "type_filling": self.resolve_filling_mode(symbol),
             "type_time": mt5.ORDER_TIME_GTC,
         }
         result = mt5.order_send(request)
@@ -209,7 +226,7 @@ class Mt5Client:
             "price": price,
             "deviation": 20,
             "comment": "phase16_close",
-            "type_filling": mt5.ORDER_FILLING_RETURN,
+            "type_filling": self.resolve_filling_mode(pos.symbol),
             "type_time": mt5.ORDER_TIME_GTC,
         }
         result = mt5.order_send(request)
