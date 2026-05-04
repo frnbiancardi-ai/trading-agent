@@ -183,6 +183,13 @@ class Config:
     PULLBACK_ENTRY_BUFFER_ATR: float = float(os.getenv("PULLBACK_ENTRY_BUFFER_ATR", "0.1"))
     PULLBACK_SL_BUFFER_ATR: float = float(os.getenv("PULLBACK_SL_BUFFER_ATR", "0.1"))
 
+    # Strategy v2 fase 17.4 — Multi-timeframe + divergenze attive
+    ENABLE_MTF_FILTER: bool = _get_bool("ENABLE_MTF_FILTER", True)
+    MTF_TIMEFRAME: str = os.getenv("MTF_TIMEFRAME", "H1")
+    MTF_BARS: int = max(50, int(os.getenv("MTF_BARS", "100")))
+    ENABLE_DIVERGENCE_VETO: bool = _get_bool("ENABLE_DIVERGENCE_VETO", True)
+    DIVERGENCE_LOOKBACK: int = max(5, int(os.getenv("DIVERGENCE_LOOKBACK", "20")))
+
 
 _VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
 if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:

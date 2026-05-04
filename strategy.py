@@ -18,6 +18,7 @@ from indicators import (
     find_support_resistance,
     check_breakout_quality,
     calculate_risk_reward,
+    check_rsi_divergence,
 )
 from indicators_advanced import bollinger_bands
 from pullback_engine import detect_pullback
@@ -259,6 +260,16 @@ class IntradayStrategy:
                 require_volume_contraction=cfg.PULLBACK_REQUIRE_VOLUME_CONTRACTION,
             )
 
+        divergence = "NONE"
+        if cfg.ENABLE_DIVERGENCE_VETO:
+            divergence = check_rsi_divergence(
+                bars, rsi_series, lookback=cfg.DIVERGENCE_LOOKBACK,
+            )
+
+        h1_bias = "NEUTRAL"
+        if cfg.ENABLE_MTF_FILTER:
+            h1_bias = self._compute_mtf_bias(symbol)
+
         indicators_snapshot = {
             "sma_20": sma20,
             "sma_50": sma50,
@@ -272,6 +283,8 @@ class IntradayStrategy:
             "pip_size": pip_size,
             "squeeze": squeeze_info,
             "pullback": pullback_info,
+            "divergence": divergence,
+            "h1_bias": h1_bias,
         }
 
         decision = self.identify_entry_setup(bars, indicators_snapshot, sr, patterns)
@@ -283,6 +296,40 @@ class IntradayStrategy:
         indicators_snapshot["setup_subtype"] = subtype
 
         if setup_type == "READY":
+            if cfg.ENABLE_DIVERGENCE_VETO:
+                if direction == "BUY" and divergence == "BEARISH_DIVERGENCE":
+                    return TechnicalSetup(
+                        symbol=symbol, timeframe=timeframe, setup_type="NONE",
+                        direction=None, entry_price=None, stop_loss=None, take_profit=None,
+                        confidence=0.0,
+                        reason="divergenza_ribassista_su_long",
+                        indicators=indicators_snapshot, support_resistance=sr,
+                    )
+                if direction == "SELL" and divergence == "BULLISH_DIVERGENCE":
+                    return TechnicalSetup(
+                        symbol=symbol, timeframe=timeframe, setup_type="NONE",
+                        direction=None, entry_price=None, stop_loss=None, take_profit=None,
+                        confidence=0.0,
+                        reason="divergenza_rialzista_su_short",
+                        indicators=indicators_snapshot, support_resistance=sr,
+                    )
+
+            if cfg.ENABLE_MTF_FILTER:
+                contrary_long = direction == "BUY" and h1_bias == "BEARISH"
+                contrary_short = direction == "SELL" and h1_bias == "BULLISH"
+                if contrary_long or contrary_short:
+                    return TechnicalSetup(
+                        symbol=symbol, timeframe=timeframe, setup_type="FORMING",
+                        direction=direction,
+                        entry_price=None, stop_loss=None, take_profit=None,
+                        confidence=min(trend_strength, 0.5),
+                        reason=(
+                            f"setup {direction} contrario a h1_bias={h1_bias}, "
+                            f"downgrade a FORMING"
+                        ),
+                        indicators=indicators_snapshot, support_resistance=sr,
+                    )
+
             entry, sl, tp = self._compute_levels(
                 direction=direction, last_close=last_close, atr_val=atr_val,
                 sr=sr, pip_size=pip_size,
@@ -301,6 +348,7 @@ class IntradayStrategy:
             confidence = self._score_confidence(
                 trend_strength=trend_strength, patterns=patterns,
                 breakout=breakout, rr=rr, direction=direction,
+                h1_bias=h1_bias,
             )
             return TechnicalSetup(
                 symbol=symbol, timeframe=timeframe, setup_type="READY",
@@ -735,6 +783,7 @@ class IntradayStrategy:
         breakout: str,
         rr: float,
         direction: str,
+        h1_bias: str = "NEUTRAL",
     ) -> float:
         cfg = self.cfg
         # Trend 0..0.3
@@ -757,11 +806,57 @@ class IntradayStrategy:
         target = max(cfg.MIN_RISK_REWARD_RATIO, 1.5)
         rr_score = min(rr / (target * 2), 1.0) * 0.2
 
-        # Multi-timeframe alignment placeholder 0.1
+        # Multi-timeframe alignment 0..0.1: boost if aligned, reduce if contrary
         mtf_score = 0.1
+        if cfg.ENABLE_MTF_FILTER:
+            aligned = (direction == "BUY" and h1_bias == "BULLISH") or (
+                direction == "SELL" and h1_bias == "BEARISH"
+            )
+            contrary = (direction == "BUY" and h1_bias == "BEARISH") or (
+                direction == "SELL" and h1_bias == "BULLISH"
+            )
+            if aligned:
+                mtf_score = 0.1  # Full boost
+            elif contrary:
+                mtf_score = 0.02  # Penalty (downgrade only slightly, divergence veto handles hard rejection)
+            else:
+                mtf_score = 0.05  # Neutral bias
 
         total = trend_score + pattern_score + vol_score + rr_score + mtf_score
         return round(min(max(total, 0.0), 1.0), 4)
+
+    def _compute_mtf_bias(self, symbol: str) -> str:
+        """Calcola bias su H1 usando SMA20/SMA50 alignment.
+
+        Returns: "BULLISH", "BEARISH", or "NEUTRAL"
+        """
+        cfg = self.cfg
+        try:
+            bars_h1 = self.mt5.get_ohlc(symbol, cfg.MTF_TIMEFRAME, cfg.MTF_BARS)
+        except Exception as exc:
+            self.log.warning("_compute_mtf_bias get_ohlc failed for %s: %s", symbol, exc)
+            return "NEUTRAL"
+
+        if not bars_h1 or len(bars_h1) < 50:
+            return "NEUTRAL"
+
+        closes_h1 = [b["close"] for b in bars_h1]
+        sma20_h1 = sma(closes_h1, 20)
+        sma50_h1 = sma(closes_h1, 50)
+
+        sma20_val = _last_valid(sma20_h1)
+        sma50_val = _last_valid(sma50_h1)
+        last_close_h1 = closes_h1[-1] if closes_h1 else None
+
+        if None in (sma20_val, sma50_val, last_close_h1):
+            return "NEUTRAL"
+
+        if last_close_h1 > sma20_val > sma50_val:
+            return "BULLISH"
+        elif last_close_h1 < sma20_val < sma50_val:
+            return "BEARISH"
+        else:
+            return "NEUTRAL"
 
     def _apply_sentiment(
         self,
