@@ -164,6 +164,11 @@ class Config:
     SR_LOOKBACK_BARS: int = max(20, int(os.getenv("SR_LOOKBACK_BARS", "100")))
     SR_TOLERANCE_PIPS: float = float(os.getenv("SR_TOLERANCE_PIPS", "5"))
 
+    # Setup mode (fase 16+)
+    # true  = READY richiede breakout=="CLEAN" (rottura attiva max swing + volume)
+    # false = READY ammesso anche su trend-continuation/pullback senza rottura
+    REQUIRE_BREAKOUT_FOR_READY: bool = _get_bool("REQUIRE_BREAKOUT_FOR_READY", True)
+
 
 _VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
 if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:

@@ -324,20 +324,23 @@ class IntradayStrategy:
         support = sr.get("support")
         tol = cfg.SR_TOLERANCE_PIPS * pip_size if pip_size > 0 else 0.0
 
+        breakout_ok = (breakout == "CLEAN") or (not cfg.REQUIRE_BREAKOUT_FOR_READY)
+
         if (
             bullish_align
             and trend_strength > cfg.MIN_TREND_STRENGTH
             and rsi_in_band
-            and breakout == "CLEAN"
+            and breakout_ok
             and pattern_ok_bull
             and (resistance is None or last_close > resistance - tol)
         ):
             ref = f"resistance={resistance:.5f}" if resistance is not None else "no_resistance"
+            mode = "breakout" if breakout == "CLEAN" else "trend_continuation"
             return {
                 "type": "READY", "direction": "BUY",
                 "reason": (
                     f"trend_strength={trend_strength:.2f}, MAs allineate, "
-                    f"breakout CLEAN vicino/sopra {ref} (tol={cfg.SR_TOLERANCE_PIPS}p)"
+                    f"{mode} vicino/sopra {ref} (tol={cfg.SR_TOLERANCE_PIPS}p)"
                 ),
             }
 
@@ -345,16 +348,17 @@ class IntradayStrategy:
             bearish_align
             and trend_strength > cfg.MIN_TREND_STRENGTH
             and rsi_in_band
-            and breakout == "CLEAN"
+            and breakout_ok
             and pattern_ok_bear
             and (support is None or last_close < support + tol)
         ):
             ref = f"support={support:.5f}" if support is not None else "no_support"
+            mode = "breakdown" if breakout == "CLEAN" else "trend_continuation"
             return {
                 "type": "READY", "direction": "SELL",
                 "reason": (
                     f"trend_strength={trend_strength:.2f}, MAs allineate al ribasso, "
-                    f"breakdown CLEAN vicino/sotto {ref} (tol={cfg.SR_TOLERANCE_PIPS}p)"
+                    f"{mode} vicino/sotto {ref} (tol={cfg.SR_TOLERANCE_PIPS}p)"
                 ),
             }
 
