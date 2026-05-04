@@ -330,14 +330,14 @@ class IntradayStrategy:
             and rsi_in_band
             and breakout == "CLEAN"
             and pattern_ok_bull
-            and resistance is not None
-            and last_close > resistance
+            and (resistance is None or last_close > resistance - tol)
         ):
+            ref = f"resistance={resistance:.5f}" if resistance is not None else "no_resistance"
             return {
                 "type": "READY", "direction": "BUY",
                 "reason": (
                     f"trend_strength={trend_strength:.2f}, MAs allineate, "
-                    f"breakout CLEAN sopra resistance={resistance:.5f}"
+                    f"breakout CLEAN vicino/sopra {ref} (tol={cfg.SR_TOLERANCE_PIPS}p)"
                 ),
             }
 
@@ -347,14 +347,14 @@ class IntradayStrategy:
             and rsi_in_band
             and breakout == "CLEAN"
             and pattern_ok_bear
-            and support is not None
-            and last_close < support
+            and (support is None or last_close < support + tol)
         ):
+            ref = f"support={support:.5f}" if support is not None else "no_support"
             return {
                 "type": "READY", "direction": "SELL",
                 "reason": (
                     f"trend_strength={trend_strength:.2f}, MAs allineate al ribasso, "
-                    f"breakdown CLEAN sotto support={support:.5f}"
+                    f"breakdown CLEAN vicino/sotto {ref} (tol={cfg.SR_TOLERANCE_PIPS}p)"
                 ),
             }
 
