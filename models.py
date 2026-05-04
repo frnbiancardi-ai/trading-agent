@@ -206,3 +206,55 @@ class SentimentAnalysis:
     relevant_news_count: int
     sample_headlines: list[str] = field(default_factory=list)
     timestamp: datetime | None = None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Phase 18 — Intermarket models (Murphy + Probo)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class IntermarketContext:
+    """Contesto intermarket: trend di Dollar, Gold, Oil, Bond Yields."""
+    dollar_trend: Literal["STRONG", "WEAK", "NEUTRAL"]
+    gold_trend: Literal["RISING", "FALLING", "FLAT"]
+    oil_trend: Literal["RISING", "FALLING", "FLAT"]
+    bond_yield_trend: Literal["RISING", "FALLING", "FLAT"] = "FLAT"
+    timestamp: datetime | None = None
+
+
+@dataclass
+class RegimeState:
+    """Stato regime di mercato: Risk-On, Risk-Off, Neutral."""
+    regime: Literal["RISK_ON", "RISK_OFF", "NEUTRAL", "INFLATIONARY"]
+    confidence: float = 0.0
+    duration_bars: int = 0
+    warning_signals: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SessionInfo:
+    """Informazioni sulla sessione di trading corrente."""
+    name: Literal["ASIAN", "LONDON", "NEW_YORK", "OVERLAP", "OFF_HOURS"]
+    quality_for_symbol: float = 0.5  # 0.0–1.0
+    expected_volatility: Literal["LOW", "NORMAL", "HIGH"] = "NORMAL"
+
+
+@dataclass
+class CrossAssetVerdict:
+    """Verdetto filtro cross-asset confirmation."""
+    confirmed: bool = False
+    contradicts: bool = False
+    confidence_adjustment: float = 0.0  # positivo=boost, negativo=penalty
+    reason: str = ""
+
+
+@dataclass
+class FibonacciTargets:
+    """Target Fibonacci multipli per presa profitto progressiva."""
+    tp_382: float = 0.0
+    tp_500: float = 0.0
+    tp_618: float = 0.0
+    tp_100: float = 0.0
+    tp_161: float = 0.0
+    recommended_primary_tp: float = 0.0

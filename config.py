@@ -197,6 +197,42 @@ class Config:
     PARTIAL_CLOSE_FRACTION: float = float(os.getenv("PARTIAL_CLOSE_FRACTION", "0.5"))
     TRAIL_ATR_MULTIPLIER: float = float(os.getenv("TRAIL_ATR_MULTIPLIER", "3.0"))
 
+    # Strategy v3 fase 18.1 — Intermarket context engine (Murphy)
+    ENABLE_INTERMARKET_FILTER: bool = _get_bool("ENABLE_INTERMARKET_FILTER", True)
+    INTERMARKET_TIMEFRAME: str = os.getenv("INTERMARKET_TIMEFRAME", "H4")
+    INTERMARKET_LOOKBACK_BARS: int = max(50, int(os.getenv("INTERMARKET_LOOKBACK_BARS", "100")))
+    INTERMARKET_SYMBOLS: list[str] = _get_list("INTERMARKET_SYMBOLS", ["XAUUSD", "USOIL"])
+    DXY_PROXY_SYMBOL: str = os.getenv("DXY_PROXY_SYMBOL", "EURUSD")
+
+    # Strategy v3 fase 18.2 — Regime detection
+    ENABLE_REGIME_DETECTION: bool = _get_bool("ENABLE_REGIME_DETECTION", True)
+    REGIME_RISK_OFF_VETO: bool = _get_bool("REGIME_RISK_OFF_VETO", True)
+    REGIME_CONFIDENCE_PENALTY: float = float(os.getenv("REGIME_CONFIDENCE_PENALTY", "0.15"))
+
+    # Strategy v3 fase 18.3 — Correlation monitor
+    ENABLE_CORRELATION_MONITOR: bool = _get_bool("ENABLE_CORRELATION_MONITOR", True)
+    CORRELATION_PERIOD: int = max(5, int(os.getenv("CORRELATION_PERIOD", "20")))
+    CORRELATION_DIVERGENCE_THRESHOLD: float = float(os.getenv("CORRELATION_DIVERGENCE_THRESHOLD", "0.5"))
+
+    # Strategy v3 fase 18.4 — Cross-asset confirmation
+    ENABLE_CROSS_ASSET_FILTER: bool = _get_bool("ENABLE_CROSS_ASSET_FILTER", True)
+    CROSS_ASSET_VETO_ON_CONTRADICTION: bool = _get_bool("CROSS_ASSET_VETO_ON_CONTRADICTION", True)
+    CROSS_ASSET_BOOST: float = float(os.getenv("CROSS_ASSET_BOOST", "0.10"))
+    CROSS_ASSET_PENALTY: float = float(os.getenv("CROSS_ASSET_PENALTY", "0.20"))
+
+    # Strategy v3 fase 18.5 — Session awareness (Probo)
+    ENABLE_SESSION_FILTER: bool = _get_bool("ENABLE_SESSION_FILTER", True)
+    SESSION_QUALITY_MIN: float = float(os.getenv("SESSION_QUALITY_MIN", "0.3"))
+    SESSION_LONDON_START: int = int(os.getenv("SESSION_LONDON_START", "8"))
+    SESSION_LONDON_END: int = int(os.getenv("SESSION_LONDON_END", "16"))
+    SESSION_NY_START: int = int(os.getenv("SESSION_NY_START", "14"))
+    SESSION_NY_END: int = int(os.getenv("SESSION_NY_END", "22"))
+
+    # Strategy v3 fase 18.6 — Fibonacci targets (Probo)
+    ENABLE_FIBONACCI_TARGETS: bool = _get_bool("ENABLE_FIBONACCI_TARGETS", True)
+    FIBONACCI_PARTIAL_CLOSE_LEVELS: list[str] = _get_list("FIBONACCI_PARTIAL_CLOSE_LEVELS", ["0.382", "0.618"])
+    FIBONACCI_TRAIL_AFTER_LEVEL: float = float(os.getenv("FIBONACCI_TRAIL_AFTER_LEVEL", "0.618"))
+
 
 _VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
 if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
