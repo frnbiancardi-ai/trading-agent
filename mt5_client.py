@@ -231,3 +231,112 @@ class Mt5Client:
                 f"comment={result.comment}"
             ),
         )
+
+    def modify_position(
+        self, position_id: int, sl: float | None = None, tp: float | None = None
+    ) -> OrderResult:
+        """Modifica SL e/o TP di una posizione aperta.
+
+        Usa mt5.order_send con action=TRADE_ACTION_SLTP.
+        """
+        positions = mt5.positions_get(ticket=position_id) or []
+        if not positions:
+            return OrderResult(
+                success=False,
+                error_message=f"position {position_id} non trovata",
+            )
+        pos = positions[0]
+
+        request = {
+            "action": mt5.TRADE_ACTION_SLTP,
+            "symbol": pos.symbol,
+            "position": int(position_id),
+            "sl": sl if sl is not None else pos.sl,
+            "tp": tp if tp is not None else pos.tp,
+            "type_filling": mt5.ORDER_FILLING_RETURN,
+            "type_time": mt5.ORDER_TIME_GTC,
+        }
+        result = mt5.order_send(request)
+        if result is None:
+            return OrderResult(
+                success=False,
+                error_message=f"order_send returned None: {mt5.last_error()}",
+            )
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            logger.info(
+                "Modify position OK ticket=%s sl=%.5f tp=%.5f",
+                position_id, request["sl"], request["tp"],
+            )
+            return OrderResult(success=True, order_id=result.order)
+        return OrderResult(
+            success=False,
+            error_message=(
+                f"modify rejected retcode={result.retcode} "
+                f"comment={result.comment}"
+            ),
+        )
+
+    def partial_close(self, position_id: int, lots: float) -> OrderResult:
+        """Chiude una frazione di una posizione aperta.
+
+        Vende/compra `lots` volumi della posizione, mantenendo il resto aperto.
+        """
+        positions = mt5.positions_get(ticket=position_id) or []
+        if not positions:
+            return OrderResult(
+                success=False,
+                error_message=f"position {position_id} non trovata",
+            )
+        pos = positions[0]
+
+        if lots > pos.volume:
+            return OrderResult(
+                success=False,
+                error_message=f"lots {lots} > position volume {pos.volume}",
+            )
+
+        tick = mt5.symbol_info_tick(pos.symbol)
+        if tick is None:
+            return OrderResult(
+                success=False,
+                error_message=f"symbol_info_tick failed per {pos.symbol}: {mt5.last_error()}",
+            )
+
+        if pos.type == mt5.POSITION_TYPE_BUY:
+            order_type = mt5.ORDER_TYPE_SELL
+            price = tick.bid
+        else:
+            order_type = mt5.ORDER_TYPE_BUY
+            price = tick.ask
+
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": pos.symbol,
+            "volume": lots,
+            "type": order_type,
+            "position": int(position_id),
+            "price": price,
+            "deviation": 20,
+            "comment": "phase17.5_partial",
+            "type_filling": mt5.ORDER_FILLING_RETURN,
+            "type_time": mt5.ORDER_TIME_GTC,
+        }
+        result = mt5.order_send(request)
+        if result is None:
+            return OrderResult(
+                success=False,
+                error_message=f"order_send returned None: {mt5.last_error()}",
+            )
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            logger.info(
+                "Partial close OK ticket=%s lots=%.4f remaining=%.4f order=%s",
+                position_id, lots, pos.volume - lots, result.order,
+            )
+            return OrderResult(success=True, order_id=result.order)
+        return OrderResult(
+            success=False,
+            error_message=(
+                f"partial close rejected retcode={result.retcode} "
+                f"comment={result.comment}"
+            ),
+        )

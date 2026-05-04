@@ -26,6 +26,8 @@ class PositionInfo:
     take_profit: float
     profit: float
     ticket: int = 0
+    sl_at_breakeven: bool = False
+    partial_closed: bool = False
 
 
 @dataclass
@@ -147,18 +149,27 @@ class StrategyOutcome:
 
 @dataclass
 class OpenPositionVerdict:
-    """Esito della valutazione di una posizione aperta nel ciclo H24 (fase 16).
+    """Esito della valutazione di una posizione aperta nel ciclo H24 (fase 16+).
 
     `action` può essere:
       - HOLD: mantenere la posizione invariata.
       - CLOSE_PROTECT: chiudere per proteggere profitto su contesto tecnico negativo.
       - CLOSE_END_OF_DAY: chiudere a fine finestra operativa giornaliera (no overnight).
+      - MOVE_TO_BREAKEVEN: spostare SL a entry quando profit >= 1R (fase 17.5).
+      - PARTIAL_CLOSE_50: chiudere 50% posizione quando profit >= 2R (fase 17.5).
+      - TRAIL_STOP: sposta SL secondo Chandelier Exit quando profit >= 2R + già parzialmente chiusa (fase 17.5).
     """
     symbol: str
     ticket: int
-    action: Literal["HOLD", "CLOSE_PROTECT", "CLOSE_END_OF_DAY"]
+    action: Literal[
+        "HOLD", "CLOSE_PROTECT", "CLOSE_END_OF_DAY",
+        "MOVE_TO_BREAKEVEN", "PARTIAL_CLOSE_50", "TRAIL_STOP"
+    ]
     reason: str
     profit_r_multiple: float | None = None
+    new_stop_loss: float | None = None
+    new_take_profit: float | None = None
+    close_fraction: float | None = None
 
 
 @dataclass

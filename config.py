@@ -190,6 +190,13 @@ class Config:
     ENABLE_DIVERGENCE_VETO: bool = _get_bool("ENABLE_DIVERGENCE_VETO", True)
     DIVERGENCE_LOOKBACK: int = max(5, int(os.getenv("DIVERGENCE_LOOKBACK", "20")))
 
+    # Strategy v2 fase 17.5 — Position management attiva
+    ENABLE_ACTIVE_POSITION_MGMT: bool = _get_bool("ENABLE_ACTIVE_POSITION_MGMT", True)
+    BREAKEVEN_TRIGGER_R: float = float(os.getenv("BREAKEVEN_TRIGGER_R", "1.0"))
+    PARTIAL_CLOSE_TRIGGER_R: float = float(os.getenv("PARTIAL_CLOSE_TRIGGER_R", "2.0"))
+    PARTIAL_CLOSE_FRACTION: float = float(os.getenv("PARTIAL_CLOSE_FRACTION", "0.5"))
+    TRAIL_ATR_MULTIPLIER: float = float(os.getenv("TRAIL_ATR_MULTIPLIER", "3.0"))
+
 
 _VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
 if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
