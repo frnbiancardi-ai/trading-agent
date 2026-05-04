@@ -60,13 +60,18 @@ def _bars(start: float = 1.0900, step: float = 0.0005, n: int = 100) -> list[dic
     ]
 
 
-def _symbol_info_mock(pip_size: float = 0.0001, tick_value: float = 10.0):
-    """Mock symbol info for risk calculation."""
+def _symbol_info_mock(point: float = 0.0001, tick_value: float = 1.0):
+    """Mock symbol info 4-digit EURUSD: point=pip_size=0.0001.
+
+    Con digits=4 _pip_size non moltiplica × 10. pip_value = tick_value * point / point = 1.0.
+    distance_pips = |1.1000 - 1.0950| / 0.0001 = 50. risk = 1 lot × 1 × 50 = $50.
+    Quindi profit=$50 → profit_r=1.0 (1R), $100 → 2R, $125 → 2.5R.
+    """
     info = MagicMock()
-    info.point = pip_size
-    info.digits = 5
+    info.point = point
+    info.digits = 4
     info.trade_tick_value = tick_value
-    info.trade_tick_size = pip_size
+    info.trade_tick_size = point
     return info
 
 
@@ -77,7 +82,7 @@ def _symbol_info_mock(pip_size: float = 0.0001, tick_value: float = 10.0):
 
 def test_move_to_breakeven_at_1r():
     cfg = _make_cfg()
-    pos = _position(entry=1.1000, sl=1.0950, profit=50.0)  # ~1R profit
+    pos = _position(entry=1.1000, sl=1.0950, profit=55.0)  # ~1.1R profit (margine float)
     bars = _bars()
     sym_info = _symbol_info_mock()
 
@@ -92,7 +97,7 @@ def test_move_to_breakeven_at_1r():
 
 def test_move_to_breakeven_skipped_if_already_at_be():
     cfg = _make_cfg()
-    pos = _position(entry=1.1000, sl=1.0950, profit=50.0, sl_at_breakeven=True)
+    pos = _position(entry=1.1000, sl=1.0950, profit=55.0, sl_at_breakeven=True)
     bars = _bars()
     sym_info = _symbol_info_mock()
 
@@ -113,7 +118,8 @@ def test_move_to_breakeven_skipped_if_already_at_be():
 
 def test_partial_close_at_2r():
     cfg = _make_cfg()
-    pos = _position(entry=1.1000, sl=1.0950, profit=100.0)  # ~2R profit
+    # sl_at_breakeven=True per saltare BE check e arrivare a partial close
+    pos = _position(entry=1.1000, sl=1.0950, profit=105.0, sl_at_breakeven=True)
     bars = _bars()
     sym_info = _symbol_info_mock()
 
@@ -128,7 +134,10 @@ def test_partial_close_at_2r():
 
 def test_partial_close_skipped_if_already_closed():
     cfg = _make_cfg()
-    pos = _position(entry=1.1000, sl=1.0950, profit=100.0, partial_closed=True)
+    pos = _position(
+        entry=1.1000, sl=1.0950, profit=105.0,
+        sl_at_breakeven=True, partial_closed=True,
+    )
     bars = _bars()
     sym_info = _symbol_info_mock()
 
@@ -153,7 +162,8 @@ def test_trailing_stop_after_partial_close():
         direction="BUY",
         entry=1.1000,
         sl=1.0950,
-        profit=125.0,  # ~2.5R
+        profit=130.0,  # ~2.6R
+        sl_at_breakeven=True,
         partial_closed=True,
     )
     bars = _bars(start=1.0900, step=0.0005, n=30)  # Trending up
@@ -190,7 +200,7 @@ def test_hold_profit_below_1r():
 
 def test_hold_active_mgmt_disabled():
     cfg = _make_cfg(ENABLE_ACTIVE_POSITION_MGMT=False)
-    pos = _position(entry=1.1000, sl=1.0950, profit=100.0)  # >= 2R
+    pos = _position(entry=1.1000, sl=1.0950, profit=105.0)  # >= 2R
     bars = _bars()
     sym_info = _symbol_info_mock()
 

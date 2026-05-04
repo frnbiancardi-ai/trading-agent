@@ -54,6 +54,13 @@ def _make_cfg(**overrides):
     cfg.PULLBACK_REQUIRE_VOLUME_CONTRACTION = True
     cfg.PULLBACK_ENTRY_BUFFER_ATR = 0.1
     cfg.PULLBACK_SL_BUFFER_ATR = 0.1
+    # Phase 17.4 — divergence + MTF
+    cfg.ENABLE_RSI_DIVERGENCE_VETO = False
+    cfg.DIVERGENCE_LOOKBACK = 20
+    cfg.RSI_PERIOD = 14
+    cfg.MTF_TIMEFRAME = "H1"
+    cfg.MTF_BARS = 100
+    cfg.MTF_BIAS_WEIGHT = 0.10
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg

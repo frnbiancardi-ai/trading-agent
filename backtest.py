@@ -174,9 +174,14 @@ def _calculate_metrics(trades: list[BacktestTrade], start_balance: float) -> Bac
 
     gross_profit = sum(t.profit_pct for t in winning) if winning else 0
     gross_loss = abs(sum(t.profit_pct for t in losing)) if losing else 0
-    report.profit_factor = gross_profit / gross_loss if gross_loss > 0 else (
-        gross_profit if gross_profit > 0 else 0
-    )
+    # No losses + at least one win = profit_factor effettivamente infinito.
+    # Convenzione: float('inf') per essere semanticamente corretto.
+    if gross_loss > 0:
+        report.profit_factor = gross_profit / gross_loss
+    elif gross_profit > 0:
+        report.profit_factor = float("inf")
+    else:
+        report.profit_factor = 0.0
 
     report.expectancy = (
         report.winrate * report.avg_win_pct - (1 - report.winrate) * abs(report.avg_loss_pct)
