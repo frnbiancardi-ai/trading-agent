@@ -12,19 +12,19 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_end: `2026-05-02T12:00:00+02:00`
-- last_session_reason: `Fase 16 code-complete + dry-run weekend OK + merge feature/python-pure-strategy → main + tag v1.2.0. Validazione live giorno feriale a carico utente: in caso di errori apre bug e si patcha.`
+- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_start: `2026-05-04T...` (resumed from context compaction)
+- last_session_reason: `Continuazione fase 17 implementation da contesto precedente. 17.4, 17.5, 17.6 code-complete e pushed.`
 
 ## Stato fase corrente
 
-- current_phase: `16`
-- current_phase_title: `H24 Strategy Update (intraday H24 scheduler + open-position management + protective close)`
+- current_phase: `17`
+- current_phase_title: `Strategy v2 Defendi (multi-setup: squeeze, pullback, MTF, divergence, position mgmt, backtest)`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `code_complete`
-- branch: `feature/python-pure-strategy`
-- last_action: `2026-05-02 — Fase 16 code-complete. config.py: aggiunte INTRADAY_SCAN_INTERVAL_MINUTES (15), INTRADAY_FIRST_CYCLE_DELAY_MINUTES (5), PAUSE_TRADING, DRY_RUN, MIN_PROTECT_PROFIT_R_MULTIPLIER (1.0), ROLLING_DRAWDOWN_*, LOG_ROTATION (weekly), CLOSE_BEFORE_END_OF_WINDOW; helper _get_int robusto a suffissi non numerici. models.py: PositionInfo.ticket, StrategyOutcome esteso (drawdown/news/pause/addon flags), nuovi OpenPositionVerdict + SchedulerCycleRecord. mt5_client.close_position(position_id) con campo position (no apertura opposta), get_account_state popola ticket. strategy.py: StrategyEnvironment (is_intraday_window/is_weekend/is_news_window hook), evaluate_open_position (HOLD/CLOSE_PROTECT/CLOSE_END_OF_DAY), compute_existing_potential_loss_amount, would_proposal_exceed_drawdown, is_addon_for. scanner.py: deep_analyze accetta paused/news_blocked, marca is_addon, blocca su drawdown_violation. scheduler.py: nuove classi HeartbeatStore (tabelle heartbeat+scheduler_state) e IntradayLoopScheduler (loop H24 + first_cycle_delay + overrun-skip + ordine ops gestione posizioni→pause→window→news→scan→trade). main.py rifatto su loop H24, no APScheduler. mcp_server.py: tool close_position{position_id} con DRY_RUN bypass. tests/test_phase16.py: 31 test (env, drawdown, evaluate_open_position, scanner flags, heartbeat, run_one_cycle, close_position). scripts/dry_run_cycle.py per smoke test weekend. doc phase-16-h24-strategy-update.md. Test 173/173 verde.`
-- next_action: `Validazione utente integrata fasi 14+15+16: (1) checkpoint live main.py su demo TenTrade ≥1 ora finestra 08-20 lun-ven, verifica heartbeat in trades.db; (2) dry-run weekend con scripts/dry_run_cycle.py; (3) verifica MCP close_position tool da Claude Desktop; (4) se OK → VALIDATED tutte e tre, merge feature/python-pure-strategy in main, tag v1.2.0.`
+- current_substep: `17.6_code_complete` (17.7 calibration skeleton started)
+- branch: `feature/strategy-v2-defendi` (branch da main v1.2.0)
+- last_action: `2026-05-04 — Fase 17.4 completed: _compute_mtf_bias() + _score_confidence(h1_bias) integration, divergence veto. Fase 17.5 completed: position_manager.py (BE move, partial close, trailing), models.py esteso (PositionInfo flags, OpenPositionVerdict actions), Mt5Client.modify_position/partial_close. Fase 17.6 completed: backtest.py (BacktestMt5Client, BacktestEngine, metrics), tests. All 3 phases committed + pushed.`
+- next_action: `Fase 17.7 calibration + validation: (1) Historical data download script (scripts/download_historical.py — TBD); (2) Grid-search su params chiave (MIN_TREND_STRENGTH, MIN_BREAKOUT_VOLUME_RATIO, MIN_RISK_REWARD_RATIO, BREAKEVEN_TRIGGER_R, BB_SQUEEZE_PERCENTILE); (3) Backtest v1.2.0 vs v2 su 6m EURUSD+GBPUSD; (4) Pareto-optimal selection; (5) PHASE_17_VALIDATION.md report; (6) Merge decision (v2 vs v1.2.0 >=2 metrics). Stimato: 3-4 giorni (dipende da download dati storici).`
 
 ## Roadmap v1.1.0 (completata)
 
