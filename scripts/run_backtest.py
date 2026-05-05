@@ -15,6 +15,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# Aggiungi root progetto a sys.path per permettere import quando script lanciato da scripts/
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 from backtest import BacktestEngine, BacktestMt5Client
 from config import Config
 
