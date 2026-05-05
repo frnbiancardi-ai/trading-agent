@@ -126,18 +126,26 @@ class BacktestMt5Client(Mt5Client):
     def get_symbol_info(self, symbol: str):
         """Mock symbol info — campi minimi richiesti da risk_engine + execution."""
         import types
-        # Default forex 5-digit; override per metalli/oil
-        if symbol.upper() in ("XAUUSD", "GOLD"):
+        s = symbol.upper()
+        # Override per metalli/oil
+        if s in ("XAUUSD", "GOLD"):
             point = 0.01
             digits = 2
             tick_value = 1.0
             tick_size = 0.01
-        elif symbol.upper() in ("USOIL", "WTI", "UKOIL"):
+        elif s in ("USOIL", "WTI", "UKOIL"):
             point = 0.01
             digits = 2
             tick_value = 10.0
             tick_size = 0.01
+        elif "JPY" in s:
+            # JPY pairs: 3-digit broker convention -> point=0.001, pip=0.01
+            point = 0.001
+            digits = 3
+            tick_value = 9.0  # ~$9 per pip 1 lot (varia con USDJPY rate)
+            tick_size = 0.001
         else:
+            # Forex maggiori 5-digit
             point = 0.00001
             digits = 5
             tick_value = 10.0
