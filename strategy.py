@@ -35,6 +35,10 @@ from models import (
 from mt5_client import Mt5Client
 from patterns import scan_patterns
 
+# Fase 18 — Intermarket-enhanced engines (lazy-imported in __init__ se flag attivi)
+# Vedi cfg.ENABLE_INTERMARKET_FILTER, ENABLE_REGIME_DETECTION, ENABLE_CROSS_ASSET_FILTER,
+# ENABLE_SESSION_FILTER, ENABLE_FIBONACCI_TARGETS
+
 
 def _last_valid(series: list) -> float | None:
     for v in reversed(series):
@@ -165,6 +169,33 @@ class IntradayStrategy:
         self.log = logger or logging.getLogger(__name__)
         self.env = environment or StrategyEnvironment(cfg, self.log)
 
+        # Fase 18 — istanzia engine intermarket se flag attivi
+        self.intermarket_engine = None
+        self.regime_detector = None
+        self.cross_asset_filter = None
+        self.session_engine = None
+        self.fibonacci_engine = None
+
+        if getattr(cfg, "ENABLE_INTERMARKET_FILTER", False):
+            from intermarket_engine import IntermarketEngine
+            self.intermarket_engine = IntermarketEngine(cfg, mt5_client, self.log)
+
+        if getattr(cfg, "ENABLE_REGIME_DETECTION", False):
+            from regime_detector import RegimeDetector
+            self.regime_detector = RegimeDetector(cfg, self.log)
+
+        if getattr(cfg, "ENABLE_CROSS_ASSET_FILTER", False):
+            from cross_asset_filter import CrossAssetFilter
+            self.cross_asset_filter = CrossAssetFilter(cfg, self.log)
+
+        if getattr(cfg, "ENABLE_SESSION_FILTER", False):
+            from session_engine import SessionEngine
+            self.session_engine = SessionEngine(cfg, self.log)
+
+        if getattr(cfg, "ENABLE_FIBONACCI_TARGETS", False):
+            from fibonacci_targets import FibonacciTargetEngine
+            self.fibonacci_engine = FibonacciTargetEngine(cfg, self.log)
+
     # ─────────────────────────────────────────────────────────────────────
     # Public API
     # ─────────────────────────────────────────────────────────────────────
@@ -270,6 +301,28 @@ class IntradayStrategy:
         if cfg.ENABLE_MTF_FILTER:
             h1_bias = self._compute_mtf_bias(symbol)
 
+        # Fase 18 — intermarket context + regime + session quality
+        intermarket_ctx = None
+        regime_state = None
+        session_quality = 0.5
+        if self.intermarket_engine is not None:
+            try:
+                intermarket_ctx = self.intermarket_engine.get_context()
+            except Exception as exc:
+                self.log.warning("intermarket_engine.get_context fail: %s", exc)
+
+        if self.regime_detector is not None and intermarket_ctx is not None:
+            try:
+                regime_state = self.regime_detector.detect(intermarket_ctx)
+            except Exception as exc:
+                self.log.warning("regime_detector.detect fail: %s", exc)
+
+        if self.session_engine is not None:
+            try:
+                _, session_quality = self.session_engine.is_optimal_session(symbol)
+            except Exception as exc:
+                self.log.warning("session_engine fail: %s", exc)
+
         indicators_snapshot = {
             "sma_20": sma20,
             "sma_50": sma50,
@@ -285,6 +338,10 @@ class IntradayStrategy:
             "pullback": pullback_info,
             "divergence": divergence,
             "h1_bias": h1_bias,
+            # Fase 18
+            "intermarket_context": intermarket_ctx,
+            "regime_state": regime_state,
+            "session_quality": session_quality,
         }
 
         decision = self.identify_entry_setup(bars, indicators_snapshot, sr, patterns)
@@ -295,7 +352,73 @@ class IntradayStrategy:
         subtype = decision.get("subtype", "breakout")
         indicators_snapshot["setup_subtype"] = subtype
 
+        # Fase 18 — cross-asset verdict (calcolato qui, usato per veto + score)
+        cross_verdict = None
+        if (
+            self.cross_asset_filter is not None
+            and intermarket_ctx is not None
+            and direction is not None
+        ):
+            try:
+                cross_verdict = self.cross_asset_filter.check(
+                    symbol, direction, intermarket_ctx, regime_state
+                )
+            except Exception as exc:
+                self.log.warning("cross_asset_filter fail: %s", exc)
+        indicators_snapshot["cross_asset_verdict"] = cross_verdict
+
         if setup_type == "READY":
+            # Fase 18 — veto regime RISK_OFF su asset risk-on (commodity ccy)
+            if (
+                self.regime_detector is not None
+                and regime_state is not None
+                and direction is not None
+            ):
+                if direction == "BUY" and self.regime_detector.should_veto_buy(regime_state, symbol):
+                    return TechnicalSetup(
+                        symbol=symbol, timeframe=timeframe, setup_type="NONE",
+                        direction=None, entry_price=None, stop_loss=None, take_profit=None,
+                        confidence=0.0,
+                        reason=f"regime_veto_buy: {regime_state.regime} su {symbol}",
+                        indicators=indicators_snapshot, support_resistance=sr,
+                    )
+                if direction == "SELL" and self.regime_detector.should_veto_sell(regime_state, symbol):
+                    return TechnicalSetup(
+                        symbol=symbol, timeframe=timeframe, setup_type="NONE",
+                        direction=None, entry_price=None, stop_loss=None, take_profit=None,
+                        confidence=0.0,
+                        reason=f"regime_veto_sell: {regime_state.regime} su {symbol}",
+                        indicators=indicators_snapshot, support_resistance=sr,
+                    )
+
+            # Fase 18 — veto cross-asset CONTRADICTS (configurabile)
+            veto_on_contradiction = getattr(
+                cfg, "CROSS_ASSET_VETO_ON_CONTRADICTION", True
+            )
+            if (
+                cross_verdict is not None
+                and cross_verdict.contradicts
+                and veto_on_contradiction
+            ):
+                return TechnicalSetup(
+                    symbol=symbol, timeframe=timeframe, setup_type="NONE",
+                    direction=None, entry_price=None, stop_loss=None, take_profit=None,
+                    confidence=0.0,
+                    reason=f"cross_asset_veto: {cross_verdict.reason}",
+                    indicators=indicators_snapshot, support_resistance=sr,
+                )
+
+            # Fase 18 — veto sessione qualità troppo bassa
+            session_min = getattr(cfg, "SESSION_QUALITY_MIN", 0.3)
+            if self.session_engine is not None and session_quality < session_min:
+                return TechnicalSetup(
+                    symbol=symbol, timeframe=timeframe, setup_type="NONE",
+                    direction=None, entry_price=None, stop_loss=None, take_profit=None,
+                    confidence=0.0,
+                    reason=f"session_quality_low: {session_quality:.2f} < {session_min}",
+                    indicators=indicators_snapshot, support_resistance=sr,
+                )
+
             if cfg.ENABLE_DIVERGENCE_VETO:
                 if direction == "BUY" and divergence == "BEARISH_DIVERGENCE":
                     return TechnicalSetup(
@@ -334,6 +457,7 @@ class IntradayStrategy:
                 direction=direction, last_close=last_close, atr_val=atr_val,
                 sr=sr, pip_size=pip_size,
                 subtype=subtype, last_bar=bars[-1],
+                bars=bars,  # Fase 18: per fibonacci swings
             )
             rr = calculate_risk_reward(entry, sl, tp)
             indicators_snapshot["risk_reward"] = rr
@@ -349,6 +473,11 @@ class IntradayStrategy:
                 trend_strength=trend_strength, patterns=patterns,
                 breakout=breakout, rr=rr, direction=direction,
                 h1_bias=h1_bias,
+                # Fase 18
+                cross_verdict=cross_verdict,
+                regime_state=regime_state,
+                session_quality=session_quality,
+                symbol=symbol,
             )
             return TechnicalSetup(
                 symbol=symbol, timeframe=timeframe, setup_type="READY",
@@ -719,6 +848,7 @@ class IntradayStrategy:
         pip_size: float,
         subtype: str = "breakout",
         last_bar: dict | None = None,
+        bars: list[dict] | None = None,
     ) -> tuple[float, float, float]:
         cfg = self.cfg
         rr = max(cfg.MIN_RISK_REWARD_RATIO, 1.5)
@@ -774,6 +904,19 @@ class IntradayStrategy:
             risk = sl - entry
             tp = entry - rr * risk
 
+        # Fase 18 — override TP con Fibonacci se engine attivo + bars disponibili
+        if self.fibonacci_engine is not None and bars:
+            try:
+                fib = self.fibonacci_engine.compute(entry, sl, direction, bars)
+                fib_tp = fib.recommended_primary_tp
+                # Usa fib_tp solo se rispetta MIN_RISK_REWARD_RATIO
+                fib_risk = abs(entry - sl)
+                fib_reward = abs(fib_tp - entry)
+                if fib_risk > 0 and (fib_reward / fib_risk) >= cfg.MIN_RISK_REWARD_RATIO:
+                    tp = fib_tp
+            except Exception as exc:
+                self.log.warning("fibonacci_engine.compute fail: %s", exc)
+
         return round(entry, digits), round(sl, digits), round(tp, digits)
 
     def _score_confidence(
@@ -784,30 +927,54 @@ class IntradayStrategy:
         rr: float,
         direction: str,
         h1_bias: str = "NEUTRAL",
+        # Fase 18
+        cross_verdict=None,
+        regime_state=None,
+        session_quality: float = 0.5,
+        symbol: str = "",
     ) -> float:
-        cfg = self.cfg
-        # Trend 0..0.3
-        trend_score = min(trend_strength, 1.0) * 0.3
+        """Confidence score 0..1.
 
-        # Pattern 0..0.2
+        Pesi v2 (Defendi-only): trend 0.30 + pattern 0.20 + volume 0.20 + rr 0.20 + mtf 0.10 = 1.0
+        Pesi v3 (intermarket-enhanced): trend 0.20 + pattern 0.15 + volume 0.15 + rr 0.15 +
+            mtf 0.10 + intermarket(via cross_verdict) 0.10 + session 0.05 + cross_pair 0.05 +
+            regime 0.05 = 1.0
+        Quando engine fase 18 disabilitati: pesi tornano simili a v2 (intermarket/session/regime
+        contribuiscono 0).
+        """
+        cfg = self.cfg
+        v3_active = self.intermarket_engine is not None or self.regime_detector is not None \
+            or self.cross_asset_filter is not None or self.session_engine is not None
+
+        if v3_active:
+            # Pesi v3
+            w_trend, w_pattern, w_vol, w_rr, w_mtf = 0.20, 0.15, 0.15, 0.15, 0.10
+        else:
+            # Pesi v2 (fallback)
+            w_trend, w_pattern, w_vol, w_rr, w_mtf = 0.30, 0.20, 0.20, 0.20, 0.10
+
+        # Trend
+        trend_score = min(trend_strength, 1.0) * w_trend
+
+        # Pattern
         wanted = "bullish" if direction == "BUY" else "bearish"
         has_aligned = any(p["direction"] == wanted for p in patterns)
-        pattern_score = 0.2 if has_aligned else (0.05 if patterns else 0.0)
+        pattern_score = w_pattern if has_aligned else (w_pattern * 0.25 if patterns else 0.0)
 
-        # Volume / breakout 0..0.2
+        # Volume / breakout
         if breakout == "CLEAN":
-            vol_score = 0.2
+            vol_score = w_vol
         elif breakout == "WEAK":
-            vol_score = 0.1
+            vol_score = w_vol * 0.5
         else:
             vol_score = 0.0
 
-        # R:R 0..0.2
+        # R:R
         target = max(cfg.MIN_RISK_REWARD_RATIO, 1.5)
-        rr_score = min(rr / (target * 2), 1.0) * 0.2
+        rr_score = min(rr / (target * 2), 1.0) * w_rr
 
-        # Multi-timeframe alignment 0..0.1: boost if aligned, reduce if contrary
-        mtf_score = 0.1
+        # Multi-timeframe alignment
+        mtf_score = w_mtf
         if cfg.ENABLE_MTF_FILTER:
             aligned = (direction == "BUY" and h1_bias == "BULLISH") or (
                 direction == "SELL" and h1_bias == "BEARISH"
@@ -816,13 +983,30 @@ class IntradayStrategy:
                 direction == "SELL" and h1_bias == "BULLISH"
             )
             if aligned:
-                mtf_score = 0.1  # Full boost
+                mtf_score = w_mtf
             elif contrary:
-                mtf_score = 0.02  # Penalty (downgrade only slightly, divergence veto handles hard rejection)
+                mtf_score = w_mtf * 0.2
             else:
-                mtf_score = 0.05  # Neutral bias
+                mtf_score = w_mtf * 0.5
 
         total = trend_score + pattern_score + vol_score + rr_score + mtf_score
+
+        # Fase 18 — bonus/penalità intermarket (max +0.10)
+        if cross_verdict is not None:
+            # confidence_adjustment già calibrato (boost +0.10 / penalty -0.20)
+            total += cross_verdict.confidence_adjustment
+
+        # Fase 18 — session boost (max +0.05)
+        if self.session_engine is not None:
+            session_boost = max(0.0, (session_quality - 0.5) * 0.10)  # 0..0.05
+            total += session_boost
+
+        # Fase 18 — regime penalty (default -0.05 per direzione contraria)
+        if self.regime_detector is not None and regime_state is not None and direction:
+            penalty = self.regime_detector.confidence_penalty(regime_state, direction, symbol)
+            # Cap penalty contributo a 0.05 per fitting allocation (CONFIDENCE_PENALTY config 0.15)
+            total -= min(penalty, 0.05)
+
         return round(min(max(total, 0.0), 1.0), 4)
 
     def _compute_mtf_bias(self, symbol: str) -> str:
