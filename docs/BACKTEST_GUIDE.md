@@ -30,160 +30,168 @@ git pull
 
 ## 1. Download dati storici da MT5
 
-### 1.1 Limiti broker
-MT5 generalmente fornisce:
-- **M1/M5/M15**: ultimi 2–5 anni (dipende dal broker)
-- **H1/H4**: ultimi 5–10 anni
-- **Daily**: 15+ anni
+### 1.1 Limiti broker (TenTrade demo, confermati 2026-05)
 
-**TenTrade demo** (test reale): ha tipicamente **6–8 anni** su M15, **10+ anni** su Daily. Verifica:
+| Timeframe | Storia disponibile | Anno minimo |
+|-----------|-------------------|-------------|
+| M1        | ~1 anno           | 2025        |
+| M5        | ~2 anni           | 2024        |
+| **M15**   | **~4 anni**       | **2022-04** |
+| M30       | ~6 anni           | 2020        |
+| H1        | ~16 anni          | 2010-03     |
+| H4        | 25+ anni          | 2000        |
+| D1        | 25+ anni          | 2000        |
+
+**Implicazione critica**: backtest puro M15 oltre 4 anni → impossibile con TenTrade. Per estendere usa fonti pubbliche (sezione 1.5).
+
+### 1.2 Verifica storia disponibile
 ```powershell
+cd C:\trading-agent
 .\.venv\Scripts\python.exe -c @"
 import MetaTrader5 as mt5
 from datetime import datetime
 mt5.initialize()
-rates = mt5.copy_rates_from('EURUSD', mt5.TIMEFRAME_M15, datetime(2015, 1, 1), 1)
-print('Prima barra M15 disponibile:', datetime.fromtimestamp(rates[0]['time']) if rates is not None else 'NESSUNA')
+mt5.symbol_select('EURUSD', True)
+for tf_name, tf in [('M15', mt5.TIMEFRAME_M15), ('H1', mt5.TIMEFRAME_H1), ('H4', mt5.TIMEFRAME_H4), ('D1', mt5.TIMEFRAME_D1)]:
+    print(f'\n=== {tf_name} ===')
+    for anno in [2024, 2020, 2016, 2012, 2008, 2004, 2000]:
+        r = mt5.copy_rates_from('EURUSD', tf, datetime(anno, 6, 1), 1)
+        ok = r is not None and len(r) > 0
+        print(f'  {anno}: {\"OK \"+str(datetime.fromtimestamp(r[0][\"time\"])) if ok else \"vuoto\"}')
 mt5.shutdown()
 "@
 ```
 
-### 1.2 Script download dataset
+### 1.3 Script download MT5
 
-Crea script `scripts/download_history.py`:
+Script pronto: `scripts/download_history.py`. Cap automatico per TF basato su limit TenTrade. Usa `--no-cap` per disabilitare e provare anni richiesti comunque.
 
+Default symbols:
 ```python
-"""Scarica dati storici MT5 multi-simbolo multi-timeframe.
-
-Salva in CSV nella directory data/historical/<symbol>/<timeframe>.csv
-Compatibile con BacktestMt5Client (load via pandas).
-"""
-import argparse
-import csv
-import os
-import sys
-from datetime import datetime, timedelta
-from pathlib import Path
-
-import MetaTrader5 as mt5
-
-TIMEFRAMES = {
-    "M5": mt5.TIMEFRAME_M5,
-    "M15": mt5.TIMEFRAME_M15,
-    "H1": mt5.TIMEFRAME_H1,
-    "H4": mt5.TIMEFRAME_H4,
-    "D1": mt5.TIMEFRAME_D1,
-}
-
-# Simboli core fase 18
 DEFAULT_SYMBOLS = [
     "EURUSD", "GBPUSD", "USDJPY", "USDCHF",
     "AUDUSD", "NZDUSD", "USDCAD",
     "XAUUSD", "USOIL",
 ]
-
-
-def download_symbol(symbol: str, tf_name: str, start: datetime, end: datetime) -> list[dict]:
-    """Scarica barre per simbolo+timeframe nel range [start, end]."""
-    tf = TIMEFRAMES[tf_name]
-    rates = mt5.copy_rates_range(symbol, tf, start, end)
-    if rates is None or len(rates) == 0:
-        print(f"  ⚠ Nessun dato per {symbol} {tf_name}")
-        return []
-    bars = []
-    for r in rates:
-        bars.append({
-            "time": int(r["time"]),
-            "datetime": datetime.fromtimestamp(r["time"]).isoformat(),
-            "open": float(r["open"]),
-            "high": float(r["high"]),
-            "low": float(r["low"]),
-            "close": float(r["close"]),
-            "tick_volume": int(r["tick_volume"]),
-            "spread": int(r.get("spread", 0)),
-        })
-    return bars
-
-
-def save_csv(bars: list[dict], path: Path):
-    """Salva bars in CSV."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if not bars:
-        return
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=bars[0].keys())
-        writer.writeheader()
-        writer.writerows(bars)
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--years", type=int, default=10, help="Anni storia (default 10)")
-    parser.add_argument("--symbols", nargs="+", default=DEFAULT_SYMBOLS)
-    parser.add_argument("--timeframes", nargs="+", default=["M15", "H1", "H4", "D1"])
-    parser.add_argument("--output-dir", default="data/historical")
-    args = parser.parse_args()
-
-    if not mt5.initialize():
-        print("FATAL: MT5 init failed:", mt5.last_error())
-        sys.exit(1)
-
-    end = datetime.now()
-    start = end - timedelta(days=365 * args.years)
-
-    out_dir = Path(args.output_dir)
-    print(f"Download {args.years} anni ({start.date()} → {end.date()})")
-    print(f"Simboli: {args.symbols}")
-    print(f"Timeframes: {args.timeframes}\n")
-
-    total_bars = 0
-    for sym in args.symbols:
-        for tf in args.timeframes:
-            print(f"→ {sym} {tf}...", end=" ", flush=True)
-            bars = download_symbol(sym, tf, start, end)
-            if bars:
-                path = out_dir / sym / f"{tf}.csv"
-                save_csv(bars, path)
-                print(f"{len(bars)} barre → {path}")
-                total_bars += len(bars)
-            else:
-                print("VUOTO")
-
-    mt5.shutdown()
-    print(f"\nTotale barre scaricate: {total_bars:,}")
-
-
-if __name__ == "__main__":
-    main()
 ```
 
-### 1.3 Esecuzione download
+Cap automatico per TF:
+```python
+TF_MAX_YEARS = {
+    "M1": 1, "M5": 2, "M15": 4, "M30": 6,
+    "H1": 16, "H4": 25, "D1": 25, "W1": 25,
+}
+```
+
+### 1.4 Esecuzione download
 
 ```powershell
-# Quick test (1 simbolo, 1 anno)
+cd C:\trading-agent
+
+# Smoke test (1 simbolo, 1 anno)
 .\.venv\Scripts\python.exe scripts\download_history.py --years 1 --symbols EURUSD --timeframes M15
 
-# Full download (10 anni, 9 simboli, 4 TF) — può richiedere 10–30 min
-.\.venv\Scripts\python.exe scripts\download_history.py --years 10
+# Full download (max storia per ogni TF)
+.\.venv\Scripts\python.exe scripts\download_history.py --years 25
+
+# Solo daily 25 anni
+.\.venv\Scripts\python.exe scripts\download_history.py --years 25 --timeframes D1
+
+# Bypass cap (utile su altri broker con storia più lunga)
+.\.venv\Scripts\python.exe scripts\download_history.py --years 10 --no-cap
 ```
 
 Output atteso:
 ```
-Download 10 anni (2016-05-04 → 2026-05-04)
-Simboli: ['EURUSD', 'GBPUSD', ...]
-Timeframes: ['M15', 'H1', 'H4', 'D1']
-
-→ EURUSD M15... 245760 barre → data\historical\EURUSD\M15.csv
-→ EURUSD H1... 61440 barre → data\historical\EURUSD\H1.csv
+Account: 751081 @ TenTrade-Server
+→ EURUSD M15 (4y, da 2022-05-05)... 95,000 barre (2022-05 → 2026-05)
+→ EURUSD H1 (10y, da 2016-05-05)... 61,440 barre
+→ EURUSD H4 (10y, da 2016-05-05)... 15,360 barre
+→ EURUSD D1 (10y, da 2016-05-05)... 2,520 barre
 ...
-Totale barre scaricate: 4,500,000
 ```
 
-### 1.4 Disponibilità reale per broker
-Se broker non fornisce 10 anni su M15 (limite tipico 5 anni):
-- Usa `--years 5` per M15
-- Usa `--years 10` solo per H1/H4/D1
-- Per backtest M15 più lungo: combina dati da provider esterni (Dukascopy, HistData) e converti in CSV stesso formato
+### 1.5 Fonti dati alternative (per superare limit broker)
+
+Per backtest **M15 oltre 4 anni** o per **Gold/Oil intraday**, broker MT5 non basta. Fonti pubbliche gratis:
+
+| Fonte | Cosa | Pro | Contro |
+|-------|------|-----|--------|
+| **HistData.com** | M1 forex 2000+ | gratis, no API key, CSV pronto | download manuale, 1 zip per mese |
+| **Dukascopy** | tick + M1 forex 2003+ | granularità massima | formato bi5 binario, serve converter |
+| **Yahoo Finance** (yfinance) | D1 forex/futures/equities/crypto 30+ anni | API Python, super semplice | NO intraday forex >730gg |
+| **Alpha Vantage** | M15+ forex 20y | API ufficiale | rate limit 25 req/giorno free |
+| **Twelvedata** | M5/M15+ 8 req/min | API gratis | quota 800/giorno |
+| Investing.com | tutto | UI bella | scraping vietato ToS, Cloudflare blocca |
+
+**Vincitore per M15 forex 10y gratis**: **HistData**.
+**Vincitore per Gold/Oil/SPX D1 10y**: **yfinance**.
+
+#### 1.5a HistData → MT5 format
+
+1. Vai a https://www.histdata.com/download-free-forex-data/?/ascii/1-minute-bar-quotes/eurusd
+2. Scarica zip mensili anno per anno (ogni zip ~50 KB, formato `DAT_ASCII_EURUSD_M1_YYYYMM.zip`)
+3. Estrai TUTTI i CSV in una directory: `data/histdata/EURUSD/`
+4. Converti:
+```powershell
+.\.venv\Scripts\python.exe scripts\import_histdata.py `
+    --input-dir data\histdata\EURUSD `
+    --symbol EURUSD `
+    --timeframes M15 H1 H4 D1
+```
+
+Output: `data/historical/EURUSD/{M15,H1,H4,D1}.csv` con 10+ anni storia. M15 ~3.5M barre.
+
+Tip: per scaricare batch usa script di shell loop (HistData non offre API ma URL prevedibili) — vedi script bash community.
+
+#### 1.5b yfinance → MT5 format (Gold/Oil/SPX/crypto)
+
+```powershell
+pip install yfinance
+
+# Gold D1 10 anni
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker GC=F --symbol XAUUSD --interval 1d --years 10
+
+# Oil WTI D1
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker CL=F --symbol USOIL --interval 1d --years 10
+
+# S&P 500 D1
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker ^GSPC --symbol SPX500 --interval 1d --years 10
+
+# BTC D1
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker BTC-USD --symbol BTCUSD --interval 1d --years 10
+
+# H1 max 730gg (limit yfinance)
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker GC=F --symbol XAUUSD --interval 1h --years 2
+```
+
+Tickers utili Yahoo:
+- `EURUSD=X` `GBPUSD=X` `USDJPY=X` (forex spot D1)
+- `GC=F` (Gold futures), `SI=F` (Silver), `CL=F` (WTI Oil), `NG=F` (NatGas)
+- `^GSPC` (S&P 500), `^DJI` (Dow), `^IXIC` (Nasdaq), `^VIX` (VIX)
+- `BTC-USD` `ETH-USD` (crypto)
+
+#### 1.5c Strategia mista raccomandata
+
+Per backtest 10 anni completo strategia v3:
+
+```powershell
+# Forex M15 4y da MT5
+.\.venv\Scripts\python.exe scripts\download_history.py --years 4 --timeframes M15 --symbols EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
+
+# Forex M15 10y da HistData (manuale download zip)
+# → data/histdata/EURUSD/  ←  copia tutti CSV anni 2016-2026
+.\.venv\Scripts\python.exe scripts\import_histdata.py --input-dir data\histdata\EURUSD --symbol EURUSD
+
+# Gold/Oil D1 10y da yfinance
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker GC=F --symbol XAUUSD --interval 1d --years 10
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker CL=F --symbol USOIL --interval 1d --years 10
+
+# Forex H4 25y da MT5 (per regime/intermarket lungo periodo)
+.\.venv\Scripts\python.exe scripts\download_history.py --years 25 --timeframes H4 --symbols EURUSD GBPUSD
+```
+
+Tutti i CSV finiscono in `data/historical/<symbol>/<TF>.csv` con stesso formato → backtest engine li legge uniformemente.
 
 ---
 
@@ -215,137 +223,18 @@ INTRADAY_TIMEFRAME=M15
 INTRADAY_LOOKBACK_BARS=200
 ```
 
-### 2.2 Loader CSV per BacktestMt5Client
+### 2.2 Runner backtest
 
-Crea `scripts/run_backtest.py`:
+Script pronto: `scripts/run_backtest.py`. Carica CSV da `data/historical/<symbol>/<tf>.csv`, istanzia BacktestMt5Client + BacktestEngine, salva report in `reports/`.
 
-```python
-"""Esegue backtest end-to-end caricando CSV storici."""
-import argparse
-import csv
-import logging
-from datetime import datetime
-from pathlib import Path
-
-from config import Config
-from backtest import BacktestEngine, BacktestMt5Client
-
-
-def load_csv(path: Path) -> list[dict]:
-    """Carica CSV in lista dict OHLC."""
-    bars = []
-    with open(path, encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for r in reader:
-            bars.append({
-                "time": int(r["time"]),
-                "open": float(r["open"]),
-                "high": float(r["high"]),
-                "low": float(r["low"]),
-                "close": float(r["close"]),
-                "tick_volume": int(r["tick_volume"]),
-            })
-    return bars
-
-
-def filter_by_date(bars: list[dict], start: datetime, end: datetime) -> list[dict]:
-    """Filtra barre per date range."""
-    s, e = int(start.timestamp()), int(end.timestamp())
-    return [b for b in bars if s <= b["time"] <= e]
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--start", default="2020-01-01")
-    parser.add_argument("--end", default="2025-12-31")
-    parser.add_argument("--data-dir", default="data/historical")
-    parser.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"])
-    parser.add_argument("--timeframe", default="M15")
-    parser.add_argument("--initial-balance", type=float, default=10000.0)
-    parser.add_argument("--report", default="reports/backtest_latest.txt")
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    log = logging.getLogger("backtest")
-
-    cfg = Config()  # carica .env
-
-    start = datetime.fromisoformat(args.start)
-    end = datetime.fromisoformat(args.end)
-
-    # Carica dataset per ogni simbolo
-    data_dir = Path(args.data_dir)
-    symbol_to_bars = {}
-    for sym in args.symbols:
-        path = data_dir / sym / f"{args.timeframe}.csv"
-        if not path.exists():
-            log.error("Manca dataset: %s", path)
-            continue
-        bars = filter_by_date(load_csv(path), start, end)
-        log.info("Caricato %s: %d barre nel range", sym, len(bars))
-        symbol_to_bars[sym] = bars
-
-    if not symbol_to_bars:
-        log.fatal("Nessun dataset caricato. Eseguire scripts/download_history.py")
-        return
-
-    # Avvia engine
-    mt5_mock = BacktestMt5Client(cfg, symbol_to_bars)
-    engine = BacktestEngine(
-        cfg=cfg,
-        mt5_client=mt5_mock,
-        initial_balance=args.initial_balance,
-        logger=log,
-    )
-
-    report = engine.run(symbols=list(symbol_to_bars.keys()))
-
-    # Output report
-    print("\n" + "=" * 60)
-    print(" BACKTEST REPORT")
-    print("=" * 60)
-    print(f"Range:           {args.start} → {args.end}")
-    print(f"Simboli:         {args.symbols}")
-    print(f"Saldo iniziale:  ${report.start_balance:,.2f}")
-    print(f"Saldo finale:    ${report.end_balance:,.2f}")
-    print(f"Profit totale:   {report.total_profit_pct:+.2f}%")
-    print(f"Trade totali:    {report.total_trades}")
-    print(f"Win rate:        {report.winrate:.1%}")
-    print(f"Avg win:         {report.avg_win_pct:+.3f}%")
-    print(f"Avg loss:        {report.avg_loss_pct:+.3f}%")
-    print(f"Profit factor:   {report.profit_factor:.2f}")
-    print(f"Expectancy:      {report.expectancy:+.3f}%")
-    print(f"Max DD:          {report.max_drawdown_pct:.2f}%")
-    print(f"Sharpe ratio:    {report.sharpe_ratio:.2f}")
-    print(f"Max consec loss: {report.max_consecutive_losses}")
-    print("=" * 60)
-
-    # Save report file
-    report_path = Path(args.report)
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(f"Backtest report\n")
-        f.write(f"Range: {args.start} → {args.end}\n")
-        f.write(f"Symbols: {args.symbols}\n")
-        f.write(f"Initial balance: {report.start_balance}\n")
-        f.write(f"Final balance: {report.end_balance}\n")
-        f.write(f"Trades: {report.total_trades}\n")
-        f.write(f"Winrate: {report.winrate}\n")
-        f.write(f"Profit factor: {report.profit_factor}\n")
-        f.write(f"Expectancy: {report.expectancy}\n")
-        f.write(f"Max DD: {report.max_drawdown_pct}%\n")
-        f.write(f"Sharpe: {report.sharpe_ratio}\n")
-        f.write(f"\nTrades dettaglio:\n")
-        for t in report.trades:
-            f.write(f"  {t.entry_time.isoformat()} {t.symbol} {t.direction} "
-                    f"{t.entry_price:.5f}→{t.exit_price:.5f} {t.exit_reason} "
-                    f"profit={t.profit_pct:+.3f}% R={t.profit_r:+.2f}\n")
-    log.info("Report salvato in %s", report_path)
-
-
-if __name__ == "__main__":
-    main()
-```
+Args supportati:
+- `--start YYYY-MM-DD` / `--end YYYY-MM-DD`
+- `--symbols EURUSD GBPUSD ...`
+- `--timeframe M15` (default)
+- `--initial-balance 10000`
+- `--data-dir data/historical`
+- `--report path/to/report.txt`
+- `-v` verbose
 
 ---
 
@@ -360,19 +249,41 @@ if __name__ == "__main__":
     --report reports\eurusd_2024.txt
 ```
 
-### 3.2 Backtest 10 anni multi-simbolo
+### 3.2 Backtest M15 4 anni (max TenTrade)
+```powershell
+.\.venv\Scripts\python.exe scripts\run_backtest.py `
+    --start 2022-06-01 --end 2026-05-04 `
+    --symbols EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD `
+    --timeframe M15 `
+    --initial-balance 10000 `
+    --report reports\bt_m15_4y.txt
+```
+
+### 3.3 Backtest H1 10 anni (storia lunga)
 ```powershell
 .\.venv\Scripts\python.exe scripts\run_backtest.py `
     --start 2016-05-04 --end 2026-05-04 `
-    --symbols EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD XAUUSD `
-    --timeframe M15 `
-    --initial-balance 10000 `
-    --report reports\full_10y_v3.txt
+    --symbols EURUSD GBPUSD USDJPY `
+    --timeframe H1 `
+    --report reports\bt_h1_10y.txt
 ```
 
-**Tempo stimato**: 30 min – 2 ore su 7 simboli × M15 × 10 anni (≈3M barre processate). Più simboli + tutti filtri intermarket attivi = più lento.
+### 3.4 Backtest M15 10 anni (con HistData)
+Solo dopo aver scaricato HistData (sezione 1.5a):
+```powershell
+.\.venv\Scripts\python.exe scripts\run_backtest.py `
+    --start 2016-01-01 --end 2026-05-04 `
+    --symbols EURUSD GBPUSD `
+    --timeframe M15 `
+    --report reports\bt_m15_10y_histdata.txt
+```
 
-### 3.3 Confronto v2 vs v3 (Defendi vs Defendi+Murphy+Probo)
+**Tempo stimato**:
+- M15 4y × 6 simboli ≈ ~500K barre → 5-15 min
+- H1 10y × 3 simboli ≈ ~180K barre → 2-5 min
+- M15 10y × 2 simboli (HistData) ≈ ~7M barre → 30-90 min
+
+### 3.5 Confronto v2 vs v3 (Defendi vs Defendi+Murphy+Probo)
 
 ```powershell
 # v2: solo Defendi
@@ -517,9 +428,10 @@ Prima di passare strategia a live:
 ## 7. Troubleshooting
 
 ### 7.1 MT5 non fornisce abbastanza storia
-- **Soluzione 1**: usa broker diverso (IC Markets, Pepperstone hanno 10+ anni M15)
-- **Soluzione 2**: scarica da Dukascopy (https://www.dukascopy.com/swiss/english/marketwatch/historical/) e converti CSV → formato MT5
-- **Soluzione 3**: limita backtest a 5 anni M15 + 10 anni H1/H4
+- **Soluzione 1**: usa HistData.com gratis (sezione 1.5a) — M1 forex 25+ anni
+- **Soluzione 2**: yfinance per Gold/Oil/SPX D1 (sezione 1.5b)
+- **Soluzione 3**: broker diverso con storia più lunga (IC Markets/Pepperstone tipicamente 10+ anni M15)
+- **Soluzione 4**: limita backtest a TF cap reali (M15=4y, H1=16y, H4/D1=25y) usando script `download_history.py`
 
 ### 7.2 Backtest lento
 - Riduci numero simboli
