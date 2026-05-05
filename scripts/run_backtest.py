@@ -130,7 +130,7 @@ def main() -> int:
         path = data_dir / sym / f"{args.timeframe}.csv"
         bars_all = load_csv(path)
         if not bars_all:
-            log.error("Manca dataset: %s — skip %s", path, sym)
+            log.error("Manca dataset: %s -> skip %s", path, sym)
             continue
         bars = filter_by_date(bars_all, start, end)
         log.info("%s %s: %d barre nel range", sym, args.timeframe, len(bars))
@@ -141,7 +141,34 @@ def main() -> int:
         log.fatal("Nessun dataset valido. Esegui scripts/download_history.py o import_histdata.py")
         return 1
 
-    mt5_mock = BacktestMt5Client(cfg, symbol_to_bars)
+    # Carica intermarket bars per IntermarketEngine se flag attivo.
+    # Usa cfg.INTERMARKET_TIMEFRAME (default H4) se disponibile, altrimenti fallback D1.
+    intermarket_bars: dict[str, list[dict]] = {}
+    if cfg.ENABLE_INTERMARKET_FILTER:
+        intermarket_tf = cfg.INTERMARKET_TIMEFRAME
+        # Simboli da caricare: INTERMARKET_SYMBOLS + DXY_PROXY (EURUSD)
+        intermarket_symbols = list(cfg.INTERMARKET_SYMBOLS) + [cfg.DXY_PROXY_SYMBOL]
+        for sym in intermarket_symbols:
+            # Skip se già è il TF principale del trading symbol (es. EURUSD M15)
+            if sym in symbol_to_bars and intermarket_tf == args.timeframe:
+                continue
+            path = data_dir / sym / f"{intermarket_tf}.csv"
+            bars_all = load_csv(path)
+            if not bars_all and intermarket_tf != "D1":
+                # Fallback D1
+                fallback_path = data_dir / sym / "D1.csv"
+                bars_all = load_csv(fallback_path)
+                if bars_all:
+                    log.warning("Intermarket %s/%s mancante, uso D1 fallback (%d bars)",
+                                sym, intermarket_tf, len(bars_all))
+            if not bars_all:
+                log.warning("Intermarket %s mancante (%s + D1) -> engine fallback NEUTRAL",
+                            sym, intermarket_tf)
+                continue
+            intermarket_bars[sym] = bars_all
+            log.info("Intermarket %s %s: %d barre", sym, intermarket_tf, len(bars_all))
+
+    mt5_mock = BacktestMt5Client(cfg, symbol_to_bars, intermarket_bars=intermarket_bars)
     engine = BacktestEngine(
         cfg=cfg,
         mt5_client=mt5_mock,

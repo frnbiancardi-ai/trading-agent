@@ -78,16 +78,27 @@ class BacktestMt5Client(Mt5Client):
     Sostituisce Mt5Client reale durante backtest.
     """
 
-    def __init__(self, cfg: Config, symbol_to_bars: dict[str, list[dict]]):
+    def __init__(
+        self,
+        cfg: Config,
+        symbol_to_bars: dict[str, list[dict]],
+        intermarket_bars: dict[str, list[dict]] | None = None,
+    ):
         """
         Args:
             cfg: Config object
-            symbol_to_bars: dict dove chiavi=simboli, valori=liste di bar OHLC ordinate per time
+            symbol_to_bars: simboli trading principali (TF main, es. M15). Chiavi=simboli,
+                valori=liste bar OHLC ordinate per time.
+            intermarket_bars: simboli intermarket (TF diverso, es. D1 XAUUSD/USOIL).
+                Lookup time-based: get_ohlc ritorna ultime n_bars con time <= current_time.
         """
         self.cfg = cfg
         self.symbol_to_bars = symbol_to_bars
+        self.intermarket_bars = intermarket_bars or {}
         self.log = logging.getLogger(__name__)
         self.current_bar_index = {sym: 0 for sym in symbol_to_bars.keys()}
+        # Timestamp current bar (main loop). Engine lo aggiorna ad ogni step.
+        self.current_time: int = 0
 
     def initialize(self) -> bool:
         """No-op: backtest non richiede MT5 initialization."""
@@ -150,20 +161,38 @@ class BacktestMt5Client(Mt5Client):
     def get_ohlc(self, symbol: str, timeframe: str, n_bars: int) -> list[dict]:
         """Ritorna fino a n_bars barre dal dataset per il symbol/timeframe.
 
-        Nel backtest, timeframe è ignorato (si assume tutti i bar forniti
-        siano dello stesso timeframe).
+        Trading symbols (symbol_to_bars): index-based, mirror copy_rates_from_pos live.
+        Intermarket symbols (intermarket_bars): time-based lookup, ritorna ultime
+        n_bars con time <= current_time per evitare look-ahead.
         """
-        if symbol not in self.symbol_to_bars:
-            return []
+        # Trading symbol path: index-based
+        if symbol in self.symbol_to_bars:
+            bars = self.symbol_to_bars[symbol]
+            idx = self.current_bar_index.get(symbol, 0)
+            end = idx + 1
+            start = max(0, end - n_bars)
+            return bars[start:end]
 
-        bars = self.symbol_to_bars[symbol]
-        idx = self.current_bar_index.get(symbol, 0)
-        # FIX look-ahead: ritorna ULTIME n_bars TERMINANTI a idx (incluso),
-        # mirror di mt5.copy_rates_from_pos(symbol, tf, 0, n) live.
-        # Vecchio codice: bars[idx : idx + n_bars] = future bars = look-ahead bias.
-        end = idx + 1
-        start = max(0, end - n_bars)
-        return bars[start:end]
+        # Intermarket symbol path: time-based lookup
+        if symbol in self.intermarket_bars:
+            bars = self.intermarket_bars[symbol]
+            if not bars or self.current_time == 0:
+                # Pre-loop: ritorna tutte (engine fallback NEUTRAL su dati insufficienti)
+                return bars[-n_bars:] if bars else []
+            # Binary search: ultimo bar con time <= current_time
+            t = self.current_time
+            lo, hi = 0, len(bars)
+            while lo < hi:
+                mid = (lo + hi) // 2
+                if bars[mid]["time"] <= t:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            end = lo  # primo index con time > t
+            start = max(0, end - n_bars)
+            return bars[start:end]
+
+        return []
 
     def calc_order_margin(self, symbol: str, direction: str, lots: float, price: float) -> float:
         """Mock margin calc."""
@@ -355,6 +384,13 @@ class BacktestEngine:
             # Avanza indice bar per tutti i simboli
             for symbol in symbols:
                 self.mt5_client.current_bar_index[symbol] = bar_idx
+
+            # Aggiorna current_time per intermarket lookup (time-based).
+            # Usa primo simbolo trading come reference.
+            if symbols:
+                ref_bars = self.symbol_to_bars.get(symbols[0], [])
+                if bar_idx < len(ref_bars):
+                    self.mt5_client.current_time = int(ref_bars[bar_idx]["time"])
 
             # Valuta posizioni aperte: SL/TP hit?
             self._evaluate_open_positions(bar_idx)

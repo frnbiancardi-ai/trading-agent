@@ -1,4 +1,4 @@
-"""Importa dati Yahoo Finance via yfinance → formato BacktestMt5Client.
+"""Importa dati Yahoo Finance via yfinance -> formato BacktestMt5Client.
 
 Yahoo fornisce dati gratis per:
 - Forex pairs (EURUSD=X, GBPUSD=X, ecc.)
@@ -36,7 +36,7 @@ except ImportError:
     sys.exit(1)
 
 
-# Mapping interval yfinance → nome TF interno
+# Mapping interval yfinance -> nome TF interno
 INTERVAL_TO_TF = {
     "1m": "M1",
     "2m": "M2",
@@ -100,7 +100,7 @@ def save_csv(bars: list[dict], path: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Yahoo Finance → MT5-format CSV")
+    parser = argparse.ArgumentParser(description="Yahoo Finance -> MT5-format CSV")
     parser.add_argument("--ticker", required=True,
                         help="Yahoo ticker (es. GC=F, CL=F, ^GSPC, EURUSD=X, BTC-USD)")
     parser.add_argument("--symbol", required=True,
@@ -152,7 +152,7 @@ def main() -> int:
 
     first = datetime.fromtimestamp(bars[0]["time"]).date()
     last = datetime.fromtimestamp(bars[-1]["time"]).date()
-    print(f"OK: {len(bars):,} barre {tf_name} ({first} → {last}) → {out_path}")
+    print(f"OK: {len(bars):,} barre {tf_name} ({first} -> {last}) -> {out_path}")
     return 0
 
 

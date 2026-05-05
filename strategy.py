@@ -319,7 +319,12 @@ class IntradayStrategy:
 
         if self.session_engine is not None:
             try:
-                _, session_quality = self.session_engine.is_optimal_session(symbol)
+                # Usa timestamp ultima barra (sync con backtest historical time);
+                # in live equivale a now per barra appena formata.
+                bar_time = datetime.fromtimestamp(bars[-1].get("time", 0)) if bars else None
+                _, session_quality = self.session_engine.is_optimal_session(
+                    symbol, now=bar_time
+                )
             except Exception as exc:
                 self.log.warning("session_engine fail: %s", exc)
 
