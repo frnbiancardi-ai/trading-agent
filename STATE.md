@@ -12,19 +12,19 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_start: `2026-05-05T...` (continuation post-compaction)
-- last_session_reason: `Fase 18.1-18.6 code-complete + tests + tooling backtest. Pausa volontaria utente prima di 18.7 (integrazione strategy.py).`
+- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_start: `2026-05-05T14:00...`
+- last_session_reason: `Pre-18.7: refactor backtest.py per realismo (look-ahead fix + spread/commission/slippage modeling). Smoke test + push. Sto per iniziare fase 18.7.`
 
 ## Stato fase corrente
 
 - current_phase: `18`
 - current_phase_title: `Intermarket-Enhanced Strategy v3 (Murphy + Probo + Defendi)`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `18.6_code_complete` (sub-fasi 18.1-18.6 implementate + testate, 18.7 non iniziata)
+- current_substep: `18.6.1_realistic_backtest_complete` (cost modeling + look-ahead fix done; 18.7 next)
 - branch: `feature/strategy-v3-intermarket` (da feature/strategy-v2-defendi)
-- last_action: `2026-05-05 — Fase 18.1 (intermarket_engine), 18.2 (regime_detector), 18.3 (correlation_monitor), 18.4 (cross_asset_filter), 18.5 (session_engine), 18.6 (fibonacci_targets) tutti code-complete con suite test (101 nuovi test). Fase 17.6 backtest fix (profit_factor edge case → inf). Tooling backtest creato: scripts/download_history.py + import_histdata.py + import_yfinance.py + run_backtest.py + docs/BACKTEST_GUIDE.md. Suite completa 373/373 passed. Commit 4fcf464 pushed.`
-- next_action: `Fase 18.7 — Integrazione 6 engine in strategy.py::IntradayStrategy: (1) _analyze_technical() chiama IntermarketEngine + RegimeDetector + SessionEngine + CrossAssetFilter; (2) identify_entry_setup() applica veto regime/cross-asset; (3) _score_confidence() rebalance pesi (trend 0.20 + pattern 0.15 + volume 0.15 + rr 0.15 + mtf 0.10 + intermarket 0.10 + session 0.05 + cross_pair 0.05 + regime 0.05 = 1.0); (4) _compute_levels() usa FibonacciTargetEngine. Poi 18.8 backtest comparison v2 vs v3.`
+- last_action: `2026-05-05 — Fase 18.1-18.6 code-complete + tooling backtest (commits 4fcf464, baa1e58, 9a9b6b1, a7c50fe, 9c65441). Fase 17.6.1 (realistic backtest, commit 8a5448e): (1) FIX critico look-ahead bias in BacktestMt5Client.get_ohlc (era bars[idx:idx+n] future-looking, ora bars[max(0,idx-n+1):idx+1] past-looking mirror copy_rates_from_pos live); (2) Cost modeling: BACKTEST_SPREAD_PIPS=1.0, BACKTEST_COMMISSION_PER_LOT=5.0, BACKTEST_SLIPPAGE_PIPS=0.5 in config.py; entry price applies spread, SL exit applies slippage, commission round-trip dedotta da P&L; (3) BacktestTrade + BacktestReport esteso con campi USD reali (gross_profit_usd, net_profit_usd, spread/commission/slippage cost); (4) +6 test cost modeling. Suite 379/379 verde. SCOPERTA: strategia v2 EURUSD M15 2024 era +279%/Sharpe 9.80 con bug, ORA -10%/Sharpe -7.29 reale → strategia v2 perdente, urge wiring engine v3 (Murphy+Probo).`
+- next_action: `Fase 18.7 — Integrazione 6 engine in strategy.py::IntradayStrategy. Plan: (a) costruttore IntradayStrategy istanzia IntermarketEngine + RegimeDetector + CorrelationMonitor + CrossAssetFilter + SessionEngine + FibonacciTargetEngine via flag config; (b) _analyze_technical() chiama get_context()+detect()+check()+get_quality(); (c) identify_entry_setup() applica veto regime RISK_OFF + cross-asset CONTRADICTS; (d) _score_confidence() rebalance pesi v3: trend 0.20 + pattern 0.15 + volume 0.15 + rr 0.15 + mtf 0.10 + intermarket 0.10 + session 0.05 + cross_pair 0.05 + regime 0.05 = 1.0; (e) _compute_levels() usa fibonacci_targets per TP. Poi 18.8 comparison v2 (flag off) vs v3 (flag on) backtest 2024 EURUSD.`
 
 ## Roadmap v1.1.0 (completata)
 
@@ -247,6 +247,7 @@ phase_13_scheduled_orchestrator:
 | `2026-05-04T...` | RESUME | 17 | Fase 17.4-17.6 completate (MTF bias, position manager, backtest harness). |
 | `2026-05-05T...` | RESUME | 18 | Fase 18.1-18.6 code-complete + tests (101 nuovi). Tooling backtest + 3 fonti dati alternative (MT5/HistData/yfinance). Suite 373/373. |
 | `2026-05-05T...` | HANDOFF | 18 | Pausa pre-18.7. Branch `feature/strategy-v3-intermarket` pushed. Prossimo: integrare 6 engine in strategy.py. |
+| `2026-05-05T14:00:00+02:00` | RESUME | 18 | Fase 17.6.1 (realistic backtest) completata: look-ahead fix + cost modeling + tests. Suite 379/379. Strategia v2 reale: -10%/Sharpe -7.29 su 2024 EURUSD. |
 
 ## Checklist finale
 
