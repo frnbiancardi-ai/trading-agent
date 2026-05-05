@@ -10,3 +10,6 @@ logs/*.db-shm
 .idea/
 .vscode/
 .claude/
+data/historical/
+data/histdata/
+reports/

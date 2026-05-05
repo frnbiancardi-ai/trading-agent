@@ -12,19 +12,19 @@ Verità singola sullo stato corrente. Aggiornato dall'orchestrator dopo ogni mic
 
 ## Stato sessione
 
-- session_status: `IN_PROGRESS`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
-- last_session_start: `2026-05-04T...` (resumed from context compaction)
-- last_session_reason: `Continuazione fase 17 implementation da contesto precedente. 17.4, 17.5, 17.6 code-complete e pushed.`
+- session_status: `HANDOFF`  <!-- IDLE | IN_PROGRESS | HANDOFF | BLOCKED | COMPLETED -->
+- last_session_start: `2026-05-05T...` (continuation post-compaction)
+- last_session_reason: `Fase 18.1-18.6 code-complete + tests + tooling backtest. Pausa volontaria utente prima di 18.7 (integrazione strategy.py).`
 
 ## Stato fase corrente
 
-- current_phase: `17`
-- current_phase_title: `Strategy v2 Defendi (multi-setup: squeeze, pullback, MTF, divergence, position mgmt, backtest)`
+- current_phase: `18`
+- current_phase_title: `Intermarket-Enhanced Strategy v3 (Murphy + Probo + Defendi)`
 - phase_status: `IN_PROGRESS`  <!-- NOT_STARTED | IN_PROGRESS | VALIDATED -->
-- current_substep: `17.6_code_complete` (17.7 calibration skeleton started)
-- branch: `feature/strategy-v2-defendi` (branch da main v1.2.0)
-- last_action: `2026-05-04 — Fase 17.4 completed: _compute_mtf_bias() + _score_confidence(h1_bias) integration, divergence veto. Fase 17.5 completed: position_manager.py (BE move, partial close, trailing), models.py esteso (PositionInfo flags, OpenPositionVerdict actions), Mt5Client.modify_position/partial_close. Fase 17.6 completed: backtest.py (BacktestMt5Client, BacktestEngine, metrics), tests. All 3 phases committed + pushed.`
-- next_action: `Fase 17.7 calibration + validation: (1) Historical data download script (scripts/download_historical.py — TBD); (2) Grid-search su params chiave (MIN_TREND_STRENGTH, MIN_BREAKOUT_VOLUME_RATIO, MIN_RISK_REWARD_RATIO, BREAKEVEN_TRIGGER_R, BB_SQUEEZE_PERCENTILE); (3) Backtest v1.2.0 vs v2 su 6m EURUSD+GBPUSD; (4) Pareto-optimal selection; (5) PHASE_17_VALIDATION.md report; (6) Merge decision (v2 vs v1.2.0 >=2 metrics). Stimato: 3-4 giorni (dipende da download dati storici).`
+- current_substep: `18.6_code_complete` (sub-fasi 18.1-18.6 implementate + testate, 18.7 non iniziata)
+- branch: `feature/strategy-v3-intermarket` (da feature/strategy-v2-defendi)
+- last_action: `2026-05-05 — Fase 18.1 (intermarket_engine), 18.2 (regime_detector), 18.3 (correlation_monitor), 18.4 (cross_asset_filter), 18.5 (session_engine), 18.6 (fibonacci_targets) tutti code-complete con suite test (101 nuovi test). Fase 17.6 backtest fix (profit_factor edge case → inf). Tooling backtest creato: scripts/download_history.py + import_histdata.py + import_yfinance.py + run_backtest.py + docs/BACKTEST_GUIDE.md. Suite completa 373/373 passed. Commit 4fcf464 pushed.`
+- next_action: `Fase 18.7 — Integrazione 6 engine in strategy.py::IntradayStrategy: (1) _analyze_technical() chiama IntermarketEngine + RegimeDetector + SessionEngine + CrossAssetFilter; (2) identify_entry_setup() applica veto regime/cross-asset; (3) _score_confidence() rebalance pesi (trend 0.20 + pattern 0.15 + volume 0.15 + rr 0.15 + mtf 0.10 + intermarket 0.10 + session 0.05 + cross_pair 0.05 + regime 0.05 = 1.0); (4) _compute_levels() usa FibonacciTargetEngine. Poi 18.8 backtest comparison v2 vs v3.`
 
 ## Roadmap v1.1.0 (completata)
 
@@ -244,6 +244,9 @@ phase_13_scheduled_orchestrator:
 | `2026-04-29T22:30:00+02:00` | RESUME | 12 | Fase 12 (MCP Tools Upgrade) completata e validata, suite 39/39. |
 | `2026-04-30T18:00:00+02:00` | RESUME | 13 | Fase 13 (Scheduled Orchestrator) completata e validata, suite 72/72. Roadmap v1.1.0 chiusa. |
 | `2026-04-30T18:30:00+02:00` | COMPLETED | 13 | PHASES.md aggiornato con fasi 11-12-13. Tag `v1.1.0` rilasciato su `main`. |
+| `2026-05-04T...` | RESUME | 17 | Fase 17.4-17.6 completate (MTF bias, position manager, backtest harness). |
+| `2026-05-05T...` | RESUME | 18 | Fase 18.1-18.6 code-complete + tests (101 nuovi). Tooling backtest + 3 fonti dati alternative (MT5/HistData/yfinance). Suite 373/373. |
+| `2026-05-05T...` | HANDOFF | 18 | Pausa pre-18.7. Branch `feature/strategy-v3-intermarket` pushed. Prossimo: integrare 6 engine in strategy.py. |
 
 ## Checklist finale
 
