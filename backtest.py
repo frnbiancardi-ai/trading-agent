@@ -405,6 +405,11 @@ class BacktestEngine:
                 if setup.setup_type != "READY" or setup.direction is None:
                     continue
 
+                # Confidence gate: mirror live behavior (scanner gate-keeps su MIN_CONFIDENCE_TO_PROPOSE)
+                min_conf = getattr(self.cfg, "MIN_CONFIDENCE_TO_PROPOSE", 0.60)
+                if setup.confidence < min_conf:
+                    continue
+
                 proposal = self.strategy.build_trade_proposal(symbol, setup)
 
                 # Risk engine approval — usa evaluate_trade (signature reale)
