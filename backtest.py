@@ -101,13 +101,38 @@ class BacktestMt5Client(Mt5Client):
         )
 
     def get_symbol_info(self, symbol: str):
-        """Mock symbol info."""
+        """Mock symbol info — campi minimi richiesti da risk_engine + execution."""
         import types
+        # Default forex 5-digit; override per metalli/oil
+        if symbol.upper() in ("XAUUSD", "GOLD"):
+            point = 0.01
+            digits = 2
+            tick_value = 1.0
+            tick_size = 0.01
+        elif symbol.upper() in ("USOIL", "WTI", "UKOIL"):
+            point = 0.01
+            digits = 2
+            tick_value = 10.0
+            tick_size = 0.01
+        else:
+            point = 0.00001
+            digits = 5
+            tick_value = 10.0
+            tick_size = 0.00001
         return types.SimpleNamespace(
-            point=0.00001,
-            digits=5,
-            trade_tick_value=10.0,
-            trade_tick_size=0.00001,
+            point=point,
+            digits=digits,
+            trade_tick_value=tick_value,
+            trade_tick_size=tick_size,
+            volume_min=0.01,
+            volume_max=100.0,
+            volume_step=0.01,
+            trade_contract_size=100000.0,
+            margin_initial=0.0,
+            margin_rate=1.0,
+            spread=10,
+            currency_profit="USD",
+            currency_margin="USD",
         )
 
     def get_ohlc(self, symbol: str, timeframe: str, n_bars: int) -> list[dict]:
@@ -238,27 +263,55 @@ class BacktestEngine:
     def __init__(
         self,
         cfg: Config,
-        symbol_to_bars: dict[str, list[dict]],
-        strategy_module,  # IntradayStrategy
-        risk_engine_module,
+        symbol_to_bars: dict[str, list[dict]] | None = None,
+        strategy_module=None,  # IntradayStrategy istanziata
+        risk_engine_module=None,  # modulo risk_engine (espone evaluate_trade)
+        mt5_client: BacktestMt5Client | None = None,
+        initial_balance: float = 10000.0,
         logger: logging.Logger | None = None,
     ):
+        """Inizializza engine.
+
+        Modi di uso:
+            (1) Passare symbol_to_bars → engine costruisce BacktestMt5Client interno e
+                istanzia IntradayStrategy + risk_engine se non forniti.
+            (2) Passare mt5_client già pronto + strategy_module + risk_engine_module.
+        """
         self.cfg = cfg
-        self.symbol_to_bars = symbol_to_bars
-        self.strategy = strategy_module
-        self.risk_engine = risk_engine_module
         self.log = logger or logging.getLogger(__name__)
-        self.mt5_client = BacktestMt5Client(cfg, symbol_to_bars)
+
+        # mt5_client e symbol_to_bars
+        if mt5_client is not None:
+            self.mt5_client = mt5_client
+            self.symbol_to_bars = mt5_client.symbol_to_bars
+        else:
+            if symbol_to_bars is None:
+                raise ValueError("Devi passare symbol_to_bars o mt5_client")
+            self.symbol_to_bars = symbol_to_bars
+            self.mt5_client = BacktestMt5Client(cfg, symbol_to_bars)
+
+        # strategy: istanzia se non fornito
+        if strategy_module is None:
+            from strategy import IntradayStrategy
+            strategy_module = IntradayStrategy(cfg, self.mt5_client, self.log)
+        self.strategy = strategy_module
+
+        # risk_engine: usa modulo default se non fornito
+        if risk_engine_module is None:
+            import risk_engine as _re
+            risk_engine_module = _re
+        self.risk_engine = risk_engine_module
+
         self.trades: list[BacktestTrade] = []
         self.open_positions: dict[int, PositionInfo] = {}
         self.position_counter = 1000
         self.account_state = AccountState(
-            balance=10000.0,
-            equity=10000.0,
-            free_margin=9500.0,
+            balance=initial_balance,
+            equity=initial_balance,
+            free_margin=initial_balance * 0.95,
             open_positions=[],
             today_realized_pnl=0.0,
-            starting_balance_of_day=10000.0,
+            starting_balance_of_day=initial_balance,
         )
 
     def run(self, symbols: list[str]) -> BacktestReport:
@@ -295,10 +348,18 @@ class BacktestEngine:
 
                 proposal = self.strategy.build_trade_proposal(symbol, setup)
 
-                # Risk engine approval
-                approved, size, reason = self.risk_engine.evaluate(
-                    proposal, self.account_state
-                )
+                # Risk engine approval — usa evaluate_trade (signature reale)
+                if hasattr(self.risk_engine, "evaluate_trade"):
+                    decision = self.risk_engine.evaluate_trade(
+                        proposal, self.account_state, self.mt5_client, self.cfg
+                    )
+                    approved = decision.approved
+                    size = decision.size_lots
+                else:
+                    # Fallback: modulo custom con .evaluate(proposal, account)
+                    approved, size, _ = self.risk_engine.evaluate(
+                        proposal, self.account_state
+                    )
                 if not approved:
                     continue
 

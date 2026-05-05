@@ -53,7 +53,7 @@ def filter_by_date(bars: list[dict], start: datetime, end: datetime) -> list[dic
 
 def format_pf(pf: float) -> str:
     if pf == float("inf"):
-        return "∞ (no losses)"
+        return "inf (no losses)"
     return f"{pf:.2f}"
 
 
@@ -63,7 +63,7 @@ def write_report(report, args, path: Path) -> None:
         f.write("=" * 60 + "\n")
         f.write(" BACKTEST REPORT\n")
         f.write("=" * 60 + "\n")
-        f.write(f"Range:          {args.start} → {args.end}\n")
+        f.write(f"Range:          {args.start} -> {args.end}\n")
         f.write(f"Symbols:        {', '.join(args.symbols)}\n")
         f.write(f"Timeframe:      {args.timeframe}\n")
         f.write(f"Initial bal.:   ${report.start_balance:,.2f}\n")
@@ -83,7 +83,7 @@ def write_report(report, args, path: Path) -> None:
         for t in report.trades:
             f.write(
                 f"  {t.entry_time.isoformat()} {t.symbol:8} {t.direction:4} "
-                f"{t.entry_price:.5f}→{t.exit_price:.5f} {t.exit_reason:6} "
+                f"{t.entry_price:.5f}->{t.exit_price:.5f} {t.exit_reason:6} "
                 f"profit={t.profit_pct:+7.3f}% R={t.profit_r:+5.2f}\n"
             )
 
@@ -133,6 +133,7 @@ def main() -> int:
         mt5_client=mt5_mock,
         initial_balance=args.initial_balance,
         logger=log,
+        # strategy_module e risk_engine_module: lasciati None -> engine istanzia default
     )
 
     log.info("Avvio backtest...")
@@ -143,7 +144,7 @@ def main() -> int:
     print("=" * 60)
     print(" BACKTEST REPORT")
     print("=" * 60)
-    print(f"Range:          {args.start} → {args.end}")
+    print(f"Range:          {args.start} -> {args.end}")
     print(f"Symbols:        {', '.join(symbol_to_bars.keys())}")
     print(f"Initial bal.:   ${report.start_balance:,.2f}")
     print(f"Final bal.:     ${report.end_balance:,.2f}")
