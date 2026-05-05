@@ -271,3 +271,17 @@ def _attach_news_sentiment(cls):
 
 
 _attach_news_sentiment(Config)
+
+
+def _attach_backtest_realism(cls):
+    """Parametri costi reali per backtest. Default valori conservativi forex retail."""
+    cls.BACKTEST_SPREAD_PIPS = float(os.getenv("BACKTEST_SPREAD_PIPS", "1.0"))
+    cls.BACKTEST_COMMISSION_PER_LOT = float(os.getenv("BACKTEST_COMMISSION_PER_LOT", "5.0"))
+    cls.BACKTEST_SLIPPAGE_PIPS = float(os.getenv("BACKTEST_SLIPPAGE_PIPS", "0.5"))
+    cls.BACKTEST_SWAP_PER_LOT_PER_NIGHT = float(
+        os.getenv("BACKTEST_SWAP_PER_LOT_PER_NIGHT", "0.0")
+    )
+    return cls
+
+
+_attach_backtest_realism(Config)

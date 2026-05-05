@@ -36,6 +36,12 @@ class BacktestTrade:
     exit_reason: Literal["TP", "SL", "MANUAL"]
     profit_pct: float
     profit_r: float  # Risk multiple (profit / risk_amount)
+    # Costi realistici (fase 17.6.1)
+    spread_cost_usd: float = 0.0
+    commission_usd: float = 0.0
+    slippage_cost_usd: float = 0.0
+    gross_profit_usd: float = 0.0  # P&L lordo prima costi
+    net_profit_usd: float = 0.0    # P&L netto dopo costi
 
 
 @dataclass
@@ -58,6 +64,12 @@ class BacktestReport:
     trades: list[BacktestTrade] = field(default_factory=list)
     start_balance: float = 0.0
     end_balance: float = 0.0
+    # Aggregati costi realistici (fase 17.6.1)
+    total_spread_cost_usd: float = 0.0
+    total_commission_usd: float = 0.0
+    total_slippage_cost_usd: float = 0.0
+    total_gross_profit_usd: float = 0.0
+    total_net_profit_usd: float = 0.0
 
 
 class BacktestMt5Client(Mt5Client):
@@ -146,8 +158,12 @@ class BacktestMt5Client(Mt5Client):
 
         bars = self.symbol_to_bars[symbol]
         idx = self.current_bar_index.get(symbol, 0)
-        remaining = bars[idx : idx + n_bars]
-        return remaining
+        # FIX look-ahead: ritorna ULTIME n_bars TERMINANTI a idx (incluso),
+        # mirror di mt5.copy_rates_from_pos(symbol, tf, 0, n) live.
+        # Vecchio codice: bars[idx : idx + n_bars] = future bars = look-ahead bias.
+        end = idx + 1
+        start = max(0, end - n_bars)
+        return bars[start:end]
 
     def calc_order_margin(self, symbol: str, direction: str, lots: float, price: float) -> float:
         """Mock margin calc."""
@@ -183,6 +199,13 @@ def _calculate_metrics(trades: list[BacktestTrade], start_balance: float) -> Bac
     report.total_trades = len(trades)
     winning = [t for t in trades if t.profit_pct > 0]
     losing = [t for t in trades if t.profit_pct <= 0]
+
+    # Aggrega costi realistici
+    report.total_spread_cost_usd = sum(t.spread_cost_usd for t in trades)
+    report.total_commission_usd = sum(t.commission_usd for t in trades)
+    report.total_slippage_cost_usd = sum(t.slippage_cost_usd for t in trades)
+    report.total_gross_profit_usd = sum(t.gross_profit_usd for t in trades)
+    report.total_net_profit_usd = sum(t.net_profit_usd for t in trades)
 
     report.winning_trades = len(winning)
     report.losing_trades = len(losing)
@@ -369,9 +392,31 @@ class BacktestEngine:
         # Genera report
         return _calculate_metrics(self.trades, self.account_state.starting_balance_of_day)
 
+    def _pip_size(self, symbol: str) -> float:
+        """Dimensione pip per simbolo. Forex 5-digit: 0.0001. JPY: 0.01. Metalli: 0.01."""
+        s = symbol.upper()
+        if "JPY" in s:
+            return 0.01
+        if s in ("XAUUSD", "GOLD", "USOIL", "WTI", "UKOIL", "XAGUSD"):
+            return 0.01
+        return 0.0001
+
+    def _pip_value_usd(self, symbol: str, lots: float) -> float:
+        """Valore monetario di 1 pip per N lots. Approx forex maggiori: $10/pip per 1 lot."""
+        s = symbol.upper()
+        if "JPY" in s:
+            return 9.0 * lots  # ~$9/pip per 1 lot USDJPY (varia con prezzo)
+        if s in ("XAUUSD", "GOLD"):
+            return 1.0 * lots  # 0.01 mossa × 100 oz = $1
+        if s in ("USOIL", "WTI", "UKOIL"):
+            return 10.0 * lots  # 0.01 mossa × 1000 barrels = $10
+        return 10.0 * lots  # forex maggiori 0.0001 × 100k = $10
+
     def _evaluate_open_positions(self, bar_idx: int) -> None:
-        """Valuta posizioni aperte: check SL/TP hit."""
+        """Valuta posizioni aperte: check SL/TP hit con slippage realistico."""
         closed_tickets = []
+        slippage_pips = float(getattr(self.cfg, "BACKTEST_SLIPPAGE_PIPS", 0.5))
+        commission_per_lot = float(getattr(self.cfg, "BACKTEST_COMMISSION_PER_LOT", 5.0))
 
         for ticket, pos in list(self.open_positions.items()):
             bars = self.symbol_to_bars.get(pos.symbol, [])
@@ -381,34 +426,57 @@ class BacktestEngine:
             bar = bars[bar_idx]
             exit_price = None
             exit_reason = "MANUAL"
+            pip = self._pip_size(pos.symbol)
 
-            # Check SL hit (worst case: SL hit prima di TP se entrambi toccati)
+            # Check SL/TP hit. Convenzione conservativa: se entrambi toccati
+            # nello stesso bar, SL hit prima (worst case).
+            # Slippage: SL hit a prezzo PEGGIORE (oltre SL), TP hit a prezzo limit esatto.
             if pos.direction == "BUY":
                 if bar["low"] <= pos.stop_loss:
-                    exit_price = pos.stop_loss
+                    exit_price = pos.stop_loss - slippage_pips * pip  # peggio per BUY
                     exit_reason = "SL"
                 elif bar["high"] >= pos.take_profit:
-                    exit_price = pos.take_profit
+                    exit_price = pos.take_profit  # TP = limit, no slip avverso
                     exit_reason = "TP"
             else:  # SELL
                 if bar["high"] >= pos.stop_loss:
-                    exit_price = pos.stop_loss
+                    exit_price = pos.stop_loss + slippage_pips * pip  # peggio per SELL
                     exit_reason = "SL"
                 elif bar["low"] <= pos.take_profit:
                     exit_price = pos.take_profit
                     exit_reason = "TP"
 
             if exit_price is not None:
-                # Chiudi trade
-                profit = (exit_price - pos.entry_price) * (1 if pos.direction == "BUY" else -1)
-                profit_pct = profit / pos.entry_price * 100.0 if pos.entry_price > 0 else 0.0
+                # Profit lordo in price points, poi conversione USD
+                price_diff = (exit_price - pos.entry_price) * (
+                    1 if pos.direction == "BUY" else -1
+                )
+                pip_units = price_diff / pip
+                gross_usd = pip_units * self._pip_value_usd(pos.symbol, pos.lots)
 
-                # Stima risk per R
-                risk_amount = abs(pos.entry_price - pos.stop_loss) * pos.lots
-                profit_r = (profit * pos.lots / risk_amount) if risk_amount > 0 else 0.0
+                # Costi: commission round-trip (open+close) + slippage già nel exit_price
+                commission_usd = commission_per_lot * pos.lots * 2.0
+                # Slippage cost separato per reporting (già scontato in exit_price)
+                slippage_cost_usd = (
+                    slippage_pips * self._pip_value_usd(pos.symbol, pos.lots)
+                    if exit_reason == "SL" else 0.0
+                )
+                # Spread cost già scontato in entry_price (vedi _execute_order)
+                spread_pips = float(getattr(self.cfg, "BACKTEST_SPREAD_PIPS", 1.0))
+                spread_cost_usd = spread_pips * self._pip_value_usd(pos.symbol, pos.lots)
 
-                # Record trade
-                entry_time = self._bar_to_datetime(bars, 0)  # Dummy: primo bar dataset
+                net_usd = gross_usd - commission_usd
+
+                # profit_pct = net_usd / starting_balance × 100 (per consistency con metric calc)
+                start_bal = self.account_state.starting_balance_of_day
+                profit_pct = (net_usd / start_bal * 100.0) if start_bal > 0 else 0.0
+
+                # R multiple: profit_net / risk_iniziale_usd
+                risk_pips = abs(pos.entry_price - pos.stop_loss) / pip
+                risk_usd = risk_pips * self._pip_value_usd(pos.symbol, pos.lots)
+                profit_r = (net_usd / risk_usd) if risk_usd > 0 else 0.0
+
+                entry_time = self._bar_to_datetime(bars, 0)
                 exit_time = self._bar_to_datetime(bars, bar_idx)
 
                 self.trades.append(
@@ -425,11 +493,16 @@ class BacktestEngine:
                         exit_reason=exit_reason,
                         profit_pct=profit_pct,
                         profit_r=profit_r,
+                        spread_cost_usd=spread_cost_usd,
+                        commission_usd=commission_usd,
+                        slippage_cost_usd=slippage_cost_usd,
+                        gross_profit_usd=gross_usd,
+                        net_profit_usd=net_usd,
                     )
                 )
 
-                # Aggiorna account
-                self.account_state.balance += profit * pos.lots
+                # Aggiorna account in USD reali
+                self.account_state.balance += net_usd
                 self.account_state.equity = self.account_state.balance
 
                 closed_tickets.append(ticket)
@@ -438,15 +511,23 @@ class BacktestEngine:
             del self.open_positions[ticket]
 
     def _execute_order(self, proposal: TradeProposal, size: float, bar_idx: int) -> None:
-        """Esegui ordine (apri posizione)."""
+        """Esegui ordine (apri posizione) con spread realistico applicato a entry."""
         bars = self.symbol_to_bars.get(proposal.symbol, [])
         if bar_idx >= len(bars):
             return
 
         bar = bars[bar_idx]
+        spread_pips = float(getattr(self.cfg, "BACKTEST_SPREAD_PIPS", 1.0))
+        pip = self._pip_size(proposal.symbol)
 
-        # Entry price = current bar's close (semplificazione)
-        entry_price = bar["close"]
+        # Entry: BUY paga spread (entry @ ask = close + spread/2 lato bid-ask).
+        # Approssimazione conservativa: full spread sulla direzione adversa.
+        # BUY entry @ close + spread, SELL entry @ close - spread.
+        base_price = bar["close"]
+        if proposal.direction == "BUY":
+            entry_price = base_price + spread_pips * pip
+        else:
+            entry_price = base_price - spread_pips * pip
 
         ticket = self.position_counter
         self.position_counter += 1

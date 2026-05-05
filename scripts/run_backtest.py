@@ -78,6 +78,14 @@ def write_report(report, args, path: Path) -> None:
         f.write(f"Max DD:         {report.max_drawdown_pct:.2f}%\n")
         f.write(f"Sharpe ratio:   {report.sharpe_ratio:.2f}\n")
         f.write(f"Max consec L:   {report.max_consecutive_losses}\n")
+        f.write("-" * 60 + "\n")
+        f.write(" COSTI REALISTICI (spread + commission + slippage)\n")
+        f.write("-" * 60 + "\n")
+        f.write(f"Gross profit:   ${report.total_gross_profit_usd:+,.2f}\n")
+        f.write(f"Net profit:     ${report.total_net_profit_usd:+,.2f}\n")
+        f.write(f"Spread cost:    ${report.total_spread_cost_usd:,.2f}\n")
+        f.write(f"Commission:     ${report.total_commission_usd:,.2f}\n")
+        f.write(f"Slippage cost:  ${report.total_slippage_cost_usd:,.2f}\n")
         f.write("=" * 60 + "\n\n")
         f.write("TRADES DETAIL:\n")
         for t in report.trades:
@@ -104,6 +112,12 @@ def main() -> int:
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(level=log_level, format="%(asctime)s %(levelname)s %(message)s")
     log = logging.getLogger("backtest")
+
+    # Silenzia rejects risk_engine + strategy in modalità non-verbose: troppo
+    # rumore per backtest (centinaia di setup scartati per SL stretto, R:R basso).
+    if not args.verbose:
+        logging.getLogger("risk_engine").setLevel(logging.WARNING)
+        logging.getLogger("strategy").setLevel(logging.WARNING)
 
     cfg = Config()  # legge .env
 
@@ -156,7 +170,16 @@ def main() -> int:
     print(f"Max DD:         {report.max_drawdown_pct:.2f}%")
     print(f"Sharpe:         {report.sharpe_ratio:.2f}")
     print(f"Max consec L:   {report.max_consecutive_losses}")
+    print("-" * 60)
+    print(f"Gross profit:   ${report.total_gross_profit_usd:+,.2f}")
+    print(f"Net profit:     ${report.total_net_profit_usd:+,.2f}")
+    print(f"Spread cost:    ${report.total_spread_cost_usd:,.2f}")
+    print(f"Commission:     ${report.total_commission_usd:,.2f}")
+    print(f"Slippage cost:  ${report.total_slippage_cost_usd:,.2f}")
     print("=" * 60)
+    print(f"Backtest costs config: spread={cfg.BACKTEST_SPREAD_PIPS}pip "
+          f"commission=${cfg.BACKTEST_COMMISSION_PER_LOT}/lot "
+          f"slippage={cfg.BACKTEST_SLIPPAGE_PIPS}pip")
 
     # File report
     if args.report:
