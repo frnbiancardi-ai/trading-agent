@@ -9,4 +9,5 @@ logs/*.db-wal
 logs/*.db-shm
 .idea/
 .vscode/
-.claude/
+.claude/*
+!.claude/skills/
