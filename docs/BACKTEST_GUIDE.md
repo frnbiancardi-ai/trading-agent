@@ -129,10 +129,21 @@ Per backtest **M15 oltre 4 anni** o per **Gold/Oil intraday**, broker MT5 non ba
 
 #### 1.5a HistData → MT5 format
 
+**Path A — download manuale (raccomandato)**:
 1. Vai a https://www.histdata.com/download-free-forex-data/?/ascii/1-minute-bar-quotes/eurusd
-2. Scarica zip mensili anno per anno (ogni zip ~50 KB, formato `DAT_ASCII_EURUSD_M1_YYYYMM.zip`)
+2. Scarica zip mensili anno per anno (ogni zip ~50 KB, formato `HISTDATA_COM_ASCII_EURUSD_M1YYYYMM.zip` o `DAT_ASCII_EURUSD_M1_YYYYMM.zip`)
 3. Estrai TUTTI i CSV in una directory: `data/histdata/EURUSD/`
-4. Converti:
+4. Converti (vedi sezione 1.5d).
+
+**Path B — auto-download (sperimentale)**:
+```powershell
+.\.venv\Scripts\python.exe scripts\download_histdata.py --symbol EURUSD --start 2016-01 --end 2026-04
+```
+HistData richiede form-POST con token CSRF; lo script può fallire se site cambia. In quel caso fallback a Path A.
+
+#### 1.5d Conversione HistData M1 → CSV multi-TF (formato BacktestEngine)
+
+Hai zip estratti in `data/histdata/EURUSD/`. Lancia:
 ```powershell
 .\.venv\Scripts\python.exe scripts\import_histdata.py `
     --input-dir data\histdata\EURUSD `
@@ -140,9 +151,55 @@ Per backtest **M15 oltre 4 anni** o per **Gold/Oil intraday**, broker MT5 non ba
     --timeframes M15 H1 H4 D1
 ```
 
-Output: `data/historical/EURUSD/{M15,H1,H4,D1}.csv` con 10+ anni storia. M15 ~3.5M barre.
+Output:
+```
+data/historical/EURUSD/
+├── M15.csv   (~350K barre, 10y)
+├── H1.csv    (~87K barre)
+├── H4.csv    (~21K barre)
+└── D1.csv    (~3.6K barre)
+```
 
-Tip: per scaricare batch usa script di shell loop (HistData non offre API ma URL prevedibili) — vedi script bash community.
+Aggregazione bucket-fissi su epoch (no overlap, no look-ahead). Dedup automatico su confini mese.
+
+Verifica:
+```powershell
+Get-Content data\historical\EURUSD\M15.csv -TotalCount 3
+.\.venv\Scripts\python.exe -c "import csv; r=list(csv.DictReader(open('data/historical/EURUSD/M15.csv'))); print(f'Barre: {len(r):,}'); print(f'Range: {r[0][\"datetime\"]} → {r[-1][\"datetime\"]}')"
+```
+
+Atteso: ~350.000 barre M15, range `2016-01-04 00:00:00 → 2026-04-30 23:45:00`.
+
+**Mantieni anche M1 raw** (utile per re-aggregare TF custom):
+```powershell
+.\.venv\Scripts\python.exe scripts\import_histdata.py --input-dir data\histdata\EURUSD --symbol EURUSD --timeframes M15 H1 H4 D1 --keep-m1
+```
+M1.csv ~3.5M barre (~500MB). Usa solo se serve.
+
+#### 1.5e Quick start: hai già HistData EURUSD M1 10y
+
+Se hai già estratto zip HistData in `data/histdata/EURUSD/`:
+
+```powershell
+# 1. Converti M1 → M15/H1/H4/D1
+.\.venv\Scripts\python.exe scripts\import_histdata.py --input-dir data\histdata\EURUSD --symbol EURUSD
+
+# 2. Smoke test 1 anno
+.\.venv\Scripts\python.exe scripts\run_backtest.py --start 2024-01-01 --end 2024-12-31 --symbols EURUSD --timeframe M15
+
+# 3. Backtest full 10y M15 (lungo: 30-90 min)
+.\.venv\Scripts\python.exe scripts\run_backtest.py --start 2016-01-01 --end 2026-04-30 --symbols EURUSD --timeframe M15 --report reports\eurusd_m15_10y.txt
+
+# 4. Backtest H1 10y (più veloce, ~5 min)
+.\.venv\Scripts\python.exe scripts\run_backtest.py --start 2016-01-01 --end 2026-04-30 --symbols EURUSD --timeframe H1 --report reports\eurusd_h1_10y.txt
+```
+
+Per intermarket completo (Gold/Oil context), aggiungi:
+```powershell
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker GC=F --symbol XAUUSD --interval 1d --years 10
+.\.venv\Scripts\python.exe scripts\import_yfinance.py --ticker CL=F --symbol USOIL --interval 1d --years 10
+```
+Nota: Gold/Oil D1 da yfinance; M15 intermarket non disponibile gratis. Il `IntermarketEngine` gira su H4/D1 → coerente.
 
 #### 1.5b yfinance → MT5 format (Gold/Oil/SPX/crypto)
 
@@ -389,14 +446,19 @@ v3 (intermarket-enhanced) deve battere v2 su **almeno 2** di:
 ## 6. Workflow consigliato
 
 ### 6.1 Setup iniziale (1 volta)
+
+**Opzione A — solo MT5 (cap 4y M15)**:
 ```powershell
-# 1. Download dati
 .\.venv\Scripts\python.exe scripts\download_history.py --years 10
-
-# 2. Verifica dataset
 ls data\historical\EURUSD\
+.\.venv\Scripts\python.exe scripts\run_backtest.py --start 2024-01-01 --end 2024-06-30 --symbols EURUSD
+```
 
-# 3. Smoke test
+**Opzione B — HistData M1 10y (raccomandato)**:
+```powershell
+# Pre-req: zip HistData estratti in data/histdata/EURUSD/
+.\.venv\Scripts\python.exe scripts\import_histdata.py --input-dir data\histdata\EURUSD --symbol EURUSD
+ls data\historical\EURUSD\
 .\.venv\Scripts\python.exe scripts\run_backtest.py --start 2024-01-01 --end 2024-06-30 --symbols EURUSD
 ```
 
@@ -468,8 +530,11 @@ Prima di passare strategia a live:
 |------|-------|
 | `backtest.py` | BacktestEngine, BacktestMt5Client, metric calculation |
 | `tests/test_backtest_harness.py` | Test unitari engine |
-| `scripts/download_history.py` | Download CSV da MT5 (da creare) |
-| `scripts/run_backtest.py` | Runner backtest end-to-end (da creare) |
+| `scripts/download_history.py` | Download CSV da MT5 (cap auto per TF) |
+| `scripts/import_histdata.py` | Convert HistData M1 → M15/H1/H4/D1 CSV |
+| `scripts/import_yfinance.py` | Yahoo Finance → CSV (Gold/Oil/SPX/crypto) |
+| `scripts/download_histdata.py` | Auto-download HistData zip (sperimentale) |
+| `scripts/run_backtest.py` | Runner backtest end-to-end |
 | `scripts/run_calibration.py` | Grid-search calibration (skeleton 17.7) |
 | `data/historical/<symbol>/<tf>.csv` | Dataset OHLC |
 | `reports/*.txt` | Output backtest |
