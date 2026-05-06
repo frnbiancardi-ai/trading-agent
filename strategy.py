@@ -201,11 +201,13 @@ class IntradayStrategy:
 
         sma20_series = sma(closes, 20)
         sma50_series = sma(closes, 50)
+        sma200_series = sma(closes, cfg.RSI_SMA_SMA_PERIOD)
         rsi_series = rsi(closes, 14)
         atr_series = atr(highs, lows, closes, 14)
 
         sma20 = _last_valid(sma20_series)
         sma50 = _last_valid(sma50_series)
+        sma200 = _last_valid(sma200_series)
         rsi_val = _last_valid(rsi_series)
         atr_val = _last_valid(atr_series)
 
@@ -233,6 +235,7 @@ class IntradayStrategy:
         indicators_snapshot = {
             "sma_20": sma20,
             "sma_50": sma50,
+            "sma_200": sma200,
             "rsi_14": rsi_val,
             "atr_14": atr_val,
             "atr_pips": atr_pips,
@@ -242,6 +245,24 @@ class IntradayStrategy:
             "last_close": last_close,
             "pip_size": pip_size,
         }
+
+        # Try RSI_SMA strategy first (verificata: 60.3% WR)
+        if cfg.RSI_SMA_ENABLED:
+            rsi_sma_result = self.identify_entry_rsi_sma(bars, {
+                **indicators_snapshot,
+                "atr_pips": atr_pips,
+            })
+            if rsi_sma_result.get("type") == "READY":
+                return TechnicalSetup(
+                    symbol=symbol, timeframe=timeframe, setup_type="READY",
+                    direction=rsi_sma_result["direction"],
+                    entry_price=rsi_sma_result.get("entry_price"),
+                    stop_loss=rsi_sma_result.get("stop_loss"),
+                    take_profit=rsi_sma_result.get("take_profit"),
+                    confidence=0.8,
+                    reason=rsi_sma_result.get("reason"),
+                    indicators=indicators_snapshot, support_resistance=sr,
+                )
 
         decision = self.identify_entry_setup(bars, indicators_snapshot, sr, patterns)
 
@@ -388,6 +409,56 @@ class IntradayStrategy:
         if rsi_val <= cfg.MIN_RSI_OVERSOLD:
             return {"type": "NONE", "direction": None, "reason": f"rsi_oversold={rsi_val:.1f}"}
         return {"type": "NONE", "direction": None, "reason": "trend_or_alignment_weak"}
+
+    def identify_entry_rsi_sma(
+        self,
+        bars: list[dict],
+        indicators: dict,
+    ) -> dict:
+        """RSI_SMA strategy verificata: 60.3% WR (H15 + RSI 65-80 + price > SMA200).
+
+        Usa config RSI_SMA_*.
+        """
+        cfg = Config
+
+        rsi_val = indicators.get("rsi_14")
+        sma_val = indicators.get("sma_200")
+        last_close = indicators.get("last_close")
+
+        if None in (rsi_val, sma_val, last_close):
+            return {"type": "NONE", "direction": None, "reason": "indicators_not_ready"}
+
+        now = datetime.now()
+        current_hour = now.hour
+
+        # Check hour (15 UTC)
+        if current_hour != cfg.RSI_SMA_HOUR:
+            return {"type": "NONE", "direction": None, "reason": f"not_h15_hour={current_hour}"}
+
+        # RSI range
+        if not (cfg.RSI_SMA_MIN_RSI <= rsi_val <= cfg.RSI_SMA_MAX_RSI):
+            return {"type": "NONE", "direction": None, "reason": f"rsi_out_of_range={rsi_val:.1f}"}
+
+        # Price > SMA200
+        if last_close <= sma_val:
+            return {"type": "NONE", "direction": None, "reason": "price_below_sma"}
+
+        # ALL conditions met - SHORT only
+        atr_val = indicators.get("atr_pips", 10)
+        pip_size = indicators.get("pip_size", 0.0001)
+
+        entry = last_close
+        sl = last_close + (atr_val * 1.5 * pip_size)
+        tp = last_close - (atr_val * 2.25 * pip_size)
+
+        return {
+            "type": "READY",
+            "direction": "SELL",
+            "reason": f"RSI_SMA: rsi={rsi_val:.1f}, sma={sma_val:.5f}",
+            "entry_price": entry,
+            "stop_loss": sl,
+            "take_profit": tp,
+        }
 
     def build_trade_proposal(
         self,

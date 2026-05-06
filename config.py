@@ -154,6 +154,15 @@ class Config:
     MIN_RISK_REWARD_RATIO: float = float(os.getenv("MIN_RISK_REWARD_RATIO", "1.5"))
     MAX_RSI_OVERBOUGHT: int = int(os.getenv("MAX_RSI_OVERBOUGHT", "75"))
     MIN_RSI_OVERSOLD: int = int(os.getenv("MIN_RSI_OVERSOLD", "25"))
+
+    # RSI_SMA strategy (verified: 60.3% WR)
+    RSI_SMA_ENABLED: bool = _get_bool("RSI_SMA_ENABLED", True)
+    RSI_SMA_MIN_RSI: int = int(os.getenv("RSI_SMA_MIN_RSI", "65"))
+    RSI_SMA_MAX_RSI: int = int(os.getenv("RSI_SMA_MAX_RSI", "80"))
+    RSI_SMA_SMA_PERIOD: int = int(os.getenv("RSI_SMA_SMA_PERIOD", "200"))
+    RSI_SMA_HOUR: int = int(os.getenv("RSI_SMA_HOUR", "15"))
+    RSI_SMA_HOLD_BARS: int = int(os.getenv("RSI_SMA_HOLD_BARS", "2"))
+
     MIN_CONFIDENCE_TO_PROPOSE: float = float(os.getenv("MIN_CONFIDENCE_TO_PROPOSE", "0.60"))
 
     # Pattern recognition
