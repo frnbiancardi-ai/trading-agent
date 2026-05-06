@@ -1,0 +1,33 @@
+import sys
+sys.path.insert(0, ".")
+from backtest import load_bars
+from indicators import rsi as r
+from datetime import datetime
+
+for h in [1, 2, 3, 4, 5, 8, 10]:
+    bars = load_bars("EURUSD", "M15", datetime(2024,1,1), datetime(2024,12,31))
+    w = t = 0
+    for i in range(50, min(2500, len(bars)-h-1)):
+        c = [b["close"] for b in bars[:i+1]]
+        rs = r(c, 14)
+        if rs and 15 <= rs[-1] <= 25:
+            if bars[i+h]["close"] > bars[i]["close"]:
+                w += 1
+            t += 1
+    if t > 0:
+        print(f"h={h}: {t} trades, {w/t*100:.1f}%")
+
+print()
+
+for h in [1, 2, 3, 4, 5, 8, 10]:
+    bars = load_bars("EURUSD", "M15", datetime(2024,1,1), datetime(2024,12,31))
+    w = t = 0
+    for i in range(50, min(2500, len(bars)-h-1)):
+        c = [b["close"] for b in bars[:i+1]]
+        rs = r(c, 14)
+        if rs and 75 <= rs[-1] <= 85:
+            if bars[i+h]["close"] < bars[i]["close"]:
+                w += 1
+            t += 1
+    if t > 0:
+        print(f"SHORT h={h}: {t} trades, {w/t*100:.1f}%")

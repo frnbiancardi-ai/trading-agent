@@ -13,6 +13,8 @@ Usage:
 from .trade_analyzer import extract_trade_features, TradeFeatures, TradeOutcome
 from .feature_quality import FeatureQualityModel, QualityPrediction
 from .parameter_tuner import HeuristicTuner, MLTuner, ParamSuggestion
+from .regime_detector import RegimeDetector, RegimeDetection, MarketRegime, detect_regime
+from .regime_strategy import RegimeStrategy, StrategyConfig, create_regime_strategy
 
 
 class MLFeedbackLoop:
@@ -95,4 +97,11 @@ __all__ = [
     "FeatureQualityModel",
     "ParamSuggestion",
     "HeuristicTuner",
+    "RegimeDetector",
+    "RegimeDetection",
+    "MarketRegime",
+    "detect_regime",
+    "RegimeStrategy",
+    "StrategyConfig",
+    "create_regime_strategy",
 ]
