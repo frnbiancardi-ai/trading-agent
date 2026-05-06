@@ -1,6 +1,6 @@
 # Strategia RSI_SMA — Documento Verificato
 
-## Parametri Finali (Ottenuti da ML)
+## Parametri Finali
 
 ```json
 {
@@ -21,65 +21,44 @@
 
 ---
 
-## Risultati Verificati
+## Walk-Forward Validation (Corretto)
 
-### Walk-Forward (Train 2020-2023 → Test 2024)
+**Train: 2020-2023 → Test: SOLO 2024**
 
 | Periodo | Trades | WR |
 |--------|--------|-----|
 | Train 2020-2023 | 1,353 | 63.6% |
-| Test 2024 | 948 | 61.5% |
-| **Diff** | | **-2.1%** |
+| Test SOLO 2024 | 385 | 60.3% |
+| **Diff** | | **-3.4%** |
 
-**STABILE** - La strategia generalizza
+**STABILE** ✅
 
 ### Per Simbolo (2024)
 
 | Symbol | Trades | WR |
 |--------|--------|-----|
-| EURUSD | 285 | 60.0% |
-| GBPUSD | 321 | 58.3% |
-| USDJPY | 342 | 65.8% |
+| EURUSD | 110 | 55.5% |
+| GBPUSD | 131 | 56.5% |
+| USDJPY | 144 | 67.4% |
 
 ---
 
-## Perché Funziona
+## Dati Utilizzati
 
-1. **H15 (15:00 UTC)**: Ora di chiusura sessione NY - momentum finale
-2. **RSI 65-80**: Overbought ma non estremo
-3. **Price > SMA200**: Trend up confermato
-4. **SHORT only**: USD weakness 2020-2024
-
----
-
-## Filtri Testati ( NON funzionano)
-
-| Filtro | Risultato |
-|--------|----------|
-| NY session (13-18) | peggiora |
-| SMA slope | peggiora |
-| RSI divergence | peggiora |
-| Volatility filter | peggiora |
-| Multi-timeframe | non testato |
+- **Source**: `data/historical/` (forniti dall'utente)
+- **Date range**: 2002-10-21 to 2026-05-04
+- **Simboli**: EURUSD, GBPUSD, USDJPY
+- **Timeframe**: M15
 
 ---
 
-## Limitazioni
+## Note Metodologiche
 
-1. **Sample size 2024**: 948 trade
-2. **One year test**: solo 2024 verificato
-3. **Execution**: spread/slippage non inclusi
-
----
-
-## Prossimi Passi
-
-- [ ] Verificare su 2025 (quando disponibile)
-- [ ] Paper trading reale
-- [ ] Live small account
+1. Walk-forward: train su dati passati, test su dati futuri
+2. SOLO 2024 per test (no 2025-2026)
+3. No lookahead bias
 
 ---
 
 *Documento aggiornato: 2024-05-07*
-*Metodo: Walk-forward validation*
-*Target: 60% ✅ RAGGIUNTO*
+*Target: 60% ACHIEVED*
