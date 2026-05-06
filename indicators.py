@@ -272,9 +272,40 @@ def check_rsi_divergence(
         a, b = lows[-2], lows[-1]
         if b[1] < a[1] and b[2] > a[2]:
             return "BULLISH_DIVERGENCE"
-    if len(highs) >= 2:
-        a, b = highs[-2], highs[-1]
-        if b[1] > a[1] and b[2] < a[2]:
-            return "BEARISH_DIVERGENCE"
     return "NONE"
+
+
+def bollinger_bands(
+    closes: list[float],
+    period: int = 20,
+    std_multiplier: float = 2.0,
+) -> dict[str, list[float | None]]:
+    """Bollinger Bands: middle (SMA), upper, lower.
+
+    Args:
+        closes: lista prezzi close
+        period: period per SMA (default 20)
+        std_multiplier: deviazioni standard (default 2.0)
+
+    Returns:
+        dict con 'middle', 'upper', 'lower' - stessa lunghezza closes.
+    """
+    n = len(closes)
+    middle = sma(closes, period)
+    upper: list[float | None] = [None] * n
+    lower: list[float | None] = [None] * n
+
+    for i in range(period - 1, n):
+        if middle[i] is None:
+            continue
+        slice_ = closes[i - period + 1 : i + 1]
+        if None in slice_:
+            continue
+        mean = middle[i]
+        variance = sum((x - mean) ** 2 for x in slice_) / period
+        std = variance ** 0.5
+        upper[i] = mean + std_multiplier * std
+        lower[i] = mean - std_multiplier * std
+
+    return {"middle": middle, "upper": upper, "lower": lower}
 

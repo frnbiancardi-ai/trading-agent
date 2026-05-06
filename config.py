@@ -169,6 +169,16 @@ class Config:
     # false = READY ammesso anche su trend-continuation/pullback senza rottura
     REQUIRE_BREAKOUT_FOR_READY: bool = _get_bool("REQUIRE_BREAKOUT_FOR_READY", True)
 
+    # Mean reversion (fase 14)
+    ENABLE_MEAN_REVERSION: bool = _get_bool("ENABLE_MEAN_REVERSION", False)
+    MEAN_REV_MAX_TREND_STRENGTH: float = float(os.getenv("MEAN_REV_MAX_TREND_STRENGTH", "0.35"))
+    MEAN_REV_BOLLINGER_PERIOD: int = int(os.getenv("MEAN_REV_BOLLINGER_PERIOD", "20"))
+    MEAN_REV_BOLLINGER_STD: float = float(os.getenv("MEAN_REV_BOLLINGER_STD", "2.0"))
+    MEAN_REV_RSI_EXTREME_BUY: int = int(os.getenv("MEAN_REV_RSI_EXTREME_BUY", "25"))
+    MEAN_REV_RSI_EXTREME_SELL: int = int(os.getenv("MEAN_REV_RSI_EXTREME_SELL", "75"))
+    MEAN_REV_TARGET_MIDDLE_BAND: bool = _get_bool("MEAN_REV_TARGET_MIDDLE_BAND", True)
+    MEAN_REV_MIN_RR: float = float(os.getenv("MEAN_REV_MIN_RR", "1.0"))
+
 
 _VALID_INTRADAY_TIMEFRAMES = {"M1", "M5", "M10", "M15", "M30"}
 if Config.INTRADAY_TIMEFRAME not in _VALID_INTRADAY_TIMEFRAMES:
