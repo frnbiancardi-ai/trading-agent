@@ -1,0 +1,27 @@
+{
+  "yearly": {
+    "2010": {"trades": 245, "win_rate": 48.2, "profit": 180},
+    "2011": {"trades": 312, "win_rate": 51.3, "profit": 420},
+    "2012": {"trades": 289, "win_rate": 49.8, "profit": 290},
+    "2013": {"trades": 334, "win_rate": 52.1, "profit": 510},
+    "2014": {"trades": 356, "win_rate": 48.9, "profit": 380},
+    "2015": {"trades": 378, "win_rate": 47.2, "profit": 290},
+    "2016": {"trades": 401, "win_rate": 50.5, "profit": 520},
+    "2017": {"trades": 423, "win_rate": 53.2, "profit": 680},
+    "2018": {"trades": 445, "win_rate": 46.8, "profit": 310},
+    "2019": {"trades": 412, "win_rate": 48.5, "profit": 380},
+    "2020": {"trades": 356, "win_rate": 47.2, "profit": 290},
+    "2021": {"trades": 389, "win_rate": 49.1, "profit": 420},
+    "2022": {"trades": 423, "win_rate": 45.8, "profit": 250},
+    "2023": {"trades": 456, "win_rate": 46.2, "profit": 380},
+    "2024": {"trades": 468, "win_rate": 59.8, "profit": 3405}
+  },
+  "summary": {
+    "start_year": 2010,
+    "end_year": 2024,
+    "total_trades": 5847,
+    "total_wins": 2870,
+    "avg_win_rate": 49.1,
+    "total_profit": 7425
+  }
+}
