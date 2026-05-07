@@ -10,9 +10,10 @@
 Esegui il baseline backtest pre-ML completo: 23.5y × 3 pair (EURUSD, GBPUSD, USDJPY) × 3 timeframe (M15, M30, H1) × 3 risk profile (CONSERVATIVE, MODERATE, AGGRESSIVE) = **27 run**. Produrre:
 
 - Metrics report `.planning/research/baseline-{date}.md` (header + tabella 27-row + per-slice mini-section + appendix config)
-- Decision dataset doppio in `data/training/`:
-  - `baseline_decisions.parquet` — 1 riga per trade chiuso (READY entrato nel ledger), schema completo (identità + ProposalDraft + ExtendedIndicators + ctx + outcome multi-label)
-  - `baseline_drafts.parquet` — 1 riga per ogni Draft prodotto da ogni detector su ogni bar (READY+FORMING+NONE × 4 setup × N_bar)
+- Decision dataset doppio in `data/training/` (layout **directory** pyarrow.dataset, finalize-step concat post-run):
+  - `data/training/baseline_decisions/` — directory dataset partizionata; 1 riga per trade chiuso (READY entrato nel ledger), schema completo (identità + ProposalDraft + ExtendedIndicators + ctx + outcome multi-label). Phase 7 ML reader: `pd.read_parquet("data/training/baseline_decisions/")`.
+  - `data/training/baseline_drafts/` — directory dataset; 1 riga per ogni Draft (READY+FORMING+NONE × 4 setup × N_bar). 65M righe richiede streaming/sharding.
+  - **Update 2026-05-08:** D-01 risolto a directory per entrambi (era ambiguo "single file vs directory" — RESEARCH §Open Question 1, decisione user). ROADMAP path letterale `data/training/baseline_decisions.parquet` riletto come dataset name.
 - Equity curves PNG (27 file) in `.planning/research/baseline-equity-curves/`
 - Trade ledger persistito in `logs/trades.db` tabelle `backtest_trades` + `backtest_runs` (Phase 1 D-07)
 

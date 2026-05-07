@@ -151,6 +151,18 @@ Plans:
 
 **Hint UI:** no
 
+**Plans:** 8 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Wave 0 scaffolding: pyarrow+matplotlib install, baseline.yaml, ledger schema migration (D-15, D-17)
+- [ ] 05-02-PLAN.md — Wave 0 test scaffolding: conftest.py + 7 stub test_baseline_*.py (Nyquist 23 test)
+- [ ] 05-03-PLAN.md — Wave 1: determinism.py (sha256 seed) + wal_setup.py (PRAGMA WAL + retry-with-jitter) (D-16, D-17)
+- [ ] 05-04-PLAN.md — Wave 1: dataset_writer.py (parquet shard + finalize) + plot_writer.py (matplotlib Agg) (D-01/D-02/D-03/D-19/D-20)
+- [ ] 05-05-PLAN.md — Wave 2: backtest/engine.py extension (4 kwargs Phase 5 + timeout enforcement) + metrics.longest_dd_days (D-05, D-15, D-18)
+- [ ] 05-06-PLAN.md — Wave 2: slice_worker.py (run_slice_3profiles + idempotency D-14) + report_writer.py (D-18 schema)
+- [ ] 05-07-PLAN.md — Wave 3: runner.py (ProcessPoolExecutor + BaselineConfig) + scripts/run_baseline_backtest.py CLI + profile_baseline_slice.py (D-15)
+- [ ] 05-08-PLAN.md — Wave 4 PHASE GATE: pre-flight Phase 1-4 + smoke run end-to-end + checkpoint qualitative + git commit deliverable (BACK-07 SC#1, INT-01)
+
 ---
 
 ### Phase 6: MCP Tools (part 1)
