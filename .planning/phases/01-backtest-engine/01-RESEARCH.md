@@ -1088,7 +1088,7 @@ pip install pyyaml
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`get_symbol_info` on BacktestBroker**
    - What we know: `IntradayStrategy._analyze_technical` calls `self.mt5.get_symbol_info(symbol)` to compute `pip_size`. If this raises, the strategy returns `_none_setup`.
