@@ -431,8 +431,8 @@ class IntradayStrategy:
         now = datetime.now()
         current_hour = now.hour
 
-        # Check hour (15 UTC)
-        if current_hour != cfg.RSI_SMA_HOUR:
+        # Check hour - allow either 14 or 15 (scheduler runs at 14)
+        if current_hour not in [cfg.RSI_SMA_HOUR, cfg.RSI_SMA_HOUR + 1]:
             return {"type": "NONE", "direction": None, "reason": f"not_h15_hour={current_hour}"}
 
         # RSI range
