@@ -26,7 +26,7 @@
 
 ## Phase Details
 
-### Phase 1 — Backtest Engine
+### Phase 1: Backtest Engine
 
 **Goal:** Build an event-driven backtest framework that replays the existing Italian-format CSV historical bars one-at-a-time, applies realistic transaction costs, and exposes the same call surface as the live MT5 client so the strategy module can run identically in both environments.
 
@@ -56,7 +56,7 @@ Plans:
 
 ---
 
-### Phase 2 — Indicators Library
+### Phase 2: Indicators Library
 
 **Goal:** Add the missing indicators required by the forex-trader-pro playbook (Bollinger, ADX, MACD, Stochastic, Donchian, Keltner, VWAP, Fibonacci, Pivot, NR4/7, Closing Score, Hurst, multi-TF alignment, volatility regime classifier) as pure functions consumable by both live and backtest paths.
 
@@ -85,7 +85,7 @@ Plans:
 
 ---
 
-### Phase 3 — Patterns Catalog
+### Phase 3: Patterns Catalog
 
 **Goal:** Replace the existing minimal `patterns.py` with a full candlestick pattern catalog (Hammer, Shooting Star, Engulfing, Morning/Evening Star, Key Reversal, Inside Bar, Pin Bar) returning structural anchor points usable by Setup B and ML features.
 
@@ -108,7 +108,7 @@ Plans:
 
 ---
 
-### Phase 4 — Strategy Refactor
+### Phase 4: Strategy Refactor
 
 **Goal:** Refactor the existing strategy module into pure-function setup detectors (A/B/C/D), a 5-factor confluence scorer, ATR-based R:R proposal builder, with the same code path executed by the live scheduler and the backtest engine — no fork.
 
@@ -125,7 +125,7 @@ Plans:
 
 ---
 
-### Phase 5 — Baseline Backtest
+### Phase 5: Baseline Backtest
 
 **Goal:** Execute the full pre-ML baseline backtest across 23.5 years × 3 pairs (EUR/USD, GBP/USD, USD/JPY) × 3 timeframes (M15, M30, H1), produce per-slice metrics and the trade-decision dataset that will train the ML classifier.
 
@@ -141,7 +141,7 @@ Plans:
 
 ---
 
-### Phase 6 — MCP Tools (part 1)
+### Phase 6: MCP Tools (part 1)
 
 **Goal:** Expose the new backtest, position-management, multi-TF, correlation, session, and pattern-catalog tools through the MCP server, plus refactor existing snapshot/scan/propose tools for backward-compatible expansion.
 
@@ -157,7 +157,7 @@ Plans:
 
 ---
 
-### Phase 7 — ML Classifier
+### Phase 7: ML Classifier
 
 **Goal:** Train a LightGBM binary trade-quality classifier on the Phase 5 baseline decision dataset with walk-forward splits and proper Platt/isotonic calibration; persist versioned models.
 
@@ -174,7 +174,7 @@ Plans:
 
 ---
 
-### Phase 8 — MCP Tools (part 2)
+### Phase 8: MCP Tools (part 2)
 
 **Goal:** Expose ML training, inference, and calibration introspection through MCP; integrate ML score into `evaluate_trade_proposal` response; produce the post-ML backtest report.
 
@@ -190,7 +190,7 @@ Plans:
 
 ---
 
-### Phase 9 — Failure Analysis + Drift
+### Phase 9: Failure Analysis + Drift
 
 **Goal:** Add failure clustering, drift monitoring, automatic retrain trigger, and ML-driven `suggest_position_action` for active position management.
 
@@ -206,7 +206,7 @@ Plans:
 
 ---
 
-### Phase 10 — Intermarket + News
+### Phase 10: Intermarket + News
 
 **Goal:** Wire intermarket context (DXY, US10Y, gold, oil) and economic-calendar blackout into the proposal pipeline as confluence inputs and risk filters.
 
@@ -221,7 +221,7 @@ Plans:
 
 ---
 
-### Phase 11 — Paper Deploy Gate
+### Phase 11: Paper Deploy Gate
 
 **Goal:** Run a 30-day paper trading session on demo MT5 with ML inference active, compare live execution metrics vs backtest within tolerance, and document the live-promotion criteria gate.
 
