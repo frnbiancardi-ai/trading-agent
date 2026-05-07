@@ -7,4 +7,5 @@ mcp
 apscheduler
 feedparser
 pytest
+pyyaml
 tzdata
