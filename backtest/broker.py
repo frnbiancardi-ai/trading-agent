@@ -76,6 +76,21 @@ class BacktestBroker:
         self._bar_index += 1
         return self._check_sl_tp(bar)
 
+    def calc_order_margin(
+        self, symbol: str, direction: str, lots: float, price: float,
+    ) -> float:
+        """Off-Protocol stub for risk_engine.evaluate_trade margin check.
+
+        Standard 1:30 retail leverage approximation. Returns required USD
+        margin so that risk_engine doesn't reject due to margin in backtest.
+        Phase 1 simplification: assumes USD-quoted notional / 30.
+        """
+        notional = abs(lots) * 100_000.0 * max(price, 1e-9)
+        if "JPY" in symbol:
+            # Approximate JPY-quoted notional back to USD via current price
+            notional = notional / max(price, 1e-9)
+        return notional / 30.0
+
     def get_symbol_info(self, symbol: str) -> SimpleNamespace:
         """Off-Protocol stub per RESEARCH §Open Question 1.
 

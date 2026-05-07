@@ -21,6 +21,7 @@ from indicators import (
 )
 from models import (
     AccountState,
+    BrokerProtocol,
     DelayedFollowUpRequest,
     OpenPositionVerdict,
     PositionInfo,
@@ -28,7 +29,6 @@ from models import (
     TechnicalSetup,
     TradeProposal,
 )
-from mt5_client import Mt5Client
 from patterns import scan_patterns
 
 
@@ -152,7 +152,7 @@ class IntradayStrategy:
     def __init__(
         self,
         cfg: Config,
-        mt5_client: Mt5Client,
+        mt5_client: BrokerProtocol,
         logger: logging.Logger | None = None,
         environment: StrategyEnvironment | None = None,
     ):

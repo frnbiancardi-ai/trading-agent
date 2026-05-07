@@ -16,7 +16,29 @@ from backtest.engine import BacktestEngine, run_backtest
 from backtest.costs import CostModel, _pip_params
 from backtest.ledger import LedgerWriter
 from backtest.loader import Bar
+from config import Config
 import strategy as strategy_mod
+
+
+def _testing_cfg() -> Config:
+    """Config tuned for synthetic-fixture tests.
+
+    Loosens gates so a hand-crafted breakout deterministically passes:
+      - patterns disabled (no need to forge candle shapes),
+      - lowered MIN_TREND_STRENGTH (consolidation phase reduces coherence),
+      - widened RSI band (a clean breakout pushes RSI ~80),
+      - widened SL pip range to accommodate ATR-sized stops on synthetic data.
+    """
+    cfg = Config()
+    cfg.ENABLE_CANDLESTICK_PATTERNS = False
+    cfg.MIN_TREND_STRENGTH = 0.20
+    cfg.MIN_RSI_OVERSOLD = 5
+    cfg.MAX_RSI_OVERBOUGHT = 95
+    cfg.MIN_SL_PIPS = 1
+    cfg.MAX_SL_PIPS = 200
+    cfg.MIN_ATR_PIPS = 1.0
+    cfg.MIN_CONFIDENCE_TO_PROPOSE = 0.0
+    return cfg
 
 
 _COSTS_YAML = Path("data/configs/costs.yaml")
@@ -45,30 +67,53 @@ def _flat_bars(n: int = 5, base: float = 1.10000) -> list[Bar]:
 
 
 def _uptrend_bars(n: int = 260, base: float = 1.10000) -> list[Bar]:
-    """250+ bars engineered to trigger a BUY breakout setup near the end.
+    """260+ bars engineered to trigger a BUY breakout setup at the LAST bar.
 
-    First 220 bars: gentle uptrend (5 pips/bar) keeping price above SMAs and
-    consolidating below resistance. Last 40 bars: accelerated breakout
-    (15 pips/bar) above prior swing high → breakout="CLEAN", trend_strength
-    high, RSI in band.
+    Realistic 4-6 pip bar ranges to keep ATR > MIN_ATR_PIPS=3:
+      - Phase A (0..199): noisy uptrend — net +1 pip/bar with ±5 pip swings.
+      - Phase B (200..258): consolidation 59 bars below resistance, ~5 pip
+        bar ranges, flat → resets RSI to ~50 by the time we breakout.
+      - Phase D (259, last): a clean breakout — close 5 pip above resistance,
+        volume 3× the 20-bar average → breakout="CLEAN".
     """
+    import random
+    rng = random.Random(42)
     bars: list[Bar] = []
     t0 = 1_700_000_000
     price = base
-    for i in range(n):
-        if i < 200:
-            step = 0.00005   # 0.5 pip — keeps trend mild, RSI in band
-        elif i < 230:
-            # Pull-back / consolidation just below resistance to set up a clean breakout
-            step = -0.00002
-        else:
-            step = 0.00020   # 2 pip — strong breakout
-        new_price = price + step
-        # tiny intra-bar range
-        high = max(price, new_price) + 0.00010
-        low = min(price, new_price) - 0.00010
-        bars.append(_make_bar(t0 + i * 3600, price, high, low, new_price, v=200))
+
+    # Phase A: warmup uptrend — stronger drift so SMA20 stays > SMA50.
+    for i in range(240):
+        net = 0.00020   # +2 pip net drift
+        noise = rng.uniform(-0.00030, 0.00030)
+        new_price = price + net + noise
+        bar_range = rng.uniform(0.00040, 0.00060)
+        high = max(price, new_price) + bar_range / 2
+        low = min(price, new_price) - bar_range / 2
+        bars.append(_make_bar(t0 + i * 3600, price, high, low, new_price, v=180))
         price = new_price
+
+    # Phase B: short consolidation 19 bars (just enough to set resistance pivot).
+    consolidation_top = price + 0.00010
+    for i in range(240, 259):
+        noise = rng.uniform(-0.00015, 0.00015)
+        new_price = price + noise
+        if new_price > consolidation_top - 0.00005:
+            new_price = consolidation_top - rng.uniform(0.00005, 0.00012)
+        bar_range = rng.uniform(0.00040, 0.00055)
+        high = max(price, new_price) + bar_range / 2
+        low = min(price, new_price) - bar_range / 2
+        high = min(high, consolidation_top - 0.00001)
+        bars.append(_make_bar(t0 + i * 3600, price, high, low, new_price, v=150))
+        price = new_price
+
+    # Phase D: single clean breakout bar (LAST bar)
+    breakout_close = consolidation_top + 0.00050  # 5 pip above resistance
+    breakout_high = breakout_close + 0.00010
+    breakout_low = price - 0.00010
+    bars.append(_make_bar(
+        t0 + 259 * 3600, price, breakout_high, breakout_low, breakout_close, v=600,
+    ))
     return bars
 
 
@@ -114,7 +159,8 @@ def test_engine_with_synthetic_signals(tmp_path: Path) -> None:
     ledger = LedgerWriter(db)
     eng = BacktestEngine(
         bars=bars, symbol="EURUSD", timeframe="H1",
-        cost_model=cost, ledger=ledger, initial_balance=10_000.0,
+        cost_model=cost, cfg=_testing_cfg(), ledger=ledger,
+        initial_balance=10_000.0,
     )
     result = eng.run()
     assert len(result["trades"]) >= 1, (
@@ -138,7 +184,8 @@ def test_decision_context(tmp_path: Path) -> None:
     ledger = LedgerWriter(db)
     eng = BacktestEngine(
         bars=bars, symbol="EURUSD", timeframe="H1",
-        cost_model=cost, ledger=ledger, initial_balance=10_000.0,
+        cost_model=cost, cfg=_testing_cfg(), ledger=ledger,
+        initial_balance=10_000.0,
     )
     result = eng.run()
     if not result["trades"]:
@@ -159,7 +206,8 @@ def test_equity_curve(tmp_path: Path) -> None:
     ledger = LedgerWriter(db)
     eng = BacktestEngine(
         bars=bars, symbol="EURUSD", timeframe="H1",
-        cost_model=cost, ledger=ledger, initial_balance=10_000.0,
+        cost_model=cost, cfg=_testing_cfg(), ledger=ledger,
+        initial_balance=10_000.0,
     )
     result = eng.run()
     assert len(result["equity_curve"]) == len(result["trades"]) + 1
