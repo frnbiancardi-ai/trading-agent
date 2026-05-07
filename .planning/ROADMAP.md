@@ -123,6 +123,18 @@ Plans:
 
 **Hint UI:** no
 
+**Plans:** 8 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Wave 0 scaffolding: regression baseline capture (D-14), strategy/ package skeleton, types, config/strategy.yaml, RiskProfile, test stubs
+- [ ] 04-02-PLAN.md — Wave 1: confluence.py — 5-factor scorer + grade + confidence calibrator (STRAT-05, STRAT-06)
+- [ ] 04-03-PLAN.md — Wave 1: proposal.py adapters + R:R floor + ATR cap helper (STRAT-07)
+- [ ] 04-04-PLAN.md — Wave 1: AST purity gate test — living invariant (STRAT-08)
+- [ ] 04-05-PLAN.md — Wave 2: Setup A breakout + Setup D pullback detectors (STRAT-01, STRAT-04)
+- [ ] 04-06-PLAN.md — Wave 2: Setup B reversal (D-07 counter-trend gate) + Setup C compression (STRAT-02, STRAT-03)
+- [ ] 04-07-PLAN.md — Wave 3: evaluate_proposal_for_bar + IntradayStrategy shim + adapters live/backtest + risk_utils (STRAT-08, STRAT-09)
+- [ ] 04-08-PLAN.md — Wave 4 PHASE GATE: regression fixture replay + reconciliation checkpoint + strategy_legacy.py cleanup (STRAT-09, SC-3/4/5)
+
 ---
 
 ### Phase 5: Baseline Backtest
