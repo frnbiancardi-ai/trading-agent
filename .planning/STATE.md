@@ -33,7 +33,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 ## Active Work
 
-Phase 1 — Backtest Engine. Plan 01-02 (Italian-CSV loader, BACK-01) complete: 4/4 tests pass, D-10 NFP 2018-02-02 cross-year regression confirms GMT-6 -> UTC alignment (13:00 UTC bar range 0.0058 dominates window). Next: 01-03.
+Phase 5 — Baseline Backtest: CONTEXT.md captured (4 areas, 17 questions, 23 decisions). Doppio dataset parquet, single-pass 23.5y, 27 run paralleli (3 profile × 9 slice), hybrid orchestration. Resume: `.planning/phases/05-baseline-backtest/05-CONTEXT.md`. Next: `/gsd-plan-phase 5`.
+
+Phase 1 (in-progress, plan 01-02 complete) sospesa — riprendere quando ROADMAP execution order lo richiede.
 
 ---
 
@@ -51,4 +53,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-07 after plan 01-02 (Italian-CSV loader) complete*
+*Last updated: 2026-05-07 after Phase 5 context captured*
