@@ -1,0 +1,9 @@
+"""Tests for backtest.costs (BACK-03, D-05). Implementations land in plan 03."""
+import pytest
+
+pytestmark = pytest.mark.skip(reason="implementation lands in plan 03")
+
+
+def test_eurusd_1pip_1lot(): ...
+def test_usdjpy_pip_value(): ...
+def test_yaml_load(): ...

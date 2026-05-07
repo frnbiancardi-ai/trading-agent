@@ -1,0 +1,14 @@
+"""Shared fixtures for backtest test suite (Phase 1)."""
+from __future__ import annotations
+from pathlib import Path
+import pytest
+
+
+@pytest.fixture
+def fixture_5bars_path() -> Path:
+    return Path(__file__).parent / "fixtures" / "eurusd_5bars.csv"
+
+
+@pytest.fixture
+def costs_yaml_path() -> Path:
+    return Path(__file__).resolve().parents[1] / "data" / "configs" / "costs.yaml"

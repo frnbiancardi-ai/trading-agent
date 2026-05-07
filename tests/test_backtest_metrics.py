@@ -1,0 +1,9 @@
+"""Tests for backtest.metrics (BACK-06). Implementations land in plan 07."""
+import pytest
+
+pytestmark = pytest.mark.skip(reason="implementation lands in plan 07")
+
+
+def test_known_fixture(): ...
+def test_empty_ledger(): ...
+def test_annualization(): ...
