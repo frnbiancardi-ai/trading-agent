@@ -243,6 +243,7 @@ class BacktestEngine:
             "run_id": self.run_id,
             "trades": rows_for_ledger,
             "equity_curve": equity_curve,
+            "bars_processed": len(self.bars),
         }
 
     # ── helpers ───────────────────────────────────────────────────────────────
