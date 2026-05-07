@@ -42,6 +42,18 @@
 
 **Hint UI:** no
 
+**Plans:** 8 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Wave 0 scaffolding: backtest/ skeleton, BrokerProtocol, costs.yaml, test stubs, pyyaml install
+- [ ] 01-02-PLAN.md — BACK-01: Italian-CSV loader with GMT-6→UTC conversion (D-08, D-10 cross-year regression)
+- [ ] 01-03-PLAN.md — BACK-03: per-symbol CostModel + load_cost_model (SC-3)
+- [ ] 01-04-PLAN.md — BACK-02 prep: BacktestBroker + BrokerProtocol compliance + SL/TP fill semantics
+- [ ] 01-05-PLAN.md — BACK-02 + BACK-04: BacktestEngine + LedgerWriter + strategy.py annotation (D-02, D-07)
+- [ ] 01-06-PLAN.md — BACK-05: walk-forward slice generator (D-06)
+- [ ] 01-07-PLAN.md — BACK-06: BacktestMetrics + compute_metrics (SC-5)
+- [ ] 01-08-PLAN.md — SC-6 smoke test + legacy cleanup (D-03 delete backtest_suite.py, D-04 archive ml_feedback)
+
 ---
 
 ### Phase 2 — Indicators Library
