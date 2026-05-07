@@ -70,6 +70,19 @@ Plans:
 
 **Hint UI:** no
 
+**Plans:** 9 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Wave 0 scaffolding: indicators/ package, lift-and-shift, conftest fixture, regime.yaml, dev-dep
+- [ ] 02-02-PLAN.md — INDIC-01 Bollinger+squeeze + INDIC-06 Keltner (volatility.py, parity 1e-6)
+- [ ] 02-03-PLAN.md — INDIC-02 ADX/DMI + INDIC-03 MACD + INDIC-04 Stochastic (momentum.py, parity 1e-6)
+- [ ] 02-04-PLAN.md — INDIC-12 Hurst R/S rolling (hurst.py, log-log regression)
+- [ ] 02-05-PLAN.md — INDIC-05 Donchian + INDIC-08 Fibonacci + INDIC-09 Pivots classic+Camarilla (NY-17)
+- [ ] 02-06-PLAN.md — INDIC-07 VWAP intraday (NY-17 reset) + anchored (volume.py)
+- [ ] 02-07-PLAN.md — INDIC-10 NR4/NR7+Boomer + INDIC-11 Closing Score (bars.py)
+- [ ] 02-08-PLAN.md — INDIC-13 MTF alignment H4/H1/M15 EMA50-slope (mtf.py)
+- [ ] 02-09-PLAN.md — INDIC-14 Volatility regime classifier + compute_all_extended aggregator (final phase gate)
+
 ---
 
 ### Phase 3 — Patterns Catalog
@@ -84,6 +97,14 @@ Plans:
 3. Existing `scan_patterns()` callers in `strategy.py` continue to work (backward-compatible signature OR adapter shim with deprecation note).
 
 **Hint UI:** no
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — PATT-07 foundation: dataclasses + _calibrate + load_pattern_config + config/patterns.yaml + tests/test_pattern_config.py
+- [ ] 03-02-PLAN.md — PATT-01/03/06: refactor 4 existing detectors (hammer/inverted/engulfing/pin_bar) to (matched, raw_score) + update existing tests
+- [ ] 03-03-PLAN.md — PATT-02/04/05/06/07: 5 new detectors (shooting_star/morning_star/evening_star/key_reversal/inside_bar) + scan_patterns rebuild returning list[PatternHit]
+- [ ] 03-04-PLAN.md — PATT-07 integration: atomic strategy.py refactor (5 call sites + import + __init__ pattern_cfg) + full-suite regression
 
 ---
 
