@@ -10,3 +10,7 @@ logs/*.db-shm
 .idea/
 .vscode/
 .claude/
+
+# Output artifacts from the deleted backtest_suite.py (D-03, plan 01-08)
+backtest_results.json
+backtest_trades.json
