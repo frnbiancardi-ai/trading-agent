@@ -9,7 +9,7 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 
 ### Backtest Engine
 
-- [ ] **BACK-01**: Italian-CSV loader parses `data/historical/{SYMBOL}/{TF}.csv` (semicolon-separated, DD/MM/YYYY date, HH:MM:SS time, columns Data/Ora/Open/High/low/Close/Volume) into in-memory bars
+- [x] **BACK-01**: Italian-CSV loader parses `data/historical/{SYMBOL}/{TF}.csv` (semicolon-separated, DD/MM/YYYY date, HH:MM:SS time, columns Data/Ora/Open/High/low/Close/Volume) into in-memory bars
 - [ ] **BACK-02**: Event-driven backtest engine replays bars one-at-a-time, calling the same strategy code path as live (no parallel implementation)
 - [ ] **BACK-03**: Cost model applies spread + commission + slippage on every fill (configurable per symbol)
 - [ ] **BACK-04**: Backtest produces equity curve, trade ledger, per-trade decision context for ML training
@@ -156,7 +156,7 @@ Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BACK-01 | Phase 1 | Pending |
+| BACK-01 | Phase 1 | Complete (plan 01-02) |
 | BACK-02 | Phase 1 | Pending |
 | BACK-03 | Phase 1 | Pending |
 | BACK-04 | Phase 1 | Pending |

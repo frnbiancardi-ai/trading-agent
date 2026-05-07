@@ -15,7 +15,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 | # | Phase | Status | Plans | Progress |
 |---|-------|--------|-------|----------|
-| 1 | Backtest Engine | ○ pending | 0/0 | 0% |
+| 1 | Backtest Engine | ◐ in-progress | 2/8 | 25% |
 | 2 | Indicators Library | ○ pending | 0/0 | 0% |
 | 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
@@ -33,7 +33,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 ## Active Work
 
-None yet — milestone just initialized. Next: `/gsd-discuss-phase 1` or `/gsd-plan-phase 1`.
+Phase 1 — Backtest Engine. Plan 01-02 (Italian-CSV loader, BACK-01) complete: 4/4 tests pass, D-10 NFP 2018-02-02 cross-year regression confirms GMT-6 -> UTC alignment (13:00 UTC bar range 0.0058 dominates window). Next: 01-03.
 
 ---
 
@@ -51,4 +51,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-07 after milestone initialization*
+*Last updated: 2026-05-07 after plan 01-02 (Italian-CSV loader) complete*
