@@ -227,6 +227,40 @@ def test_run_id_deterministic(tmp_path: Path) -> None:
     assert r1["run_id"] == r2["run_id"]
 
 
-@pytest.mark.skip(reason="implemented in plan 08")
-def test_smoke_12month_under_60s() -> None:
-    pass
+@pytest.mark.skipif(
+    not (Path(__file__).resolve().parents[1] / "data" / "historical" / "EURUSD" / "H1.csv").exists(),
+    reason="EURUSD H1 historical CSV missing",
+)
+def test_smoke_12month_under_60s(tmp_path: Path) -> None:
+    """SC-6: full EUR/USD H1 12-month backtest runs in <60s on dev laptop.
+
+    If margin <2x (i.e. elapsed > 30s), record machine spec in commit message.
+    """
+    import time
+    from datetime import datetime, timezone
+    from backtest.engine import run_backtest
+
+    repo = Path(__file__).resolve().parents[1]
+    csv_path = repo / "data" / "historical" / "EURUSD" / "H1.csv"
+    costs_yaml = repo / "data" / "configs" / "costs.yaml"
+
+    date_start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    date_end = datetime(2025, 1, 1, tzinfo=timezone.utc)
+
+    t0 = time.perf_counter()
+    result = run_backtest(
+        csv_path=csv_path,
+        symbol="EURUSD",
+        timeframe="H1",
+        costs_yaml=costs_yaml,
+        date_start=date_start,
+        date_end=date_end,
+        initial_balance=10_000.0,
+        db_path=tmp_path / "trades.db",
+    )
+    elapsed = time.perf_counter() - t0
+
+    assert elapsed < 60.0, f"SC-6 violated: {elapsed:.2f}s (>60s)"
+    assert result.get("bars_processed", 0) >= 1000, (
+        f"smoke test ran but no bars consumed: bars_processed={result.get('bars_processed')!r}"
+    )
