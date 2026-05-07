@@ -33,7 +33,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 ## Active Work
 
-Phase 5 — Baseline Backtest: CONTEXT.md captured (4 areas, 17 questions, 23 decisions). Doppio dataset parquet, single-pass 23.5y, 27 run paralleli (3 profile × 9 slice), hybrid orchestration. Resume: `.planning/phases/05-baseline-backtest/05-CONTEXT.md`. Next: `/gsd-plan-phase 5`.
+Phase 6 — MCP Tools (part 1): CONTEXT.md captured (4 areas, 11 questions, 12 decisioni dirette). Async backtest queue + cancel, in-process trail daemon (position_trails), additive backward-compat MCP-R1/R2/R3, BarSource adapter (live default + as_of_ts opt), replay_decision union lookup, mcp/ package split. Tool surface 25 totali (11 esistenti + 13 REQUIREMENTS + 1 derivato cancel_backtest). Resume: `.planning/phases/06-mcp-tools-part-1/06-CONTEXT.md`. Next: `/gsd-plan-phase 6`.
+
+Phase 5 (CONTEXT.md captured) sospesa — riprendere quando ROADMAP execution order lo richiede.
 
 Phase 1 (in-progress, plan 01-02 complete) sospesa — riprendere quando ROADMAP execution order lo richiede.
 
@@ -53,4 +55,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-07 after Phase 5 context captured*
+*Last updated: 2026-05-07 after Phase 6 context captured*
