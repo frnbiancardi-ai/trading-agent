@@ -1,0 +1,2 @@
+# Test-only dependencies (D-07 oracle). Mai importati a runtime.
+pandas-ta==0.4.71b0

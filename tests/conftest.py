@@ -1,5 +1,6 @@
-"""Shared fixtures for backtest test suite (Phase 1)."""
+"""Shared fixtures for backtest + indicators test suites (Phase 1, Phase 2)."""
 from __future__ import annotations
+import csv
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -48,3 +49,29 @@ def fixture_5bars_path() -> Path:
 @pytest.fixture
 def costs_yaml_path() -> Path:
     return Path(__file__).resolve().parents[1] / "data" / "configs" / "costs.yaml"
+
+
+@pytest.fixture(scope="session")
+def eurusd_h1_500() -> list[dict]:
+    """Snapshot 500-bar EURUSD H1 per D-08. Caricato una sola volta per session.
+
+    Generato via `tests/fixtures/build_eurusd_h1_last500.py` (one-off) usando
+    `backtest.loader.load_bars` con timestamp UTC (GMT-6 → UTC, Phase 1 D-08).
+    Ogni dict ha le chiavi: time (int unix UTC), open, high, low, close (float),
+    volume (int), tick_volume (int, alias di volume per consumer existing).
+    """
+    fpath = Path(__file__).parent / "fixtures" / "eurusd_h1_last500.csv"
+    out: list[dict] = []
+    with open(fpath, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            out.append({
+                "time": int(row["time"]),
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
+                "volume": int(row["volume"]),
+                "tick_volume": int(row["volume"]),
+            })
+    return out
