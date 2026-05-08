@@ -9,3 +9,5 @@ feedparser
 pytest
 pyyaml
 tzdata
+pyarrow
+matplotlib
