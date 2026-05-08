@@ -38,7 +38,16 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
     expectancy_usd REAL,
     profit_factor REAL,
     avg_r       REAL,
-    total_pnl_usd REAL
+    total_pnl_usd REAL,
+    -- Phase 5 additions (D-17 audit trail) — additive, backwards-compat:
+    slippage_seed_effective INTEGER,
+    strategy_yaml_hash TEXT,
+    baseline_yaml_hash TEXT,
+    git_sha TEXT,
+    -- Phase 5 sha256 full-64 (Warning 12 fix — coexist con legacy cost_yaml_hash md5[:16]):
+    cost_yaml_sha256 TEXT,
+    strategy_yaml_sha256 TEXT,
+    baseline_yaml_sha256 TEXT
 )
 """
 
@@ -83,6 +92,10 @@ _BT_RUNS_COLUMNS: tuple[str, ...] = (
     "started_at", "finished_at", "total_trades", "sharpe", "sortino",
     "max_dd_pct", "hit_rate", "expectancy_usd", "profit_factor", "avg_r",
     "total_pnl_usd",
+    # Phase 5 additions (D-17 audit trail) — additive, backwards-compat:
+    "slippage_seed_effective", "strategy_yaml_hash", "baseline_yaml_hash", "git_sha",
+    # Phase 5 sha256 full-64 (Warning 12 fix — coexist con legacy cost_yaml_hash md5[:16]):
+    "cost_yaml_sha256", "strategy_yaml_sha256", "baseline_yaml_sha256",
 )
 
 _BT_TRADES_COLUMNS: tuple[str, ...] = (
@@ -95,6 +108,34 @@ _BT_TRADES_COLUMNS: tuple[str, ...] = (
 
 def _placeholders(n: int) -> str:
     return ",".join(["?"] * n)
+
+
+def _migrate_backtest_runs(conn: sqlite3.Connection) -> None:
+    """Additive migration: ALTER TABLE ADD COLUMN se mancante (Phase 5).
+
+    SQLite ADD COLUMN richiede DEFAULT NULL — backwards-compatible con righe
+    esistenti. Idempotente: ri-eseguire non duplica colonne. Le 7 colonne sono:
+      - slippage_seed_effective, strategy_yaml_hash, baseline_yaml_hash, git_sha
+        (D-17 audit trail originale)
+      - cost_yaml_sha256, strategy_yaml_sha256, baseline_yaml_sha256
+        (Warning 12 fix: full-64 sha256, coesistono con legacy cost_yaml_hash md5[:16])
+    """
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(backtest_runs)")}
+    additions = [
+        ("slippage_seed_effective", "INTEGER"),
+        ("strategy_yaml_hash", "TEXT"),
+        ("baseline_yaml_hash", "TEXT"),
+        ("git_sha", "TEXT"),
+        # Warning 12 fix: full-64 sha256 columns
+        ("cost_yaml_sha256", "TEXT"),
+        ("strategy_yaml_sha256", "TEXT"),
+        ("baseline_yaml_sha256", "TEXT"),
+    ]
+    for col, typ in additions:
+        if col not in existing:
+            # NB: f-string sicura — col/typ sono costanti hard-coded sopra, no SQLI vector
+            # (vedi threat model T-05-03 in 05-01-PLAN.md).
+            conn.execute(f"ALTER TABLE backtest_runs ADD COLUMN {col} {typ}")
 
 
 _INSERT_RUN_SQL = (
@@ -129,6 +170,9 @@ class LedgerWriter:
     def ensure_schema(self) -> None:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(_DDL_BACKTEST_RUNS)
+            # Phase 5 migration: additive ALTER TABLE per DB pre-esistenti
+            # (CREATE TABLE IF NOT EXISTS non aggiunge colonne a tabelle già create).
+            _migrate_backtest_runs(conn)
             conn.execute(_DDL_BACKTEST_TRADES)
             conn.execute(_DDL_IDX_RUN)
             conn.execute(_DDL_IDX_TIME)
