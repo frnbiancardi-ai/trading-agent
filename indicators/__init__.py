@@ -43,7 +43,7 @@ from indicators.bars import (
     NRResult,
     ClosingScoreResult,
 )
-from indicators.mtf import calculate_trend_strength
+from indicators.mtf import calculate_trend_strength, align, MTFAlignmentResult
 from indicators.aggregate import compute_all
 from indicators.hurst import hurst_rs, HurstResult
 from indicators._helpers import _last_valid, _wilder_rsi  # privati, retro-compat per test
@@ -85,4 +85,6 @@ __all__ = [
     "closing_score",
     "NRResult",
     "ClosingScoreResult",
+    "align",
+    "MTFAlignmentResult",
 ]
