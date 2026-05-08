@@ -1,0 +1,568 @@
+[
+  {
+    "bar_offset": -200,
+    "csv": "data/historical/EURUSD/M15.csv",
+    "expected_mix": "READY",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777595400"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0004442442971304661,
+        "atr_pips": 4.442442971304661,
+        "breakout": "NONE",
+        "last_close": 1.17298,
+        "patterns": [
+          {
+            "bar_index": -3,
+            "confidence": 0.4666666666666666,
+            "direction": "bullish",
+            "extreme_price": 1.17314,
+            "name": "inverted_hammer",
+            "span_bars": 1
+          },
+          {
+            "bar_index": -3,
+            "confidence": 0.4666666666666666,
+            "direction": "bearish",
+            "extreme_price": 1.17331,
+            "name": "shooting_star",
+            "span_bars": 1
+          },
+          {
+            "bar_index": -2,
+            "confidence": 0.23333333333203807,
+            "direction": "bullish",
+            "extreme_price": 1.17315,
+            "name": "inverted_hammer",
+            "span_bars": 1
+          }
+        ],
+        "pip_size": 0.0001,
+        "rsi_14": 51.224761895877805,
+        "sma_20": 1.1732865000000003,
+        "sma_50": 1.1722693999999998,
+        "trend_strength": 0.3645
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.17415,
+        "support": 1.16552
+      },
+      "symbol": "EURUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 1,
+    "symbol": "EURUSD"
+  },
+  {
+    "bar_offset": -350,
+    "csv": "data/historical/EURUSD/M15.csv",
+    "expected_mix": "READY",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777460400"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.00048298396810574437,
+        "atr_pips": 4.829839681057443,
+        "breakout": "NONE",
+        "last_close": 1.17017,
+        "patterns": [
+          {
+            "bar_index": -3,
+            "confidence": 0.0,
+            "direction": "bearish",
+            "extreme_price": 1.17046,
+            "name": "engulfing",
+            "span_bars": 2
+          },
+          {
+            "bar_index": -1,
+            "confidence": 0.7847826086952744,
+            "direction": "bullish",
+            "extreme_price": 1.16962,
+            "name": "engulfing",
+            "span_bars": 2
+          }
+        ],
+        "pip_size": 0.0001,
+        "rsi_14": 48.274938949199964,
+        "sma_20": 1.1700819999999987,
+        "sma_50": 1.1707523999999996,
+        "trend_strength": 0.2795
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.17206,
+        "support": 1.16776
+      },
+      "symbol": "EURUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 2,
+    "symbol": "EURUSD"
+  },
+  {
+    "bar_offset": -500,
+    "csv": "data/historical/EURUSD/M15.csv",
+    "expected_mix": "READY",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777325400"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0004219191633039668,
+        "atr_pips": 4.219191633039668,
+        "breakout": "NONE",
+        "last_close": 1.17234,
+        "patterns": [
+          {
+            "bar_index": -3,
+            "confidence": 0.7814814814813595,
+            "direction": "neutral",
+            "extreme_price": 1.17219,
+            "name": "inside_bar",
+            "span_bars": 2
+          },
+          {
+            "bar_index": -2,
+            "confidence": 0.5999999999997355,
+            "direction": "neutral",
+            "extreme_price": 1.17217,
+            "name": "inside_bar",
+            "span_bars": 2
+          },
+          {
+            "bar_index": -1,
+            "confidence": 1.0,
+            "direction": "bullish",
+            "extreme_price": 1.17208,
+            "name": "engulfing",
+            "span_bars": 2
+          }
+        ],
+        "pip_size": 0.0001,
+        "rsi_14": 42.724520003764624,
+        "sma_20": 1.1724485000000002,
+        "sma_50": 1.1735630000000001,
+        "trend_strength": 0.3727
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.1755,
+        "support": 1.16912
+      },
+      "symbol": "EURUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 3,
+    "symbol": "EURUSD"
+  },
+  {
+    "bar_offset": -200,
+    "csv": "data/historical/GBPUSD/M15.csv",
+    "expected_mix": "FORMING",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777593600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0006019646426637338,
+        "atr_pips": 6.019646426637338,
+        "breakout": "NONE",
+        "last_close": 1.36053,
+        "patterns": [
+          {
+            "bar_index": -2,
+            "confidence": 1.0,
+            "direction": "bullish",
+            "extreme_price": 1.36026,
+            "name": "hammer",
+            "span_bars": 1
+          },
+          {
+            "bar_index": -2,
+            "confidence": 1.0,
+            "direction": "neutral",
+            "extreme_price": 1.360335,
+            "name": "doji",
+            "span_bars": 1
+          },
+          {
+            "bar_index": -2,
+            "confidence": 0.9333333333343201,
+            "direction": "bullish",
+            "extreme_price": 1.36026,
+            "name": "pin_bar",
+            "span_bars": 1
+          }
+        ],
+        "pip_size": 0.0001,
+        "rsi_14": 64.18910155471733,
+        "sma_20": 1.3604040000000002,
+        "sma_50": 1.357158599999999,
+        "trend_strength": 0.5725
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.36117,
+        "support": 1.34543
+      },
+      "symbol": "GBPUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 4,
+    "symbol": "GBPUSD"
+  },
+  {
+    "bar_offset": -400,
+    "csv": "data/historical/GBPUSD/M15.csv",
+    "expected_mix": "FORMING",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777413600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0005155191193608848,
+        "atr_pips": 5.1551911936088475,
+        "breakout": "NONE",
+        "last_close": 1.35202,
+        "patterns": [
+          {
+            "bar_index": -2,
+            "confidence": 0.7624999999999884,
+            "direction": "bearish",
+            "extreme_price": 1.35225,
+            "name": "engulfing",
+            "span_bars": 2
+          }
+        ],
+        "pip_size": 0.0001,
+        "rsi_14": 61.21214623068413,
+        "sma_20": 1.3516559999999997,
+        "sma_50": 1.3502175999999997,
+        "trend_strength": 0.4399
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.35413,
+        "support": 1.34633
+      },
+      "symbol": "GBPUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 5,
+    "symbol": "GBPUSD"
+  },
+  {
+    "bar_offset": -150,
+    "csv": "data/historical/EURUSD/M15.csv",
+    "expected_mix": "NONE",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777640400"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0006851437331945315,
+        "atr_pips": 6.851437331945315,
+        "breakout": "CLEAN",
+        "last_close": 1.17587,
+        "patterns": [
+          {
+            "bar_index": -3,
+            "confidence": 0.7326086956521612,
+            "direction": "bearish",
+            "extreme_price": 1.17583,
+            "name": "engulfing",
+            "span_bars": 2
+          }
+        ],
+        "pip_size": 0.0001,
+        "rsi_14": 66.2805490636727,
+        "sma_20": 1.1742540000000006,
+        "sma_50": 1.1734331999999998,
+        "trend_strength": 0.4588
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.17583,
+        "support": 1.1682
+      },
+      "symbol": "EURUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 6,
+    "symbol": "EURUSD"
+  },
+  {
+    "bar_offset": -200,
+    "csv": "data/historical/USDJPY/M15.csv",
+    "expected_mix": "NONE",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777593600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.11650825649564776,
+        "atr_pips": 11.650825649564776,
+        "breakout": "NONE",
+        "last_close": 156.776,
+        "patterns": [
+          {
+            "bar_index": -2,
+            "confidence": 0.1473684210526684,
+            "direction": "bearish",
+            "extreme_price": 156.747,
+            "name": "engulfing",
+            "span_bars": 2
+          },
+          {
+            "bar_index": -1,
+            "confidence": 0.7880952380953369,
+            "direction": "bullish",
+            "extreme_price": 156.65,
+            "name": "engulfing",
+            "span_bars": 2
+          },
+          {
+            "bar_index": -1,
+            "confidence": 1.0,
+            "direction": "bullish",
+            "extreme_price": 156.65,
+            "name": "key_reversal",
+            "span_bars": 2
+          }
+        ],
+        "pip_size": 0.01,
+        "rsi_14": 54.975675085945426,
+        "sma_20": 156.56144999999998,
+        "sma_50": 156.61065999999985,
+        "trend_strength": 0.1981
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 160.725,
+        "support": 155.569
+      },
+      "symbol": "USDJPY",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 7,
+    "symbol": "USDJPY"
+  },
+  {
+    "bar_offset": -350,
+    "csv": "data/historical/USDJPY/M15.csv",
+    "expected_mix": "NONE",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777458600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.04689275065864452,
+        "atr_pips": 4.689275065864452,
+        "breakout": "WEAK",
+        "last_close": 159.811,
+        "patterns": [
+          {
+            "bar_index": -2,
+            "confidence": 0.4666666666666665,
+            "direction": "bullish",
+            "extreme_price": 159.751,
+            "name": "engulfing",
+            "span_bars": 2
+          }
+        ],
+        "pip_size": 0.01,
+        "rsi_14": 69.32836287911897,
+        "sma_20": 159.7082999999999,
+        "sma_50": 159.6415800000001,
+        "trend_strength": 0.4307
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 159.787,
+        "support": 159.418
+      },
+      "symbol": "USDJPY",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 8,
+    "symbol": "USDJPY"
+  },
+  {
+    "bar_offset": -300,
+    "csv": "data/historical/GBPUSD/M15.csv",
+    "expected_mix": "NONE",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777503600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0008184801460693216,
+        "atr_pips": 8.184801460693215,
+        "breakout": "NONE",
+        "last_close": 1.34758,
+        "patterns": [
+          {
+            "bar_index": -2,
+            "confidence": 0.9382352941178314,
+            "direction": "bearish",
+            "extreme_price": 1.34798,
+            "name": "engulfing",
+            "span_bars": 2
+          },
+          {
+            "bar_index": -1,
+            "confidence": 1.0,
+            "direction": "neutral",
+            "extreme_price": 1.3474400000000002,
+            "name": "doji",
+            "span_bars": 1
+          },
+          {
+            "bar_index": -1,
+            "confidence": 0.27831325301017495,
+            "direction": "bullish",
+            "extreme_price": 1.34719,
+            "name": "pin_bar",
+            "span_bars": 1
+          }
+        ],
+        "pip_size": 0.0001,
+        "rsi_14": 46.02364838785597,
+        "sma_20": 1.3476190000000006,
+        "sma_50": 1.3488671999999997,
+        "trend_strength": 0.3148
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.35282,
+        "support": 1.34579
+      },
+      "symbol": "GBPUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 9,
+    "symbol": "GBPUSD"
+  },
+  {
+    "bar_offset": -500,
+    "csv": "data/historical/USDJPY/M15.csv",
+    "expected_mix": "mixed",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777323600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.052013217230240376,
+        "atr_pips": 5.201321723024037,
+        "breakout": "NONE",
+        "last_close": 159.413,
+        "patterns": [
+          {
+            "bar_index": -3,
+            "confidence": 0.6031446540883335,
+            "direction": "neutral",
+            "extreme_price": 159.394,
+            "name": "inside_bar",
+            "span_bars": 2
+          },
+          {
+            "bar_index": -1,
+            "confidence": 0.7909090909087901,
+            "direction": "neutral",
+            "extreme_price": 159.411,
+            "name": "inside_bar",
+            "span_bars": 2
+          }
+        ],
+        "pip_size": 0.01,
+        "rsi_14": 58.932099673254235,
+        "sma_20": 159.37665000000004,
+        "sma_50": 159.2629599999999,
+        "trend_strength": 0.3492
+      },
+      "reason": "trend_or_alignment_weak",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 159.597,
+        "support": 159.095
+      },
+      "symbol": "USDJPY",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 10,
+    "symbol": "USDJPY"
+  }
+]
