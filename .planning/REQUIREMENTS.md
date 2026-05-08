@@ -25,7 +25,7 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [x] **INDIC-04**: Stochastic Oscillator (14/3/3) %K + %D
 - [x] **INDIC-05**: Donchian Channel (20-period) high/low for breakout levels
 - [x] **INDIC-06**: Keltner Channel (EMA20 ± 2×ATR)
-- [ ] **INDIC-07**: VWAP intraday + anchored (session/day anchor)
+- [x] **INDIC-07**: VWAP intraday + anchored (session/day anchor)
 - [x] **INDIC-08**: Fibonacci retracement levels (38.2%, 50%, 61.8%) on detected swing legs
 - [x] **INDIC-09**: Pivot points daily / session / weekly (classic + Camarilla)
 - [ ] **INDIC-10**: NR4 / NR7 detector + Boomer (inside-narrow sequence)
@@ -169,7 +169,7 @@ Updated during roadmap creation.
 | INDIC-04 | Phase 2 | Complete |
 | INDIC-05 | Phase 2 | Pending |
 | INDIC-06 | Phase 2 | Complete |
-| INDIC-07 | Phase 2 | Pending |
+| INDIC-07 | Phase 2 | Complete |
 | INDIC-08 | Phase 2 | Pending |
 | INDIC-09 | Phase 2 | Pending |
 | INDIC-10 | Phase 2 | Pending |
