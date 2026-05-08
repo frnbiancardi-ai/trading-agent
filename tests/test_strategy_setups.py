@@ -2,23 +2,24 @@
 
 Wave 0: tutti pytest.skip (collection-only).
 Wave 2 plan-05: A_breakout (3 test) + D_pullback (2 test) implementati.
-Wave 2 plan-06: B_reversal (2 test) + C_compression (2 test) — restano skip.
+Wave 2 plan-06: B_reversal (2 test) + C_compression (2 test) implementati.
 Wave 3 plan-07: multi_match priority — resta skip.
 
 Pattern S-1: docstring italiano + English snake_case test names.
-Helpers (_make_bars / _stub_indicators_a / _stub_indicators_d / _stub_ctx) condivisi
-fra A e D, riusabili da plan-06 estendendo _stub_indicators_b/_stub_indicators_c.
+Helpers (_make_bars / _stub_indicators_a / _stub_indicators_b / _stub_indicators_c /
+_stub_indicators_d / _stub_ctx) condivisi fra i 4 setup.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
 
 from strategy.context import StrategyContext
 from strategy.setups.a_breakout import detect_a_breakout
-from strategy.setups.b_reversal import detect_b_reversal  # noqa: F401
-from strategy.setups.c_compression import detect_c_compression  # noqa: F401
+from strategy.setups.b_reversal import detect_b_reversal
+from strategy.setups.c_compression import detect_c_compression
 from strategy.setups.d_pullback import detect_d_pullback
 from strategy.proposal import ProposalDraft  # noqa: F401
 
@@ -119,6 +120,101 @@ def _stub_indicators_d(
     )
 
 
+def _make_pattern_hit(
+    name: str,
+    direction: str,
+    bar_index: int = -1,
+    extreme_price: float | None = None,
+    confidence: float = 0.7,
+) -> SimpleNamespace:
+    """PatternHit duck-type per test (Phase 3 dataclass non richiesta a livello unit).
+
+    Attribute access: name, direction, bar_index, extreme_price, confidence.
+    Mai dict-key (RESEARCH Pitfall #3 — Setup B usa SOLO attribute access).
+    """
+    return SimpleNamespace(
+        name=name,
+        direction=direction,
+        bar_index=bar_index,
+        extreme_price=extreme_price,
+        confidence=confidence,
+    )
+
+
+def _stub_indicators_b(
+    close_ref: float,
+    slope: float = 0.0001,
+    regime: str = "normal",
+    rsi: float = 30.0,
+    n: int = 200,
+) -> SimpleNamespace:
+    """Snapshot ExtendedIndicators-like per Setup B.
+
+    Default: regime=normal (reversal_required allowed), rsi=30 (BUY momentum True),
+    slope=+0.0001 (uptrend → BUY trend_alignment True).
+    """
+    return SimpleNamespace(
+        atr_14=[0.0010] * n,
+        rsi_14=[rsi] * n,
+        closing_score=[55.0] * n,
+        volatility_regime=[regime] * n,
+        ema50_slope=[slope] * n,
+        ema20=[close_ref] * n,
+        ema50=[close_ref - 0.0010] * n,
+        nr_detect=SimpleNamespace(nr4=[False] * n, nr7=[False] * n),
+        bollinger_bands=SimpleNamespace(
+            squeeze=[False] * n,
+            upper=[close_ref + 0.002] * n,
+            lower=[close_ref - 0.002] * n,
+        ),
+        fibonacci=None,
+    )
+
+
+def _stub_indicators_c(
+    close_ref: float,
+    slope: float = 0.0001,
+    nr7_count: int = 0,
+    nr4_count: int = 0,
+    squeeze_count: int = 0,
+    regime: str = "compressed",
+    n: int = 200,
+) -> SimpleNamespace:
+    """Snapshot ExtendedIndicators-like per Setup C.
+
+    Le ultime nr7_count entries di nr7 (rispettivamente nr4 / squeeze) sono True;
+    il resto False. Default regime=compressed (compression_required allowed).
+    """
+    nr7 = [False] * n
+    for i in range(nr7_count):
+        if i < n:
+            nr7[-1 - i] = True
+    nr4 = [False] * n
+    for i in range(nr4_count):
+        if i < n:
+            nr4[-1 - i] = True
+    squeeze = [False] * n
+    for i in range(squeeze_count):
+        if i < n:
+            squeeze[-1 - i] = True
+    return SimpleNamespace(
+        atr_14=[0.0010] * n,
+        rsi_14=[55.0] * n,
+        closing_score=[60.0] * n,
+        volatility_regime=[regime] * n,
+        ema50_slope=[slope] * n,
+        ema20=[close_ref] * n,
+        ema50=[close_ref - 0.0010] * n,
+        nr_detect=SimpleNamespace(nr4=nr4, nr7=nr7),
+        bollinger_bands=SimpleNamespace(
+            squeeze=squeeze,
+            upper=[close_ref + 0.002] * n,
+            lower=[close_ref - 0.002] * n,
+        ),
+        fibonacci=None,
+    )
+
+
 def _stub_ctx(
     profile: str = "MODERATE",
     resistance: float = 1.10500,
@@ -194,11 +290,62 @@ def test_detect_a_breakout_forming_near_resistance():
 
 
 def test_detect_b_reversal_ready_at_support():
-    pytest.skip("Wave 2 pending — STRAT-02")
+    """Prezzo at-support + bullish PatternHit recente + indicatori favorevoli → READY/B_reversal/BUY.
+
+    close=1.09502 (entro 8 pip da support 1.09500); hammer bullish con extreme=1.09480;
+    slope+ uptrend (trend_alignment True per BUY); rsi=30 (momentum True per BUY);
+    regime=normal (reversal_required True). Tutti 5 fattori → grade A+.
+    """
+    bars = _make_bars([1.09502] * 200)
+    pattern = _make_pattern_hit(
+        "hammer", "bullish", bar_index=-1, extreme_price=1.09480
+    )
+    ind = _stub_indicators_b(close_ref=1.09502, slope=0.0001)
+    ctx = _stub_ctx(profile="MODERATE", resistance=1.10500, support=1.09500, close_ref=1.09502)
+    ctx = replace(ctx, patterns=[pattern])
+    d = detect_b_reversal(bars, ind, ctx)
+    assert d.setup_type == "READY", f"got {d.setup_type} reason={d.reason}"
+    assert d.setup_name == "B_reversal"
+    assert d.direction == "BUY"
+    assert d.entry_price is not None
+    assert d.stop_loss_price is not None
+    assert d.take_profit_price is not None
+    assert d.grade in ("A+", "A", "B", "C")
+    assert 0.10 <= d.confidence <= 0.95
 
 
 def test_detect_b_reversal_counter_trend_gate():
-    pytest.skip("Wave 2 pending — STRAT-02 (D-07 gate)")
+    """Counter-trend SELL a resistance + slope+ uptrend + grade B → NONE/counter_trend_below_A_grade.
+
+    regime=compressed → fa cadere volatility_regime per Setup B (allowed=normal/expanded);
+    insieme a trend_alignment False (slope+ contro SELL) → 3 True / 5 → grade B.
+    Counter-trend gate D-07 deve downgradare a NONE.
+
+    Logica liberale (PLAN spec): se per qualche motivo il grade calcolato è A/A+,
+    il gate consente READY/NONE; se grade è B/C, MUST essere NONE/counter_trend_below_A_grade.
+    """
+    bars = _make_bars([1.10498] * 200)
+    pattern = _make_pattern_hit(
+        "shooting_star", "bearish", bar_index=-1, extreme_price=1.10520
+    )
+    # slope+ → uptrend; SELL contro slope → counter-trend
+    # regime=compressed → reversal_required falso (allowed=normal/expanded)
+    # rsi=80 → momentum True per SELL (rsi > 25)
+    ind = _stub_indicators_b(
+        close_ref=1.10498, slope=0.0001, regime="compressed", rsi=80.0
+    )
+    ctx = _stub_ctx(profile="MODERATE", resistance=1.10500, support=1.09500, close_ref=1.10498)
+    ctx = replace(ctx, patterns=[pattern])
+    d = detect_b_reversal(bars, ind, ctx)
+    if d.grade in ("A+", "A"):
+        # Gate consente: READY o NONE per altri motivi (es. R:R)
+        assert d.setup_type in ("READY", "NONE")
+    else:
+        # Grade B/C → counter-trend gate DEVE bloccare
+        assert d.setup_type == "NONE", f"expected NONE for counter-trend B/C, got {d.setup_type}"
+        assert d.reason == "counter_trend_below_A_grade", (
+            f"expected reason=counter_trend_below_A_grade, got {d.reason}"
+        )
 
 
 # ==========================================================================
@@ -207,11 +354,66 @@ def test_detect_b_reversal_counter_trend_gate():
 
 
 def test_detect_c_compression_nr7():
-    pytest.skip("Wave 2 pending — STRAT-03")
+    """4 bar consecutivi NR7=True + slope+ → READY/C_compression/BUY con TP=entry+2*range.
+
+    Range 30 pip (high=1.10150, low=1.09850) garantisce R:R > MODERATE 1.8 floor:
+      entry = compression_high = 1.10150 (stop-trigger long)
+      SL = max(comp_low − 0.3×ATR, entry − 1.5×ATR) = max(1.09820, 1.10000) = 1.10000 (cap)
+      TP = entry + 2 × range = 1.10150 + 0.0060 = 1.10750
+      R:R = 0.0060 / 0.00150 = 4.0 (cap-driven SL → R:R favorevole)
+
+    NOTA Rule 1 deviation: il plan-as-written usava range 3 pip → R:R=1.0 < MODERATE 1.8 →
+    NONE invece di READY. Range 30 pip è la fix minimale per produrre READY consistente
+    con il floor R:R MODERATE.
+    """
+    bars = _make_bars([1.10000] * 200)
+    # Ultimi 4 bar: high/low formano compression range 30 pip
+    for i in range(4):
+        bars[-1 - i]["high"] = 1.10150
+        bars[-1 - i]["low"] = 1.09850
+    ind = _stub_indicators_c(
+        close_ref=1.10000, slope=0.0001, nr7_count=4
+    )
+    ctx = _stub_ctx(profile="MODERATE", resistance=1.10500, support=1.09500, close_ref=1.10000)
+    d = detect_c_compression(bars, ind, ctx)
+    assert d.setup_type == "READY", f"got {d.setup_type} reason={d.reason}"
+    assert d.setup_name == "C_compression"
+    assert d.direction == "BUY"
+    # entry = compression_high
+    assert abs(d.entry_price - 1.10150) < 1e-5, d.entry_price
+    # TP = entry + 2 × range = 1.10150 + 0.0060 = 1.10750
+    assert abs(d.take_profit_price - 1.10750) < 1e-4, d.take_profit_price
+    assert d.setup_specific.get("trigger_type") == "nr7"
+    assert d.setup_specific.get("compressed_bar_count") == 4
 
 
 def test_detect_c_compression_squeeze():
-    pytest.skip("Wave 2 pending — STRAT-03")
+    """4 bar consecutivi squeeze=True + slope− → READY/C_compression/SELL.
+
+    Range 30 pip (high=1.10150, low=1.09850); slope=−0.0001 → SELL.
+      entry = compression_low = 1.09850 (stop-trigger short)
+      SL = min(comp_high + 0.3×ATR, entry + 1.5×ATR) = min(1.10180, 1.10000) = 1.10000 (cap)
+      TP = entry − 2 × range = 1.09850 − 0.0060 = 1.09250
+      R:R = 0.0060 / 0.00150 = 4.0
+    """
+    bars = _make_bars([1.10000] * 200)
+    for i in range(4):
+        bars[-1 - i]["high"] = 1.10150
+        bars[-1 - i]["low"] = 1.09850
+    ind = _stub_indicators_c(
+        close_ref=1.10000, slope=-0.0001, squeeze_count=4
+    )
+    ctx = _stub_ctx(profile="MODERATE", resistance=1.10500, support=1.09500, close_ref=1.10000)
+    d = detect_c_compression(bars, ind, ctx)
+    assert d.setup_type == "READY", f"got {d.setup_type} reason={d.reason}"
+    assert d.setup_name == "C_compression"
+    assert d.direction == "SELL"
+    # entry = compression_low
+    assert abs(d.entry_price - 1.09850) < 1e-5, d.entry_price
+    # TP = entry − 2 × range = 1.09850 − 0.0060 = 1.09250
+    assert abs(d.take_profit_price - 1.09250) < 1e-4, d.take_profit_price
+    assert d.setup_specific.get("trigger_type") == "squeeze"
+    assert d.setup_specific.get("compressed_bar_count") == 4
 
 
 # ==========================================================================
