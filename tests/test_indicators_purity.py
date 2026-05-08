@@ -150,3 +150,17 @@ def test_no_future_leakage_stochastic(eurusd_h1_500, idx):
     )
     assert partial.k[idx] == full.k[idx]
     assert partial.d[idx] == full.d[idx]
+
+
+@pytest.mark.parametrize("idx", [120, 200, 300, 400, 499])
+def test_no_future_leakage_hurst(eurusd_h1_500, idx):
+    """Hurst R/S(prefix)[i] == (full)[i]. INDIC-12.
+
+    Indici scelti tutti >= window-1=99 (window=100) per avere stime valide
+    da confrontare. Idx=120 è il primo "post-warmup" verificato.
+    """
+    from indicators.hurst import hurst_rs
+    closes = [b["close"] for b in eurusd_h1_500]
+    full = hurst_rs(closes, 100)
+    partial = hurst_rs(closes[: idx + 1], 100)
+    assert partial.hurst[idx] == full.hurst[idx], f"future leakage hurst @ i={idx}"
