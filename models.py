@@ -3,6 +3,10 @@ from datetime import date as _date, datetime
 from typing import Literal
 
 
+# Profili rischio — chiavi devono coincidere con risk_engine.PROFILES (D-04, RESEARCH Pitfall #6)
+RiskProfile = Literal["CONSERVATIVE", "MODERATE", "AGGRESSIVE"]
+
+
 @dataclass
 class TradeProposal:
     symbol: str
