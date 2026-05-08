@@ -186,10 +186,10 @@ Updated during roadmap creation.
 | PATT-05 | Phase 3 | Complete |
 | PATT-06 | Phase 3 | Complete |
 | PATT-07 | Phase 3 | Complete |
-| STRAT-01 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 implements) |
-| STRAT-02 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 implements) |
-| STRAT-03 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 implements) |
-| STRAT-04 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 implements) |
+| STRAT-01 | Phase 4 | In-progress (04-05 Wave 2: detect_a_breakout 208 LOC pure-fn READY/FORMING/NONE + _compute_levels_a D-10; commit 69ad6cd. Full complete dopo Wave 4 regression replay) |
+| STRAT-02 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 plan-06 implements) |
+| STRAT-03 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 plan-06 implements) |
+| STRAT-04 | Phase 4 | In-progress (04-05 Wave 2: detect_d_pullback 298 LOC pure-fn trend-following mai counter-trend + _compute_levels_d D-10 con prior_swing/leg_size fallback; commit a963130. Full complete dopo Wave 4) |
 | STRAT-05 | Phase 4 | In-progress (04-01 Wave 0: confluence.py stub + config/strategy.yaml D-08; Wave 1 implements) |
 | STRAT-06 | Phase 4 | In-progress (04-01 Wave 0: base_confidence + adjusters + bounds in config; Wave 1 implements) |
 | STRAT-07 | Phase 4 | In-progress (04-01 Wave 0: ProposalDraft + profile_filters in config; Wave 1 implements) |
