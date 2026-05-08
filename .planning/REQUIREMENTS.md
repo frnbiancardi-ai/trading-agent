@@ -194,7 +194,7 @@ Updated during roadmap creation.
 | STRAT-06 | Phase 4 | In-progress (04-01 Wave 0: base_confidence + adjusters + bounds in config; Wave 1 implements) |
 | STRAT-07 | Phase 4 | In-progress (04-01 Wave 0: ProposalDraft + profile_filters in config; Wave 1 implements) |
 | STRAT-08 | Phase 4 | Complete (04-04 Wave 1: AST gate 232 LOC, 5 test no-skip, copre import+logging+print/open su 7 moduli puri; adapters/ esclusi by design; negative-test verificato; commit 0260126) |
-| STRAT-09 | Phase 4 | In-progress (04-01 Wave 0: adapter stubs + regression baseline JSON; Wave 3/4 wires + verifies) |
+| STRAT-09 | Phase 4 | In-progress (04-07 Wave 3: evaluate_proposal_for_bar single shared call site + IntradayStrategy shim preserva firma legacy analyze_symbol + build_ctx_live/backtest stesso shape D-05; commits 7046a61+324969f+35d53d8+476aecb+e0194ac; full complete dopo Wave 4 regression replay 04-08 1e-4 confidence) |
 | ML-01 | Phase 7 | Pending |
 | ML-02 | Phase 7 | Pending |
 | ML-03 | Phase 7 | Pending |
