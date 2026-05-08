@@ -16,7 +16,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | # | Phase | Status | Plans | Progress |
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
-| 2 | Indicators Library | ◐ in-progress | 7/9 | 78% |
+| 2 | Indicators Library | ◐ in-progress | 8/9 | 89% |
 | 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
@@ -32,6 +32,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 ---
 
 ## Active Work
+
+Phase 2 — Indicators Library: Wave 0 (01) + Wave 1 (02, 03, 04) + Wave 2 (05, 06, 07) + Wave 3 plan 08 COMPLETE 2026-05-08. Plan 08 (MTF align H4/H1/M15 — INDIC-13) in ~5min: `align(streams)` puro Python con `MTFAlignmentResult(score, h4_dir, h1_dir, m15_dir)` length-N. M15 e l'ancora; per ciascun M15[i] cerca l'ultima bar H4/H1 con `time<=m15[i].time`. Direzione per stream via `_compute_dirs`: `sign(EMA50[i]-EMA50[i-N])` con N=3 default e dead-zone `|delta|/|EMA|<1e-5 → dir=0` (Pitfall 7, A3 RESEARCH). Score = `round(agreements/3.0, 2)` ∈ {0.33, 0.67, 1.0} (0.0 impossibile per costruzione: M15 e d'accordo con se stesso). ValueError fail-fast su chiavi richieste mancanti H4/H1/M15. `calculate_trend_strength` Wave 0 preservato verbatim (signature invariata, `strategy.py:11` continua a funzionare). 7 test sintetici hand-calc + 1 leakage test universale. 1 deviation Rule 1 sui test (plan-as-written underspec'd il warmup multi-TF: M15=200/H1=60/H4=20 bar non bastano per ema_period=50+slope_lookback=3 → tutti score None; corretto a M15=1200/H1=300/H4=100). Score range corretto {0.0, 0.33, 0.67, 1.0} (plan citava 0.66 ma `round(2/3, 2)=0.67`). Suite intera 358/358 verde + 1 skipped (350 → 358, +8: 7 mtf hand-calc + 1 mtf leakage). INDIC-13 completato. Commits Wave 3 plan 08: 65464d9 (feat), 7c31e96 (test). Wave 3 plan 09 (regime classifier — INDIC-14) sbloccato.
 
 Phase 2 — Indicators Library: Wave 0 (01) + Wave 1 (02, 03, 04) + Wave 2 (05, 06, 07) COMPLETE 2026-05-08. Plan 07 (NR4/NR7+Inside+Boomer + Closing Score) in ~4min: `narrow_range(bars)` ritorna `NRResult(nr4, nr7, inside, boomer)` length-N con definizioni Crabel canonical (NR4: range[i]<range[j] ∀ j∈{i-1..i-3}; NR7: stessa regola su {i-1..i-6}); Inside via `high<=prev AND low>=prev`; Boomer per A2 = `inside[i] AND inside[i-1] AND (nr4[i] OR nr7[i])`. `closing_score(bars)` ritorna `(close-low)/(high-low)*100` per bar, `None` su `high==low` (range nullo). `calculate_risk_reward` Wave 0 preservato verbatim. `NRResult`+`ClosingScoreResult` dataclass. 23 hand-calc test (NR4 basic/false-when-prior-smaller, NR7 monotonic, Inside+equal-extremes, Boomer 4-bar+inside-pair-required+nr-window-required, Closing Score canonical+100-deterministic+empty, output length, warmup parametrizzato). 10 leakage test (5 NR + 5 CS). Discrepancy Boomer flagged: skill `forex-trader-pro` `price_action.md:43` richiede inside+NR4 su ENTRAMBI bar (più stretta, ignora NR7); plan A2 + CONTEXT.md:153 richiedono inside su entrambi ma NR4 OR NR7 solo sul corrente — implementato A2 verbatim come da istruzione plan ('uses CONTEXT.md specifics verbatim'). 0 deviazioni di codice. Suite intera 350/350 verde + 1 skipped (317 → 350, +33: 23 hand-calc + 5 NR leakage + 5 CS leakage). INDIC-10 + INDIC-11 completati. Commits Wave 2 plan 07: c22df3d (feat), db76242 (test). Wave 2 plan 08 (MTF align — INDIC-13) e Wave 3 plan 09 (regime classifier — INDIC-14) sbloccati.
 
@@ -69,4 +71,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 2 plan 07 (Wave 2: NR4/NR7+Boomer + Closing Score) complete*
+*Last updated: 2026-05-08 — Phase 2 plan 08 (Wave 3: MTF align H4/H1/M15) complete*
