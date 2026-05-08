@@ -109,3 +109,66 @@ def test_keltner_parity_with_pandas_ta(eurusd_h1_500: list[dict]) -> None:
         assert abs(ours.upper[i] - expected[col_up].iloc[i]) < 1e-6, f"upper mismatch i={i}"
         assert abs(ours.middle[i] - expected[col_mid].iloc[i]) < 1e-6, f"middle mismatch i={i}"
         assert abs(ours.lower[i] - expected[col_lo].iloc[i]) < 1e-6, f"lower mismatch i={i}"
+
+
+# ── INDIC-14: Volatility regime classifier (Wave 3 plan 09) ───────────────────
+
+
+def test_load_regime_config_eurusd_override() -> None:
+    """EURUSD ha override esplicito (compressed_below=25, expanded_above=75)."""
+    from indicators.volatility import load_regime_config
+    cfg = load_regime_config("EURUSD", "data/configs/regime.yaml")
+    assert cfg["compressed_below"] == 25
+    assert cfg["expanded_above"] == 75
+    assert cfg["window"] == 200
+
+
+def test_load_regime_config_default_fallback() -> None:
+    """Simbolo non listato → fallback a `default` (compressed_below=30, expanded_above=70)."""
+    from indicators.volatility import load_regime_config
+    cfg = load_regime_config("UNKNOWN_SYMBOL", "data/configs/regime.yaml")
+    assert cfg["compressed_below"] == 30
+    assert cfg["expanded_above"] == 70
+    assert cfg["window"] == 200
+
+
+def test_volatility_regime_warmup_none(eurusd_h1_500: list[dict]) -> None:
+    """Per i+1<window (window=200) state e atr_percentile devono essere None."""
+    from indicators.volatility import volatility_regime
+    cfg = {"window": 200, "compressed_below": 30, "expanded_above": 70}
+    r = volatility_regime(eurusd_h1_500, cfg)
+    for i in range(199):
+        assert r.state[i] is None, f"warmup leak at i={i}"
+        assert r.atr_percentile[i] is None
+    assert r.window == 200
+
+
+def test_volatility_regime_states_present_after_warmup(eurusd_h1_500: list[dict]) -> None:
+    """Dopo il warmup almeno 'normal' compare e le percentili sono in [0,1]."""
+    from indicators.volatility import volatility_regime
+    cfg = {"window": 200, "compressed_below": 30, "expanded_above": 70}
+    r = volatility_regime(eurusd_h1_500, cfg)
+    states_seen = {s for s in r.state if s is not None}
+    assert "normal" in states_seen
+    for p in r.atr_percentile:
+        if p is not None:
+            assert 0.0 <= p <= 1.0
+
+
+def test_volatility_regime_no_full_series_rank_signature(eurusd_h1_500: list[dict]) -> None:
+    """Pitfall 4: rank deve usare solo la finestra `window` precedente, non l'intera serie.
+
+    Se il rank fosse calcolato sull'intera serie (es. `series.rank(pct=True)`), il
+    valore al primo indice post-warmup (i=199 con window=200) dipenderebbe anche
+    da bar futuri (200..499) → leakage. Verifichiamo che `volatility_regime(prefix)[199]`
+    coincida con `volatility_regime(full)[199]` — proprieta che vale solo se la
+    finestra e strettamente trailing.
+    """
+    from indicators.volatility import volatility_regime
+    cfg = {"window": 200, "compressed_below": 30, "expanded_above": 70}
+    bars = eurusd_h1_500
+    r_partial = volatility_regime(bars[:201], cfg)
+    r_full = volatility_regime(bars, cfg)
+    # Indice 200 in partial (len=201) deve eguagliare indice 200 in full.
+    assert r_partial.atr_percentile[200] == r_full.atr_percentile[200]
+    assert r_partial.state[200] == r_full.state[200]

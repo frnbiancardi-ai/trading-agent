@@ -245,6 +245,26 @@ def test_no_future_leakage_closing_score(eurusd_h1_500, idx):
     assert partial.score[idx] == full.score[idx], f"future leakage closing_score @ i={idx}"
 
 
+@pytest.mark.parametrize("idx", [200, 250, 350, 450, 499])
+def test_no_future_leakage_volatility_regime(eurusd_h1_500, idx):
+    """volatility_regime(prefix)[i] == (full)[i]. INDIC-14 (Pitfall 4).
+
+    Idx scelti tutti >= window-1=199 (window=200) per avere stime valide. Un
+    rank-globale (`series.rank(pct=True)`) avrebbe leakage perche il percentile
+    di ATR[i] dipenderebbe dai valori 200..499; un rolling rank corretto su
+    finestra trailing produce lo stesso risultato su prefix e full.
+    """
+    from indicators.volatility import volatility_regime
+    cfg = {"window": 200, "compressed_below": 30, "expanded_above": 70}
+    bars = eurusd_h1_500
+    full = volatility_regime(bars, cfg)
+    partial = volatility_regime(bars[: idx + 1], cfg)
+    assert partial.state[idx] == full.state[idx], f"leakage state @ i={idx}"
+    assert partial.atr_percentile[idx] == full.atr_percentile[idx], (
+        f"leakage atr_percentile @ i={idx}"
+    )
+
+
 def test_no_future_leakage_align_synthetic():
     """align(streams)[i] == align(prefix)[i]. INDIC-13.
 

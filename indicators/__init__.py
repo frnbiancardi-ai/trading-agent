@@ -47,7 +47,7 @@ from indicators.bars import (
     ClosingScoreResult,
 )
 from indicators.mtf import calculate_trend_strength, align, MTFAlignmentResult
-from indicators.aggregate import compute_all
+from indicators.aggregate import compute_all, compute_all_extended
 from indicators.hurst import hurst_rs, HurstResult
 from indicators._helpers import _last_valid, _wilder_rsi  # privati, retro-compat per test
 
@@ -76,6 +76,7 @@ __all__ = [
     "calculate_risk_reward",
     "check_rsi_divergence",
     "compute_all",
+    "compute_all_extended",
     "hurst_rs",
     "HurstResult",
     "donchian",
