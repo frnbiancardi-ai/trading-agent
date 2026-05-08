@@ -486,6 +486,13 @@ def test_run_baseline_orchestrates_27_runs(monkeypatch, tmp_path):
     monkeypatch.setattr("backtest.baseline.runner.run_slice_3profiles", fake_worker)
     monkeypatch.setattr("backtest.baseline.runner.enable_sqlite_wal", fake_wal)
     monkeypatch.setattr("backtest.baseline.runner.finalize_parquet_shards", fake_finalize)
+    # I mock locali NON sono pickleable da spawn ProcessPoolExecutor —
+    # sostituisci la factory con un ThreadPoolExecutor (in-process).
+    from concurrent.futures import ThreadPoolExecutor
+    monkeypatch.setattr(
+        "backtest.baseline.runner._make_pool_executor",
+        lambda mw, ctx: ThreadPoolExecutor(max_workers=mw),
+    )
 
     from backtest.baseline.runner import run_baseline
     results = run_baseline(
@@ -520,11 +527,18 @@ def test_run_baseline_handles_worker_failure(monkeypatch, tmp_path):
         if sym == "EURUSD" and tf == "M15":
             raise RuntimeError("synthetic worker failure")
         return [{"run_id": f"r_{sym}_{tf}_{p}", "symbol": sym, "timeframe": tf,
-                 "profile": p, "status": "OK"}
+                 "profile": p, "status": "OK", "metrics": None,
+                 "n_trades": 0, "n_drafts": 0, "equity_path": ""}
                 for p in ("CONSERVATIVE", "MODERATE", "AGGRESSIVE")]
     monkeypatch.setattr("backtest.baseline.runner.run_slice_3profiles", flaky_worker)
     monkeypatch.setattr("backtest.baseline.runner.enable_sqlite_wal", lambda p: None)
     monkeypatch.setattr("backtest.baseline.runner.finalize_parquet_shards", lambda p: None)
+    # ThreadPoolExecutor in-process — mock locali non pickleable da spawn.
+    from concurrent.futures import ThreadPoolExecutor
+    monkeypatch.setattr(
+        "backtest.baseline.runner._make_pool_executor",
+        lambda mw, ctx: ThreadPoolExecutor(max_workers=mw),
+    )
 
     from backtest.baseline.runner import run_baseline
     results = run_baseline(
