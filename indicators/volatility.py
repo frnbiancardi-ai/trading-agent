@@ -256,8 +256,8 @@ def load_regime_config(symbol: str, yaml_path: Path | str) -> dict:
           ...
 
     Mirror del pattern Phase 1 `backtest/costs.py:load_cost_model`. Usa
-    `yaml.safe_load` (mai `yaml.load`) per evitare deserializzazione di codice
-    arbitrario. Solleva `KeyError` se ne il simbolo ne `default` sono presenti.
+    safe_load (no execution of arbitrary tags). Solleva `KeyError` se ne il
+    simbolo ne `default` sono presenti.
     """
     with open(yaml_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f) or {}
@@ -280,8 +280,8 @@ def volatility_regime(bars: list[dict], cfg: dict | None = None) -> RegimeResult
                 'normal'     altrimenti.
 
     Pitfall 4: il rank e calcolato DENTRO la finestra `window`, MAI sull'intera
-    serie (uso di pandas `.rank(pct=True)` produrrebbe future leakage perche
-    inclederebbe ATR di bar futuri come riferimento).
+    serie (un rank globale produrrebbe future leakage perche includerebbe ATR
+    di bar futuri come riferimento).
 
     Warmup: per i+1<window (quindi i<window-1), state e atr_percentile sono None.
     Stesso comportamento se ATR[i] e None per la finestra.
