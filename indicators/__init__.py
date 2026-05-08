@@ -8,7 +8,16 @@ Backward-compat (D-03): le 4 callsite esistenti
 continuano a funzionare invariate grazie ai re-export sotto.
 """
 from indicators.trend import sma, ema
-from indicators.momentum import rsi, check_rsi_divergence
+from indicators.momentum import (
+    rsi,
+    check_rsi_divergence,
+    adx,
+    macd,
+    stochastic,
+    ADXResult,
+    MACDResult,
+    StochasticResult,
+)
 from indicators.volatility import (
     atr,
     bollinger_bands,
@@ -32,6 +41,12 @@ __all__ = [
     "keltner",
     "BollingerResult",
     "KeltnerResult",
+    "adx",
+    "macd",
+    "stochastic",
+    "ADXResult",
+    "MACDResult",
+    "StochasticResult",
     "avg_volume",
     "calculate_trend_strength",
     "find_support_resistance",
