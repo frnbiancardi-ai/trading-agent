@@ -16,7 +16,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | # | Phase | Status | Plans | Progress |
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
-| 2 | Indicators Library | ◐ in-progress | 8/9 | 89% |
+| 2 | Indicators Library | ✓ complete | 9/9 | 100% |
 | 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
@@ -27,11 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 10 | Intermarket + News | ○ pending | 0/0 | 0% |
 | 11 | Paper Deploy Gate | ○ pending | 0/0 | 0% |
 
-**Overall progress:** 1/11 phases complete (9%)
+**Overall progress:** 2/11 phases complete (18%)
 
 ---
 
 ## Active Work
+
+Phase 2 — Indicators Library: ALL 9 PLANS COMPLETE 2026-05-08. Plan 09 (Wave 3 — Volatility regime + compute_all_extended — INDIC-14) in ~6min: `volatility_regime(bars, cfg)` puro Python con `RegimeResult(state, atr_percentile, window)` length-N classifica ogni bar in {compressed/normal/expanded/None} via rolling rank percentile di ATR(14) su finestra trailing window=200. Pitfall 4 evitato (rank dentro finestra, non sull'intera serie) + leakage-free a 5 spot indices. `load_regime_config(symbol, yaml_path)` mirror del pattern `backtest/costs.py:load_cost_model` con safe_load + fallback default. `compute_all_extended(bars, regime_cfg=None)` aggregator snapshot 14-indicator (37 chiavi: 4 legacy + 33 estese) per backtest+Phase 4 strategy refactor. `compute_all` BIT-FOR-BIT immutato (4-key dict, callsite claude_agent.py:12 + mcp_server.py:28 invariati — verificato da 2 hard-lock test). MTF align (INDIC-13) escluso da extended: richiede stream multi-TF separati (Phase 4 lo invochera direttamente). Phase 2 final gate `test_all_14_indic_requirement_symbols_exposed` enumera ogni INDIC-01..14 simbolo pubblico (29 simboli totali). 2 deviazioni Rule 1: (1) test_legacy_callsite_imports_unchanged falliva per execution-order — sys.modules pulito anche per pandas_ta prima del fresh-import; (2) docstring runtime contenevano 'yaml.load'/'rank(pct=True)' come citazioni educative del pitfall — riformulate per soddisfare letteralmente i grep acceptance criteria. Spot-check fixture EURUSD H1 (cfg EURUSD 25/75): 287 bar valide post-warmup, 61 compressed (21%), 155 normal (54%), 71 expanded (25%); atr_percentile mean 0.532. Suite intera 374/374 verde + 1 skipped (358 → 374, +16: 5 hand-calc regime + 5 leakage regime + 6 aggregate/phase-gate). INDIC-14 completato. Commits Wave 3 plan 09: a1b5dc0 (feat impl regime), b4c895a (feat extended+test), 7851a95 (docs cleanup grep). PHASE 2 ready per verification (`/gsd-verify-phase 2`); auto-push DOPO verification PASSED.
 
 Phase 2 — Indicators Library: Wave 0 (01) + Wave 1 (02, 03, 04) + Wave 2 (05, 06, 07) + Wave 3 plan 08 COMPLETE 2026-05-08. Plan 08 (MTF align H4/H1/M15 — INDIC-13) in ~5min: `align(streams)` puro Python con `MTFAlignmentResult(score, h4_dir, h1_dir, m15_dir)` length-N. M15 e l'ancora; per ciascun M15[i] cerca l'ultima bar H4/H1 con `time<=m15[i].time`. Direzione per stream via `_compute_dirs`: `sign(EMA50[i]-EMA50[i-N])` con N=3 default e dead-zone `|delta|/|EMA|<1e-5 → dir=0` (Pitfall 7, A3 RESEARCH). Score = `round(agreements/3.0, 2)` ∈ {0.33, 0.67, 1.0} (0.0 impossibile per costruzione: M15 e d'accordo con se stesso). ValueError fail-fast su chiavi richieste mancanti H4/H1/M15. `calculate_trend_strength` Wave 0 preservato verbatim (signature invariata, `strategy.py:11` continua a funzionare). 7 test sintetici hand-calc + 1 leakage test universale. 1 deviation Rule 1 sui test (plan-as-written underspec'd il warmup multi-TF: M15=200/H1=60/H4=20 bar non bastano per ema_period=50+slope_lookback=3 → tutti score None; corretto a M15=1200/H1=300/H4=100). Score range corretto {0.0, 0.33, 0.67, 1.0} (plan citava 0.66 ma `round(2/3, 2)=0.67`). Suite intera 358/358 verde + 1 skipped (350 → 358, +8: 7 mtf hand-calc + 1 mtf leakage). INDIC-13 completato. Commits Wave 3 plan 08: 65464d9 (feat), 7c31e96 (test). Wave 3 plan 09 (regime classifier — INDIC-14) sbloccato.
 
@@ -71,4 +73,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 2 plan 08 (Wave 3: MTF align H4/H1/M15) complete*
+*Last updated: 2026-05-08 — Phase 2 plan 09 (Wave 3: Volatility regime + compute_all_extended — INDIC-14) complete; PHASE 2 ALL 9 PLANS DONE — ready for verification*

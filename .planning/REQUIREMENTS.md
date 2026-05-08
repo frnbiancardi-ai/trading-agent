@@ -32,7 +32,7 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [x] **INDIC-11**: Closing Score (Defendi formula): position of close in bar range, 0-100
 - [x] **INDIC-12**: Hurst exponent (rolling) for trend-vs-mean-revert regime
 - [x] **INDIC-13**: Multi-TF alignment helper (H4 + H1 + M15 trend coherence score)
-- [ ] **INDIC-14**: Volatility-regime classifier: compressed / normal / expanded via ATR percentile vs 200-bar window
+- [x] **INDIC-14**: Volatility-regime classifier: compressed / normal / expanded via ATR percentile vs 200-bar window
 
 ### Patterns
 
@@ -167,16 +167,16 @@ Updated during roadmap creation.
 | INDIC-02 | Phase 2 | Complete |
 | INDIC-03 | Phase 2 | Complete |
 | INDIC-04 | Phase 2 | Complete |
-| INDIC-05 | Phase 2 | Pending |
+| INDIC-05 | Phase 2 | Complete |
 | INDIC-06 | Phase 2 | Complete |
 | INDIC-07 | Phase 2 | Complete |
-| INDIC-08 | Phase 2 | Pending |
-| INDIC-09 | Phase 2 | Pending |
+| INDIC-08 | Phase 2 | Complete |
+| INDIC-09 | Phase 2 | Complete |
 | INDIC-10 | Phase 2 | Complete |
 | INDIC-11 | Phase 2 | Complete |
-| INDIC-12 | Phase 2 | Pending |
+| INDIC-12 | Phase 2 | Complete |
 | INDIC-13 | Phase 2 | Complete |
-| INDIC-14 | Phase 2 | Pending |
+| INDIC-14 | Phase 2 | Complete |
 | PATT-01 | Phase 3 | Pending |
 | PATT-02 | Phase 3 | Pending |
 | PATT-03 | Phase 3 | Pending |

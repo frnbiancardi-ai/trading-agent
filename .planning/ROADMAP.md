@@ -81,7 +81,7 @@ Plans:
 - [x] 02-06-PLAN.md — INDIC-07 VWAP intraday (NY-17 reset) + anchored (volume.py)
 - [x] 02-07-PLAN.md — INDIC-10 NR4/NR7+Boomer + INDIC-11 Closing Score (bars.py)
 - [x] 02-08-PLAN.md — INDIC-13 MTF alignment H4/H1/M15 EMA50-slope (mtf.py)
-- [ ] 02-09-PLAN.md — INDIC-14 Volatility regime classifier + compute_all_extended aggregator (final phase gate)
+- [x] 02-09-PLAN.md — INDIC-14 Volatility regime classifier + compute_all_extended aggregator (final phase gate)
 
 ---
 
