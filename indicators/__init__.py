@@ -25,7 +25,16 @@ from indicators.volatility import (
     BollingerResult,
     KeltnerResult,
 )
-from indicators.structure import find_support_resistance, check_breakout_quality
+from indicators.structure import (
+    find_support_resistance,
+    check_breakout_quality,
+    donchian,
+    fibonacci_retracements,
+    pivots,
+    DonchianResult,
+    FibonacciResult,
+    PivotResult,
+)
 from indicators.volume import avg_volume
 from indicators.bars import calculate_risk_reward
 from indicators.mtf import calculate_trend_strength
@@ -57,4 +66,10 @@ __all__ = [
     "compute_all",
     "hurst_rs",
     "HurstResult",
+    "donchian",
+    "fibonacci_retracements",
+    "pivots",
+    "DonchianResult",
+    "FibonacciResult",
+    "PivotResult",
 ]
