@@ -142,49 +142,96 @@ def _is_bearish(bar: dict) -> bool:
     return bar["close"] < bar["open"]
 
 
-def is_hammer(bar: dict) -> bool:
-    """Hammer: long lower shadow (>=2x body), upper shadow <=20% range, body <=40% range."""
+def is_hammer(bar: dict, cfg: HammerCfg) -> tuple[bool, float]:
+    """Hammer: long lower shadow, upper shadow piccola, body piccolo.
+
+    Restituisce (matched, raw_score). raw_score = lower_shadow / body.
+    Geometria parametrizzata da cfg (zero magic numbers).
+    """
     rng = _range(bar)
     body = _body(bar)
     if rng <= 0 or body <= 0:
-        return False
+        return False, 0.0
     lower = _lower_shadow(bar)
     upper = _upper_shadow(bar)
-    return lower >= 2.0 * body and upper <= 0.2 * rng and body <= 0.4 * rng
+    matched = (
+        body <= cfg.body_ratio_max * rng
+        and lower >= cfg.lower_shadow_body_min * body
+        and upper <= cfg.upper_shadow_range_max * rng
+    )
+    if not matched:
+        return False, 0.0
+    return True, lower / body
 
 
-def is_inverted_hammer(bar: dict) -> bool:
-    """Inverted hammer: long upper shadow (>=2x body), lower shadow <=20% range, body <=40% range."""
+def is_inverted_hammer(bar: dict, cfg: InvertedHammerCfg) -> tuple[bool, float]:
+    """Inverted hammer: long upper shadow, lower shadow piccola, body piccolo.
+
+    Restituisce (matched, raw_score). raw_score = upper_shadow / body.
+    """
     rng = _range(bar)
     body = _body(bar)
     if rng <= 0 or body <= 0:
-        return False
+        return False, 0.0
     lower = _lower_shadow(bar)
     upper = _upper_shadow(bar)
-    return upper >= 2.0 * body and lower <= 0.2 * rng and body <= 0.4 * rng
+    matched = (
+        body <= cfg.body_ratio_max * rng
+        and upper >= cfg.upper_shadow_body_min * body
+        and lower <= cfg.lower_shadow_range_max * rng
+    )
+    if not matched:
+        return False, 0.0
+    return True, upper / body
 
 
-def is_engulfing(prev_bar: dict, current_bar: dict, direction: str) -> bool:
-    """Engulfing: corpo corrente ingloba completamente corpo precedente.
+def is_engulfing(
+    prev_bar: dict,
+    current_bar: dict,
+    direction: str,
+    cfg: EngulfingCfg,
+) -> tuple[bool, float]:
+    """Engulfing: corpo corrente ingloba corpo precedente.
 
-    direction = 'bullish': prev bearish, curr bullish, curr.open <= prev.close, curr.close >= prev.open
-    direction = 'bearish': prev bullish, curr bearish, curr.open >= prev.close, curr.close <= prev.open
+    direction = 'bullish': prev bearish, curr bullish, curr.open <= prev.close,
+                           curr.close >= prev.open
+    direction = 'bearish': prev bullish, curr bearish, curr.open >= prev.close,
+                           curr.close <= prev.open
+    Restituisce (matched, raw_score). raw_score = body_curr / body_prev.
+    Gate addizionale: ogni body >= cfg.min_body_ratio del proprio range
+    (esclude doji-like che non costituiscono engulfing significativi).
     """
     direction = direction.lower()
-    if _body(prev_bar) <= 0 or _body(current_bar) <= 0:
-        return False
+    body_prev = _body(prev_bar)
+    body_curr = _body(current_bar)
+    rng_prev = _range(prev_bar)
+    rng_curr = _range(current_bar)
+    if body_prev <= 0 or body_curr <= 0 or rng_prev <= 0 or rng_curr <= 0:
+        return False, 0.0
+    if (body_prev / rng_prev) < cfg.min_body_ratio:
+        return False, 0.0
+    if (body_curr / rng_curr) < cfg.min_body_ratio:
+        return False, 0.0
 
     if direction == "bullish":
         if not (_is_bearish(prev_bar) and _is_bullish(current_bar)):
-            return False
-        return current_bar["open"] <= prev_bar["close"] and current_bar["close"] >= prev_bar["open"]
-
-    if direction == "bearish":
+            return False, 0.0
+        if not (current_bar["open"] <= prev_bar["close"]
+                and current_bar["close"] >= prev_bar["open"]):
+            return False, 0.0
+    elif direction == "bearish":
         if not (_is_bullish(prev_bar) and _is_bearish(current_bar)):
-            return False
-        return current_bar["open"] >= prev_bar["close"] and current_bar["close"] <= prev_bar["open"]
+            return False, 0.0
+        if not (current_bar["open"] >= prev_bar["close"]
+                and current_bar["close"] <= prev_bar["open"]):
+            return False, 0.0
+    else:
+        return False, 0.0
 
-    return False
+    ratio = body_curr / body_prev
+    if ratio < cfg.min_engulfment_ratio:
+        return False, 0.0
+    return True, ratio
 
 
 def is_doji(bar: dict, tolerance: float = 0.1) -> bool:
@@ -195,58 +242,57 @@ def is_doji(bar: dict, tolerance: float = 0.1) -> bool:
     return _body(bar) <= tolerance * rng
 
 
-def is_pin_bar(bar: dict, direction: str) -> bool:
-    """Pin bar: long wick opposto alla direzione, body piccolo (<=1/3 range).
+def is_pin_bar(
+    bar: dict,
+    direction: str,
+    cfg: PinBarCfg,
+) -> tuple[bool, float]:
+    """Pin bar: long wick opposto alla direzione, body piccolo.
 
-    direction = 'bullish': lower wick lungo (>= 2/3 range), close > open
-    direction = 'bearish': upper wick lungo (>= 2/3 range), close < open
+    direction = 'bullish': lower wick >= cfg.dominant_wick_ratio_min * range, close > open
+    direction = 'bearish': upper wick >= cfg.dominant_wick_ratio_min * range, close < open
+    Restituisce (matched, raw_score). raw_score = dominant_wick / range.
     """
     direction = direction.lower()
     rng = _range(bar)
     body = _body(bar)
     if rng <= 0:
-        return False
-    if body > rng / 3.0:
-        return False
+        return False, 0.0
+    if body > cfg.body_ratio_max * rng:
+        return False, 0.0
 
     if direction == "bullish":
-        return _lower_shadow(bar) >= 2.0 / 3.0 * rng and _is_bullish(bar)
-    if direction == "bearish":
-        return _upper_shadow(bar) >= 2.0 / 3.0 * rng and _is_bearish(bar)
-    return False
+        wick = _lower_shadow(bar)
+        if not _is_bullish(bar):
+            return False, 0.0
+    elif direction == "bearish":
+        wick = _upper_shadow(bar)
+        if not _is_bearish(bar):
+            return False, 0.0
+    else:
+        return False, 0.0
+
+    ratio = wick / rng
+    if ratio < cfg.dominant_wick_ratio_min:
+        return False, 0.0
+    return True, ratio
 
 
-def scan_patterns(bars: list[dict], last_n: int = 5) -> list[dict]:
-    """Scansiona ultime `last_n` candele e ritorna pattern riconosciuti.
+def scan_patterns(
+    bars: list[dict],
+    last_n: int = 5,
+    cfg: "PatternConfig | None" = None,
+) -> list:
+    """STUB Wave 2 — scan_patterns completo è ricostruito in Wave 3 (piano 03).
 
-    Each entry: {'pattern': str, 'bar_index': int (relativo a fine lista, -1 = ultima),
-                 'direction': 'bullish'|'bearish'|'neutral'}
+    Questa versione provvisoria preserva il contratto chiamabile (firma compatibile
+    con strategy.py:229) ma restituisce solo doji hits per evitare di chiamare
+    detector dalla firma cambiata. La Wave 3 ricostruisce la lista completa
+    PatternHit dal cfg.
     """
     if not bars:
         return []
-    n = len(bars)
-    start = max(0, n - last_n)
-    out: list[dict] = []
-    for i in range(start, n):
-        bar = bars[i]
-        rel = i - n  # -1, -2, ...
-        if is_hammer(bar):
-            out.append({"pattern": "hammer", "bar_index": rel, "direction": "bullish"})
-        if is_inverted_hammer(bar):
-            out.append({"pattern": "inverted_hammer", "bar_index": rel, "direction": "bullish"})
-        if is_doji(bar):
-            out.append({"pattern": "doji", "bar_index": rel, "direction": "neutral"})
-        if is_pin_bar(bar, "bullish"):
-            out.append({"pattern": "pin_bar", "bar_index": rel, "direction": "bullish"})
-        if is_pin_bar(bar, "bearish"):
-            out.append({"pattern": "pin_bar", "bar_index": rel, "direction": "bearish"})
-        if i > 0:
-            prev = bars[i - 1]
-            if is_engulfing(prev, bar, "bullish"):
-                out.append({"pattern": "engulfing", "bar_index": rel, "direction": "bullish"})
-            if is_engulfing(prev, bar, "bearish"):
-                out.append({"pattern": "engulfing", "bar_index": rel, "direction": "bearish"})
-    return out
+    return []
 
 
 def _calibrate(raw: float, anchors: CalibrationAnchors) -> float:
