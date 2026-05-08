@@ -192,6 +192,40 @@ class BacktestBroker:
             starting_balance_of_day=self._initial_balance,
         )
 
+    # ── Phase 5 helpers (additive — D-05 timeout, slice_worker integration) ───
+
+    @property
+    def virtual_positions(self) -> list[VirtualPosition]:
+        """Snapshot list delle posizioni aperte (Phase 5 D-05 introspection).
+
+        Esposto come lista nuova ad ogni call → l'iterazione lato chiamante è
+        sicura anche se il chiamante chiama force_close in loop (no mutation
+        durante iteration sul dict interno).
+        """
+        return list(self._positions.values())
+
+    def force_close(
+        self,
+        position_id: int,
+        exit_price: float,
+        exit_reason: str,
+        exit_time: int | None = None,
+    ) -> dict:
+        """Chiude una posizione a prezzo e reason espliciti (Phase 5 D-05).
+
+        Thin wrapper sopra ``_close_virtual``: serve a slice_worker /
+        BacktestEngine timeout enforcement quando la chiusura non è
+        triggerata da SL/TP intra-bar. ``exit_time`` opzionale → default a
+        timestamp dell'ultima bar nel window (coerente con close_position).
+        """
+        if position_id not in self._positions:
+            raise KeyError(f"unknown position_id: {position_id}")
+        if exit_time is None:
+            if not self._window:
+                raise RuntimeError("no bars in window — call advance() first")
+            exit_time = int(self._window[-1]["time"])
+        return self._close_virtual(position_id, float(exit_price), exit_reason, int(exit_time))
+
     def close_position(self, position_id: int) -> OrderResult:
         """Manual close at last bar's close. Cost model deducted on close."""
         if position_id not in self._positions:

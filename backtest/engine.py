@@ -44,6 +44,9 @@ from backtest.loader import Bar, load_bars
 
 _log = logging.getLogger(__name__)
 
+# Phase 5 D-05: ragione di chiusura per posizioni che eccedono timeout_bars per-TF.
+TIMEOUT_CLOSE_REASON = "TIMEOUT_CLOSE"
+
 
 def _always_open_cfg(base: Config | None = None) -> Config:
     """Return a Config with all time-of-day / weekday / news / session gates disabled."""
@@ -100,6 +103,13 @@ class BacktestEngine:
         ledger: LedgerWriter | None = None,
         fold_index: int | None = None,
         cost_yaml_hash: str = "nohash",
+        # ── Phase 5 additions (additive, default None) ─────────────────────
+        # I caller Phase 1 (run_backtest) restano invariati: i kwargs sotto
+        # sono opt-in dal slice_worker Phase 5 (Plan 05-06).
+        indicators_full: dict | None = None,
+        risk_profile: str | None = None,
+        timeout_bars: int | None = None,
+        equity_initial: float | None = None,
     ) -> None:
         if not bars:
             raise ValueError("BacktestEngine requires at least one bar")
@@ -108,13 +118,33 @@ class BacktestEngine:
         self.timeframe = timeframe
         self.cost_model = cost_model
         self.cfg = _always_open_cfg(cfg)
-        self.initial_balance = float(initial_balance)
+        # Phase 5: equity_initial alias di initial_balance per chiarezza orchestrator.
+        # Se entrambi sono passati, equity_initial vince (più esplicito nel naming Phase 5).
+        self.initial_balance = float(
+            equity_initial if equity_initial is not None else initial_balance,
+        )
         self.fold_index = fold_index
         self.cost_yaml_hash = cost_yaml_hash
         self.ledger = ledger
         self.run_id = run_id or _compute_run_id(
             symbol, timeframe, bars[0].time, bars[-1].time, cost_yaml_hash,
         )
+        # ── Phase 5 additions ──────────────────────────────────────────────
+        # indicators_full: cache pre-computed (D-15 hybrid orchestration). Se
+        # impostata, lo slice_worker (05-06) la inietta una volta per slice
+        # evitando il ricalcolo per ogni profile sequenziale (3x speedup).
+        self.indicators_full = indicators_full
+        # timeout_bars: D-05 per-TF cap (M15=96, M30=96, H1=120). Posizioni
+        # con bars_held >= timeout_bars vengono chiuse a market con
+        # exit_reason=TIMEOUT_CLOSE.
+        self.timeout_bars = timeout_bars
+        # risk_profile: D-11 — il backtest gira 3 profile sequenziali per slice;
+        # popola cfg.RISK_MODE consumato da risk_engine.evaluate_trade per
+        # cambiare i filtri d'ingresso (min_grade/min_rr/min_confidence) senza
+        # toccare costi né indicatori.
+        if risk_profile is not None:
+            self.cfg.RISK_MODE = risk_profile
+        self.risk_profile = risk_profile
 
     def run(self) -> dict[str, Any]:
         broker = BacktestBroker(
@@ -147,6 +177,30 @@ class BacktestEngine:
                 ctx = pending_ctx.pop(row["position_id"], None)
                 if ctx is not None:
                     row["decision_context_json"] = ctx
+
+            # 1b. Phase 5 D-05: timeout enforcement per-TF.
+            #     Se una posizione è aperta da `timeout_bars` o più, la chiudo a
+            #     market (bar.close) con exit_reason=TIMEOUT_CLOSE. Il check
+            #     gira DOPO advance() per evitare doppia chiusura nello stesso
+            #     ciclo (SL/TP hanno priorità → vengono chiusi da advance).
+            if self.timeout_bars is not None and self.timeout_bars > 0:
+                # broker._bar_index è già stato incrementato da advance(bar);
+                # entry_bar_index è registrato a quell'indice → bars_held =
+                # current - entry, conta i bar di "holding" passati.
+                current_bar_index = broker._bar_index
+                for pos in broker.virtual_positions:
+                    bars_held = current_bar_index - pos.entry_bar_index
+                    if bars_held >= self.timeout_bars:
+                        row = broker.force_close(
+                            pos.position_id,
+                            float(bar.close),
+                            TIMEOUT_CLOSE_REASON,
+                            int(bar.time),
+                        )
+                        equity_curve.append(broker._balance)
+                        ctx = pending_ctx.pop(row["position_id"], None)
+                        if ctx is not None:
+                            row["decision_context_json"] = ctx
 
             # Need enough warmup bars before strategy can run.
             if idx + 1 < lookback:
