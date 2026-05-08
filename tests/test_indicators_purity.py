@@ -243,3 +243,41 @@ def test_no_future_leakage_closing_score(eurusd_h1_500, idx):
     full = closing_score(bars)
     partial = closing_score(bars[: idx + 1])
     assert partial.score[idx] == full.score[idx], f"future leakage closing_score @ i={idx}"
+
+
+def test_no_future_leakage_align_synthetic():
+    """align(streams)[i] == align(prefix)[i]. INDIC-13.
+
+    Verifica che lo slicing di tutti e 3 gli stream a bar con time <= m15[idx].time
+    produca lo stesso score a indice idx del calcolo full. Per costruzione `align`
+    e leakage-free (cumulativi locali alla sessione), ma il test e una guard
+    universale equivalente ai 12 leakage-test esistenti."""
+    from indicators.mtf import align
+
+    def _stream(p0: float, slope: float, n: int, dt: int) -> list[dict]:
+        return [
+            {
+                "time": i * dt,
+                "high": p0 + slope * i,
+                "low": p0 + slope * i,
+                "close": p0 + slope * i,
+                "open": p0 + slope * i,
+                "volume": 1,
+                "tick_volume": 1,
+            }
+            for i in range(n)
+        ]
+
+    # Stream sizing: M15 dt=60, H1 dt=240 (4x), H4 dt=960 (16x). Per warmare H4
+    # all'indice 52 → M15 deve coprire 52*960=49920s → length >= 833. Usiamo 1200.
+    m15 = _stream(100.0, 0.5, 1200, 60)
+    h1 = _stream(100.0, 2.0, 300, 240)
+    h4 = _stream(100.0, 8.0, 100, 960)
+    full = align({"H4": h4, "H1": h1, "M15": m15})
+    for idx in (900, 1000, 1100, 1199):
+        t = int(m15[idx]["time"])
+        m15_p = m15[: idx + 1]
+        h1_p = [b for b in h1 if int(b["time"]) <= t]
+        h4_p = [b for b in h4 if int(b["time"]) <= t]
+        partial = align({"H4": h4_p, "H1": h1_p, "M15": m15_p})
+        assert partial.score[idx] == full.score[idx], f"leakage at i={idx}"
