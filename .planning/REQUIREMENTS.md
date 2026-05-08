@@ -23,11 +23,11 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [x] **INDIC-02**: ADX/DMI (14-period) for trend strength + directional bias
 - [x] **INDIC-03**: MACD (12/26/9) line + signal + histogram
 - [x] **INDIC-04**: Stochastic Oscillator (14/3/3) %K + %D
-- [ ] **INDIC-05**: Donchian Channel (20-period) high/low for breakout levels
+- [x] **INDIC-05**: Donchian Channel (20-period) high/low for breakout levels
 - [x] **INDIC-06**: Keltner Channel (EMA20 ± 2×ATR)
 - [ ] **INDIC-07**: VWAP intraday + anchored (session/day anchor)
-- [ ] **INDIC-08**: Fibonacci retracement levels (38.2%, 50%, 61.8%) on detected swing legs
-- [ ] **INDIC-09**: Pivot points daily / session / weekly (classic + Camarilla)
+- [x] **INDIC-08**: Fibonacci retracement levels (38.2%, 50%, 61.8%) on detected swing legs
+- [x] **INDIC-09**: Pivot points daily / session / weekly (classic + Camarilla)
 - [ ] **INDIC-10**: NR4 / NR7 detector + Boomer (inside-narrow sequence)
 - [ ] **INDIC-11**: Closing Score (Defendi formula): position of close in bar range, 0-100
 - [x] **INDIC-12**: Hurst exponent (rolling) for trend-vs-mean-revert regime

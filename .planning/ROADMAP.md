@@ -77,7 +77,7 @@ Plans:
 - [x] 02-02-PLAN.md — INDIC-01 Bollinger+squeeze + INDIC-06 Keltner (volatility.py, parity 1e-6)
 - [x] 02-03-PLAN.md — INDIC-02 ADX/DMI + INDIC-03 MACD + INDIC-04 Stochastic (momentum.py, parity 1e-6)
 - [x] 02-04-PLAN.md — INDIC-12 Hurst R/S rolling (hurst.py, log-log regression)
-- [ ] 02-05-PLAN.md — INDIC-05 Donchian + INDIC-08 Fibonacci + INDIC-09 Pivots classic+Camarilla (NY-17)
+- [x] 02-05-PLAN.md — INDIC-05 Donchian + INDIC-08 Fibonacci + INDIC-09 Pivots classic+Camarilla (NY-17)
 - [ ] 02-06-PLAN.md — INDIC-07 VWAP intraday (NY-17 reset) + anchored (volume.py)
 - [ ] 02-07-PLAN.md — INDIC-10 NR4/NR7+Boomer + INDIC-11 Closing Score (bars.py)
 - [ ] 02-08-PLAN.md — INDIC-13 MTF alignment H4/H1/M15 EMA50-slope (mtf.py)

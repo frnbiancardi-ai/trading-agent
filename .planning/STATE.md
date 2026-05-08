@@ -16,7 +16,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | # | Phase | Status | Plans | Progress |
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
-| 2 | Indicators Library | ◐ in-progress | 4/9 | 44% |
+| 2 | Indicators Library | ◐ in-progress | 5/9 | 56% |
 | 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
@@ -32,6 +32,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 ---
 
 ## Active Work
+
+Phase 2 — Indicators Library: Wave 0 (01) + Wave 1 (02, 03, 04) + Wave 2 plan 05 COMPLETE 2026-05-08. Plan 05 (Donchian/Fibonacci/Pivots) in ~7min: `donchian(highs, lows, length=20)` rolling max/min/middle, `fibonacci_retracements(bars)` snapshot con livelli 0/0.382/0.5/0.618/1.0 sull'ultimo swing leg (riusa `find_support_resistance`, direction up/down via estremo più recente), `pivots(bars, anchor='daily'|'weekly')` classico P/R1..R3/S1..S3 + Camarilla `h1..h4/l1..l4` con multipliers verbatim 1.1/{12,6,4,2} (verificati LiteFinance/Babypips/Defcofx). Anchor NY-17 DST-aware via `_session_id_ny17` (winter 22:00 UTC, summer 21:00 UTC) — leakage-free by construction (bar usa H/L/C della sessione precedentemente CHIUSA). 2 deviazioni Rule 2 (guardie input: ValueError su length<=0 in donchian, anchor non valido in pivots). Hand-calc test esatto Camarilla (P=105, h1=105.91666, h4=110.5, l4=99.5) + 5+5 leakage idx parametrizzati. `find_support_resistance` + `check_breakout_quality` preservati invariati. Suite intera 305/305 verde + 1 skipped (286 → 305, +19: 9 hand-calc + 5 donchian + 5 pivots leakage). INDIC-05/08/09 completati. Commits Wave 2 plan 05: 4bb0150 (feat), b0f4c88 (test). Wave 2 plan 06 (VWAP) e 07/08 sbloccati.
 
 Phase 7 — ML Classifier: CONTEXT.md captured (4 aree, 15 questions, 20 decisioni D-01..D-20 + 7 Claude discretion). Target: y=1 iff TP_HIT, TIMEOUT/BE=loss, scale_pos_weight per fold. Walk-forward expanding 10 fold, embargo timeout_bars[tf], train/val 80/20 temporal early-stop su Brier. Single LightGBM + categorical (symbol, timeframe, profile, setup_name, regime) + raw features. Hybrid hook: prediction in `evaluate_proposal_for_bar` (attacca prob a ProposalDraft, no filter), decision in `risk_engine.evaluate_trade` (threshold gate). Threshold profit-curve optimized per profile, mediana 10 fold. Artifact: joblib + sidecar metadata.json. Resume: `.planning/phases/07-ml-classifier/07-CONTEXT.md`. Next: `/gsd-plan-phase 7`.
 
@@ -63,4 +65,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 2 plan 04 (Wave 1: Hurst R/S) complete*
+*Last updated: 2026-05-08 — Phase 2 plan 05 (Wave 2: Donchian + Fibonacci + Pivots) complete*
