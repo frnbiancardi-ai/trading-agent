@@ -19,12 +19,12 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 
 ### Indicators
 
-- [ ] **INDIC-01**: Bollinger Bands (20-period, 2σ) + squeeze detector (BBW < threshold)
+- [x] **INDIC-01**: Bollinger Bands (20-period, 2σ) + squeeze detector (BBW < threshold)
 - [ ] **INDIC-02**: ADX/DMI (14-period) for trend strength + directional bias
 - [ ] **INDIC-03**: MACD (12/26/9) line + signal + histogram
 - [ ] **INDIC-04**: Stochastic Oscillator (14/3/3) %K + %D
 - [ ] **INDIC-05**: Donchian Channel (20-period) high/low for breakout levels
-- [ ] **INDIC-06**: Keltner Channel (EMA20 ± 2×ATR)
+- [x] **INDIC-06**: Keltner Channel (EMA20 ± 2×ATR)
 - [ ] **INDIC-07**: VWAP intraday + anchored (session/day anchor)
 - [ ] **INDIC-08**: Fibonacci retracement levels (38.2%, 50%, 61.8%) on detected swing legs
 - [ ] **INDIC-09**: Pivot points daily / session / weekly (classic + Camarilla)
@@ -163,12 +163,12 @@ Updated during roadmap creation.
 | BACK-05 | Phase 1 | Pending |
 | BACK-06 | Phase 1 | Pending |
 | BACK-07 | Phase 5 | Pending |
-| INDIC-01 | Phase 2 | Pending |
+| INDIC-01 | Phase 2 | Complete |
 | INDIC-02 | Phase 2 | Pending |
 | INDIC-03 | Phase 2 | Pending |
 | INDIC-04 | Phase 2 | Pending |
 | INDIC-05 | Phase 2 | Pending |
-| INDIC-06 | Phase 2 | Pending |
+| INDIC-06 | Phase 2 | Complete |
 | INDIC-07 | Phase 2 | Pending |
 | INDIC-08 | Phase 2 | Pending |
 | INDIC-09 | Phase 2 | Pending |

@@ -16,7 +16,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | # | Phase | Status | Plans | Progress |
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
-| 2 | Indicators Library | ◐ in-progress | 1/9 | 11% |
+| 2 | Indicators Library | ◐ in-progress | 2/9 | 22% |
 | 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
@@ -39,7 +39,7 @@ Phase 6 — MCP Tools (part 1): CONTEXT.md captured (4 areas, 11 questions, 12 d
 
 Phase 5 — Baseline Backtest: 9 PLAN.md scritti (W0..W4), checker PASS iter 2/3, 6 blocker risolti (parquet directory, SC#3 hard/soft, warmup adattivo, D-21 real test, engine slice_until dual-branch, preflight contract probe). Pronto per `/gsd-execute-phase 5` — bloccato in attesa che Phase 1-4 completino esecuzione (preflight gate in 05-08).
 
-Phase 2 — Indicators Library: Wave 0 (plan 01) COMPLETE 2026-05-08 in ~8min. Pacchetto `indicators/` con 10 submoduli, backward-compat verificata (4 callsite OK), `compute_all` 4-key invariato, dev-dep `pandas-ta==0.4.71b0` installato (numpy 2.4.4→2.2.6 transitivo), `data/configs/regime.yaml` D-15, fixture `eurusd_h1_500` session-scoped + CSV 500-bar, universal future-leakage gate. Suite 236/236 verde (220 baseline + 16 nuovi). Commits: 4dab433 (feat), 8e57012 (chore), 10dada8 (test). Wave 1 (plan 02-04) sblocca BB+squeeze, Keltner, ADX/MACD/Stoch, Hurst R/S. Branch: `feature/update-pythono-pure-strategy`.
+Phase 2 — Indicators Library: Wave 0 (plan 01) + Wave 1 plan 02 COMPLETE 2026-05-08. Plan 02 in ~5min: `bollinger_bands` (BB 20/2σ + BBW + squeeze percentile + squeeze TTM Carter) e `keltner` (EMA ± scalar·EMA(TR)) implementati con dataclass-of-lists (BollingerResult, KeltnerResult), parity 1e-6 vs pandas-ta su 500 bar EURUSD H1, leakage-free a 5 indici, runtime purity preservata. 3 deviazioni Rule 1 (ddof=1 per parity bbands, EMA-TR per parity kc, off-by-one nel test sanity keltner). Suite 252/252 verde (236 → 252, +16). INDIC-01 + INDIC-06 completati. Commits Wave 1 plan 02: 466fe97 (feat), e10e6d5 (test+bug-fix). Wave 1 plan 03 (ADX/MACD/Stoch) e plan 04 (Hurst) sbloccati. Branch: `feature/update-pythono-pure-strategy`.
 
 Phase 1 — Backtest Engine: COMPLETE 2026-05-07. All 8 plans + VERIFICATION.md PASSED (6/6 truths). Engine event-driven, costs.yaml, walk-forward, metrics, smoke 12-month <60s (6.78s actual). Legacy RSI/SMA grid archived.
 
@@ -59,4 +59,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 2 plan 01 (Wave 0 scaffolding) complete*
+*Last updated: 2026-05-08 — Phase 2 plan 02 (Wave 1: Bollinger + Keltner) complete*
