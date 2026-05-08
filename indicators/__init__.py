@@ -36,7 +36,13 @@ from indicators.structure import (
     PivotResult,
 )
 from indicators.volume import avg_volume, vwap_intraday, vwap_anchored, VWAPResult
-from indicators.bars import calculate_risk_reward
+from indicators.bars import (
+    calculate_risk_reward,
+    narrow_range,
+    closing_score,
+    NRResult,
+    ClosingScoreResult,
+)
 from indicators.mtf import calculate_trend_strength
 from indicators.aggregate import compute_all
 from indicators.hurst import hurst_rs, HurstResult
@@ -75,4 +81,8 @@ __all__ = [
     "vwap_intraday",
     "vwap_anchored",
     "VWAPResult",
+    "narrow_range",
+    "closing_score",
+    "NRResult",
+    "ClosingScoreResult",
 ]
