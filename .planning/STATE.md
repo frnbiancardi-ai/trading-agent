@@ -7,7 +7,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 **Core value:** Every trade pre-filtered by a calibrated ML classifier whose probabilities match realized hit rate, trained on the agent's own decisions, improving with every cycle.
 
 **Current milestone:** v2-ml-backtest
-**Current focus:** Phase 3 — Patterns Catalog (next)
+**Current focus:** Phase 3 — Patterns Catalog
 
 ---
 
@@ -17,7 +17,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
 | 2 | Indicators Library | ✓ complete | 9/9 | 100% |
-| 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
+| 3 | Patterns Catalog | ◐ in-progress | 1/4 | 25% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
 | 6 | MCP Tools (part 1) | ○ pending | 0/0 | 0% |
@@ -32,6 +32,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 ---
 
 ## Active Work
+
+Phase 3 — Patterns Catalog: 03-01-PLAN ✓ COMPLETE 2026-05-08 (commits `3c465c1`, `4b1a2fa`, `0768112`). PATT-07 foundation: `PatternHit` frozen dataclass (6 campi, hashable), `PatternConfig` nidificato + 9 sub-cfg + `CalibrationAnchors` (tutti frozen), `_calibrate` piecewise-linear con knee 0.7 a `typical`, `load_pattern_config` con precedenza param > `PATTERNS_CONFIG_PATH` env > `DEFAULT_CONFIG_PATH`. `config/patterns.yaml` con 10 chiavi (9 calibrati + doji geometry-only). Test 11/11 passed; full suite 385 passed, 1 skipped. Detector booleani esistenti (`is_hammer`/`is_inverted_hammer`/`is_engulfing`/`is_doji`/`is_pin_bar`/`scan_patterns`) **intoccati** — refactor demandato a 03-02/03-03. PATT-07 in progress (full Complete dopo 03-04). Next: `/gsd-execute-phase 3` continua con 03-02-PLAN.
 
 Phase 2 — Indicators Library: ✓ COMPLETE 2026-05-08. VERIFICATION PASSED 4/4 ROADMAP truths + 14/14 INDIC requirements (`02-VERIFICATION.md`). 9 plani eseguiti in 4 wave (W0=01, W1=02-04, W2=05-07, W3=08-09) seriali per overlap intra-wave su `__init__.py` + `test_indicators_purity.py`. Suite 374 passed + 1 skipped (Mottl optional). `compute_all` 4-key dict bit-for-bit immutato (4 callsite invariati). `compute_all_extended` 37-key snapshot disponibile per Phase 1 backtest + Phase 4 strategy refactor. Known item NON-bloccante: Boomer A2 (CONTEXT.md verbatim) ≠ skill `forex-trader-pro`/`price_action.md:43` — reconciliation deferred a Phase 4. Branch `feature/update-pythono-pure-strategy`.
 
@@ -61,4 +63,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 2 ✓ COMPLETE (verifier PASSED 4/4 truths + 14/14 INDIC); pushing branch*
+*Last updated: 2026-05-08 — Phase 3 plan 01 ✓ COMPLETE (PATT-07 foundation, 1/4 plans, 25%)*

@@ -42,7 +42,8 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [ ] **PATT-04**: Morning Star / Evening Star (3-bar) detector
 - [ ] **PATT-05**: Key Reversal Bar detector
 - [ ] **PATT-06**: Inside Bar / Pin Bar detector
-- [ ] **PATT-07**: Pattern catalog returns confidence + structural reference points (bar index, extreme prices)
+- [ ] **PATT-07**: Pattern catalog returns confidence + structural reference points (bar index, extreme prices) <!-- progress 2026-05-08: foundation in 03-01 (PatternHit frozen + load_pattern_config + _calibrate + config/patterns.yaml); full Complete dopo refactor detectors in 03-04 -->
+
 
 ### Strategy Refactor
 
