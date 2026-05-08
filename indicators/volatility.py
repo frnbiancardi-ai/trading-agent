@@ -15,6 +15,9 @@ Convenzioni (D-04..D-06):
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
 
 from indicators.trend import ema, sma
 
@@ -222,3 +225,95 @@ def bollinger_bands(
         squeeze=squeeze,
         squeeze_ttm=squeeze_ttm,
     )
+
+
+# ── INDIC-14: Volatility regime classifier (Wave 3) ───────────────────────────
+
+
+@dataclass
+class RegimeResult:
+    """Output classificatore di regime di volatilità (INDIC-14, D-15/D-16).
+
+    - `state[i]` ∈ {'compressed', 'normal', 'expanded', None}: None durante warmup
+      (i<window-1) o quando ATR non e ancora valido.
+    - `atr_percentile[i]`: percentile (rank/N) di ATR[i] nella finestra trailing
+      di `window` valori — rolling rank, MAI rank globale (Pitfall 4: lookahead).
+    - `window`: copia del parametro effettivo per debug/diagnostica.
+    """
+
+    state: list[str | None]
+    atr_percentile: list[float | None]
+    window: int
+
+
+def load_regime_config(symbol: str, yaml_path: Path | str) -> dict:
+    """Carica config regime per simbolo: override per-symbol con fallback default.
+
+    Schema YAML (D-15):
+        default:        {window, compressed_below, expanded_above}
+        symbols:
+          EURUSD:       {window, compressed_below, expanded_above}
+          ...
+
+    Mirror del pattern Phase 1 `backtest/costs.py:load_cost_model`. Usa
+    `yaml.safe_load` (mai `yaml.load`) per evitare deserializzazione di codice
+    arbitrario. Solleva `KeyError` se ne il simbolo ne `default` sono presenti.
+    """
+    with open(yaml_path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    sym_cfg = (cfg.get("symbols") or {}).get(symbol)
+    if sym_cfg is None:
+        sym_cfg = cfg.get("default")
+    if sym_cfg is None:
+        raise KeyError(f"nessuna config regime per simbolo {symbol!r} in {yaml_path}")
+    return dict(sym_cfg)
+
+
+def volatility_regime(bars: list[dict], cfg: dict | None = None) -> RegimeResult:
+    """INDIC-14: classificatore compressed/normal/expanded via percentile-rank ATR rolling.
+
+    Per ogni bar i con i+1>=window:
+      1. Estrae la finestra trailing di `window` valori ATR (richiede tutti validi).
+      2. Calcola il rank percentile di ATR[i]: `rank = #{v in window : v <= ATR[i]} / window`.
+      3. state = 'compressed' se rank < `compressed_below/100`,
+                'expanded'   se rank > `expanded_above/100`,
+                'normal'     altrimenti.
+
+    Pitfall 4: il rank e calcolato DENTRO la finestra `window`, MAI sull'intera
+    serie (uso di pandas `.rank(pct=True)` produrrebbe future leakage perche
+    inclederebbe ATR di bar futuri come riferimento).
+
+    Warmup: per i+1<window (quindi i<window-1), state e atr_percentile sono None.
+    Stesso comportamento se ATR[i] e None per la finestra.
+
+    cfg = None → defaults: window=200, compressed_below=30, expanded_above=70.
+    """
+    cfg = cfg or {}
+    window = int(cfg.get("window", 200))
+    lo = float(cfg.get("compressed_below", 30)) / 100.0
+    hi = float(cfg.get("expanded_above", 70)) / 100.0
+    n = len(bars)
+    state: list[str | None] = [None] * n
+    pct: list[float | None] = [None] * n
+    if n == 0:
+        return RegimeResult(state=state, atr_percentile=pct, window=window)
+    highs = [float(b["high"]) for b in bars]
+    lows = [float(b["low"]) for b in bars]
+    closes = [float(b["close"]) for b in bars]
+    atr_series = atr(highs, lows, closes, period=14)
+    for i in range(n):
+        if atr_series[i] is None or i + 1 < window:
+            continue
+        window_vals = [v for v in atr_series[i - window + 1 : i + 1] if v is not None]
+        if len(window_vals) < window:
+            continue
+        cur = atr_series[i]
+        rank = sum(1 for v in window_vals if v <= cur) / len(window_vals)
+        pct[i] = rank
+        if rank < lo:
+            state[i] = "compressed"
+        elif rank > hi:
+            state[i] = "expanded"
+        else:
+            state[i] = "normal"
+    return RegimeResult(state=state, atr_percentile=pct, window=window)

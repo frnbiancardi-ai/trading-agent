@@ -22,8 +22,11 @@ from indicators.volatility import (
     atr,
     bollinger_bands,
     keltner,
+    volatility_regime,
+    load_regime_config,
     BollingerResult,
     KeltnerResult,
+    RegimeResult,
 )
 from indicators.structure import (
     find_support_resistance,
@@ -55,8 +58,11 @@ __all__ = [
     "atr",
     "bollinger_bands",
     "keltner",
+    "volatility_regime",
+    "load_regime_config",
     "BollingerResult",
     "KeltnerResult",
+    "RegimeResult",
     "adx",
     "macd",
     "stochastic",
