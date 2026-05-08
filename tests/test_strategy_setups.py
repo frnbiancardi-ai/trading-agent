@@ -473,4 +473,86 @@ def test_detect_d_pullback_fib_38():
 
 
 def test_evaluate_proposal_for_bar_multi_match_priority():
-    pytest.skip("Wave 3 pending — D-06 tie-break A>C>B>D")
+    """D-06: tra READY con grade diverso, vince il grade più alto (A+ > A > B > C)."""
+    from strategy import evaluate_proposal_for_bar
+    from strategy.proposal import ProposalDraft
+    from unittest.mock import patch
+
+    def stub_a(*args, **kwargs):
+        return ProposalDraft(
+            setup_type="READY", setup_name="A_breakout",
+            direction="BUY", entry_price=1.1, stop_loss_price=1.099, take_profit_price=1.103,
+            grade="B", confidence=0.55, reason="a",
+        )
+
+    def stub_b(*args, **kwargs):
+        return ProposalDraft(
+            setup_type="READY", setup_name="B_reversal",
+            direction="BUY", entry_price=1.1, stop_loss_price=1.099, take_profit_price=1.103,
+            grade="A+", confidence=0.85, reason="b",
+        )
+
+    def stub_c(*args, **kwargs):
+        return ProposalDraft(
+            setup_type="NONE", setup_name="C_compression",
+            grade="reject", reason="no",
+        )
+
+    def stub_d(*args, **kwargs):
+        return ProposalDraft(
+            setup_type="NONE", setup_name="D_pullback",
+            grade="reject", reason="no",
+        )
+
+    with patch("strategy.ALL_DETECTORS", [stub_a, stub_b, stub_c, stub_d]):
+        winner = evaluate_proposal_for_bar([], None, None)
+    # B_reversal ha grade A+ → vince su A_breakout grade B
+    assert winner.setup_name == "B_reversal", f"got {winner.setup_name}"
+    assert winner.grade == "A+"
+    assert "losers" in (winner.setup_specific or {})
+    losers = winner.setup_specific["losers"]
+    assert len(losers) == 3
+    loser_names = {l.setup_name for l in losers}
+    assert loser_names == {"A_breakout", "C_compression", "D_pullback"}
+
+
+def test_evaluate_proposal_for_bar_priority_tie_break():
+    """D-06: stesso grade READY → priority A > C > B > D."""
+    from strategy import evaluate_proposal_for_bar
+    from strategy.proposal import ProposalDraft
+    from unittest.mock import patch
+
+    def make(name):
+        return ProposalDraft(
+            setup_type="READY", setup_name=name,
+            direction="BUY", entry_price=1.1, stop_loss_price=1.099, take_profit_price=1.103,
+            grade="B", confidence=0.55, reason=name,
+        )
+
+    stubs = [
+        (lambda n: lambda *a, **kw: make(n))(n)
+        for n in ["A_breakout", "B_reversal", "C_compression", "D_pullback"]
+    ]
+    with patch("strategy.ALL_DETECTORS", stubs):
+        winner = evaluate_proposal_for_bar([], None, None)
+    assert winner.setup_name == "A_breakout"
+
+
+def test_evaluate_proposal_for_bar_all_none_returns_first():
+    """Tutti NONE → ritorna primo draft (Setup A) con i 3 perdenti in setup_specific.losers."""
+    from strategy import evaluate_proposal_for_bar
+    from strategy.proposal import ProposalDraft
+    from unittest.mock import patch
+
+    def make_none(name):
+        return ProposalDraft(setup_type="NONE", setup_name=name, grade="reject", reason="no")
+
+    stubs = [
+        (lambda n: lambda *a, **kw: make_none(n))(n)
+        for n in ["A_breakout", "B_reversal", "C_compression", "D_pullback"]
+    ]
+    with patch("strategy.ALL_DETECTORS", stubs):
+        winner = evaluate_proposal_for_bar([], None, None)
+    assert winner.setup_type == "NONE"
+    assert winner.setup_name == "A_breakout"  # primo della lista
+    assert len(winner.setup_specific.get("losers", [])) == 3
