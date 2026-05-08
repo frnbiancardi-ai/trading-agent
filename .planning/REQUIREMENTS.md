@@ -30,7 +30,7 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [ ] **INDIC-09**: Pivot points daily / session / weekly (classic + Camarilla)
 - [ ] **INDIC-10**: NR4 / NR7 detector + Boomer (inside-narrow sequence)
 - [ ] **INDIC-11**: Closing Score (Defendi formula): position of close in bar range, 0-100
-- [ ] **INDIC-12**: Hurst exponent (rolling) for trend-vs-mean-revert regime
+- [x] **INDIC-12**: Hurst exponent (rolling) for trend-vs-mean-revert regime
 - [ ] **INDIC-13**: Multi-TF alignment helper (H4 + H1 + M15 trend coherence score)
 - [ ] **INDIC-14**: Volatility-regime classifier: compressed / normal / expanded via ATR percentile vs 200-bar window
 

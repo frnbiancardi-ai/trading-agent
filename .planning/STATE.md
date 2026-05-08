@@ -16,7 +16,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | # | Phase | Status | Plans | Progress |
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
-| 2 | Indicators Library | ◐ in-progress | 3/9 | 33% |
+| 2 | Indicators Library | ◐ in-progress | 4/9 | 44% |
 | 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
@@ -38,6 +38,8 @@ Phase 7 — ML Classifier: CONTEXT.md captured (4 aree, 15 questions, 20 decisio
 Phase 6 — MCP Tools (part 1): CONTEXT.md captured (4 areas, 11 questions, 12 decisioni dirette). Async backtest queue + cancel, in-process trail daemon (position_trails), additive backward-compat MCP-R1/R2/R3, BarSource adapter (live default + as_of_ts opt), replay_decision union lookup, mcp/ package split. Tool surface 25 totali (11 esistenti + 13 REQUIREMENTS + 1 derivato cancel_backtest). Resume: `.planning/phases/06-mcp-tools-part-1/06-CONTEXT.md`. Next: `/gsd-plan-phase 6`.
 
 Phase 5 — Baseline Backtest: 9 PLAN.md scritti (W0..W4), checker PASS iter 2/3, 6 blocker risolti (parquet directory, SC#3 hard/soft, warmup adattivo, D-21 real test, engine slice_until dual-branch, preflight contract probe). Pronto per `/gsd-execute-phase 5` — bloccato in attesa che Phase 1-4 completino esecuzione (preflight gate in 05-08).
+
+Phase 2 — Indicators Library: Wave 0 (01) + Wave 1 (02, 03, 04) COMPLETE 2026-05-08. Plan 04 (Hurst R/S) in ~3.5min: `hurst_rs(values, window=100)` ritorna `HurstResult(hurst, window)` con stima OLS log-log della pendenza R/S su sub-windows [10,20,40,80] (NON naive single-window log(R/S)/log(N)). 1 deviazione Rule 1 nel test sintetico: `random_walk` rinominato a `white_noise` perché R/S sui livelli di cumsum(gauss) → H≈1.0, NON 0.5; per H≈0.5 sui livelli serve serie i.i.d. (no auto-correlazione). Verifiche superate: rampa lineare → H≈0.998 (persistente), zigzag → H<0.45 (anti-persistente), white noise → H∈[0.35, 0.65], leakage-free a 5 indici, EURUSD H1 fixture media H≈0.965 (forte trend), purity runtime preservata (no pandas_ta), Mottl `hurst` parity test gated (skip se non installato). Suite 286/286 verde (275 → 286, +11). INDIC-12 completato. Commits Wave 1 plan 04: 172dcc3 (feat), b79e07c (test). Wave 2 (plan 05+) sbloccato.
 
 Phase 2 — Indicators Library: Wave 0 (plan 01) + Wave 1 plan 02 + Wave 1 plan 03 COMPLETE 2026-05-08. Plan 03 in ~8.5min: `adx` (ADX/DMI 14 Wilder/RMA), `macd` (12/26/9 EMA-of-EMA), `stochastic` (14/3/3) implementati con dataclass-of-lists (ADXResult, MACDResult, StochasticResult), parity 1e-6 vs pandas-ta su 500 bar EURUSD H1 (>100 confronti per serie), leakage-free a 5 indici, runtime purity preservata. 2 deviazioni Rule 1: (1) ADX riscritto rispetto al RESEARCH Example 1 — pandas-ta usa pta.rma (ewm senza SMA-seed) e atr(prenan+presma), NON `_wilder_smooth` con SMA-seed e mask 2*period; aggiunti due helper privati `_rma_first_valid_seed`, `_atr_pta_compat`. (2) Test MACD signal-lag su parabola (i*i) invece di lineare (range): su lineare line e signal convergono per costruzione. Suite 275/275 verde (252 → 275, +23). INDIC-02 + INDIC-03 + INDIC-04 completati. Commits Wave 1 plan 03: 8c0c35a (feat), 5ae3e73 (test+bug-fix). Wave 1 plan 04 (Hurst) e Wave 2 sbloccati. Branch: `feature/update-pythono-pure-strategy`.
 
@@ -61,4 +63,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 2 plan 03 (Wave 1: ADX/MACD/Stochastic) complete*
+*Last updated: 2026-05-08 — Phase 2 plan 04 (Wave 1: Hurst R/S) complete*
