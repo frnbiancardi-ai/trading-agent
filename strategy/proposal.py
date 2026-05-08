@@ -173,7 +173,11 @@ def rr_meets_profile_floor(
         return False, 0.0
 
     rr = reward / risk
-    return (rr >= min_rr), round(rr, 4)
+    # Epsilon FP: 0.001 * 1.3 produce 0.0012999...e/0.001 = 1.2999... per
+    # arithmetic-noise float; il confronto >= min_rr fallirebbe falsamente
+    # esattamente al boundary. 1e-9 è enormemente piu' grande del rumore FP
+    # tipico (~1e-16) e enormemente piu' piccolo della granularita' R:R (0.1).
+    return (rr >= min_rr - 1e-9), round(rr, 4)
 
 
 def compute_levels_with_atr_cap(
