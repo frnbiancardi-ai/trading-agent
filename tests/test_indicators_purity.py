@@ -214,3 +214,32 @@ def test_no_future_leakage_vwap_intraday(eurusd_h1_500, idx):
     assert partial.vwap[idx] == full.vwap[idx], f"future leakage vwap @ i={idx}"
     assert partial.cumulative_pv[idx] == full.cumulative_pv[idx]
     assert partial.cumulative_v[idx] == full.cumulative_v[idx]
+
+
+@pytest.mark.parametrize("idx", [50, 100, 250, 400, 499])
+def test_no_future_leakage_narrow_range(eurusd_h1_500, idx):
+    """narrow_range(prefix)[i] == (full)[i] su nr4/nr7/inside/boomer. INDIC-10.
+
+    Per costruzione ogni flag a i dipende solo da bar j<=i (range, inside, NR
+    window) → leakage-free. Verificato a 5 spot indices."""
+    from indicators.bars import narrow_range
+    bars = eurusd_h1_500
+    full = narrow_range(bars)
+    partial = narrow_range(bars[: idx + 1])
+    assert partial.nr4[idx] == full.nr4[idx], f"future leakage nr4 @ i={idx}"
+    assert partial.nr7[idx] == full.nr7[idx], f"future leakage nr7 @ i={idx}"
+    assert partial.inside[idx] == full.inside[idx], f"future leakage inside @ i={idx}"
+    assert partial.boomer[idx] == full.boomer[idx], f"future leakage boomer @ i={idx}"
+
+
+@pytest.mark.parametrize("idx", [10, 100, 250, 400, 499])
+def test_no_future_leakage_closing_score(eurusd_h1_500, idx):
+    """closing_score(prefix)[i] == (full)[i]. INDIC-11.
+
+    Closing score per bar i dipende SOLO da high/low/close della bar i stessa
+    → leakage-free per costruzione (purezza assoluta)."""
+    from indicators.bars import closing_score
+    bars = eurusd_h1_500
+    full = closing_score(bars)
+    partial = closing_score(bars[: idx + 1])
+    assert partial.score[idx] == full.score[idx], f"future leakage closing_score @ i={idx}"
