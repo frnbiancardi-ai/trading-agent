@@ -35,7 +35,7 @@ from indicators.structure import (
     FibonacciResult,
     PivotResult,
 )
-from indicators.volume import avg_volume
+from indicators.volume import avg_volume, vwap_intraday, vwap_anchored, VWAPResult
 from indicators.bars import calculate_risk_reward
 from indicators.mtf import calculate_trend_strength
 from indicators.aggregate import compute_all
@@ -72,4 +72,7 @@ __all__ = [
     "DonchianResult",
     "FibonacciResult",
     "PivotResult",
+    "vwap_intraday",
+    "vwap_anchored",
+    "VWAPResult",
 ]
