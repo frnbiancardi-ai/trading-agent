@@ -180,7 +180,13 @@ def build_ctx_live(
         except Exception:
             recent_trades = []
 
-    spread_baseline_pips = getattr(cfg, "SPREAD_BASELINE_PIPS", None)
+    # spread_baseline_pips: forziamo None se l'attributo non è numerico (es.
+    # MagicMock auto-attr nei test fixture). Protegge il confronto float in
+    # confluence.compute_confidence (adjuster spread_tighter_than_baseline).
+    _spread_raw = getattr(cfg, "SPREAD_BASELINE_PIPS", None)
+    spread_baseline_pips: float | None = (
+        float(_spread_raw) if isinstance(_spread_raw, (int, float)) else None
+    )
 
     return StrategyContext(
         symbol=symbol,
