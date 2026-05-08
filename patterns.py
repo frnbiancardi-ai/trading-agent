@@ -278,6 +278,173 @@ def is_pin_bar(
     return True, ratio
 
 
+def is_shooting_star(bar: dict, cfg: ShootingStarCfg) -> tuple[bool, float]:
+    """Shooting star: long upper shadow, lower shadow piccolissima, body piccolo.
+
+    Mirror geometrico di inverted_hammer ma soglie più stringenti
+    (body_ratio_max=0.3 vs 0.4) per privilegiare segnali bearish post-trend.
+    raw_score = upper_shadow / body.
+    """
+    rng = _range(bar)
+    body = _body(bar)
+    if rng <= 0 or body <= 0:
+        return False, 0.0
+    upper = _upper_shadow(bar)
+    lower = _lower_shadow(bar)
+    matched = (
+        body <= cfg.body_ratio_max * rng
+        and upper >= cfg.upper_shadow_body_min * body
+        and lower <= cfg.lower_shadow_range_max * rng
+    )
+    if not matched:
+        return False, 0.0
+    return True, upper / body
+
+
+def is_morning_star(b1: dict, b2: dict, b3: dict, cfg: StarCfg) -> tuple[bool, float]:
+    """Morning Star (3 bar, bullish): trend bearish -> indecisione -> reversal bullish.
+
+    Geometria (Murphy ch.10):
+    - b1: bearish, body grande (>= cfg.trend_body_min_ratio * range_b1)
+    - b2: small body (<= cfg.star_body_max_ratio * range_b2)
+    - b3: bullish, close oltre il midpoint del corpo di b1 (>= cfg.min_b3_penetration di body_b1)
+    raw_score = (b3.close - mid_body_b1) / body_b1 (penetrazione normalizzata).
+    Anchor = b3 (ultima barra). NESSUN look-ahead.
+    """
+    if b1["close"] >= b1["open"]:  # b1 deve essere bearish
+        return False, 0.0
+    rng1 = _range(b1)
+    body1 = b1["open"] - b1["close"]
+    if rng1 <= 0 or body1 <= 0:
+        return False, 0.0
+    if (body1 / rng1) < cfg.trend_body_min_ratio:
+        return False, 0.0
+
+    rng2 = _range(b2)
+    body2 = _body(b2)
+    if rng2 <= 0:
+        return False, 0.0
+    if (body2 / rng2) > cfg.star_body_max_ratio:
+        return False, 0.0
+
+    if b3["close"] <= b3["open"]:  # b3 deve essere bullish
+        return False, 0.0
+    rng3 = _range(b3)
+    body3 = _body(b3)
+    if rng3 <= 0 or body3 <= 0:
+        return False, 0.0
+
+    midpoint_b1 = (b1["open"] + b1["close"]) / 2.0
+    if b3["close"] <= midpoint_b1:
+        return False, 0.0
+    penetration = (b3["close"] - midpoint_b1) / body1
+    if penetration < cfg.min_b3_penetration:
+        return False, 0.0
+    return True, penetration
+
+
+def is_evening_star(b1: dict, b2: dict, b3: dict, cfg: StarCfg) -> tuple[bool, float]:
+    """Evening Star (3 bar, bearish): trend bullish -> indecisione -> reversal bearish.
+
+    Speculare di morning_star.
+    raw_score = (mid_body_b1 - b3.close) / body_b1.
+    Anchor = b3.
+    """
+    if b1["close"] <= b1["open"]:  # b1 deve essere bullish
+        return False, 0.0
+    rng1 = _range(b1)
+    body1 = b1["close"] - b1["open"]
+    if rng1 <= 0 or body1 <= 0:
+        return False, 0.0
+    if (body1 / rng1) < cfg.trend_body_min_ratio:
+        return False, 0.0
+
+    rng2 = _range(b2)
+    body2 = _body(b2)
+    if rng2 <= 0:
+        return False, 0.0
+    if (body2 / rng2) > cfg.star_body_max_ratio:
+        return False, 0.0
+
+    if b3["close"] >= b3["open"]:  # b3 deve essere bearish
+        return False, 0.0
+    rng3 = _range(b3)
+    body3 = _body(b3)
+    if rng3 <= 0 or body3 <= 0:
+        return False, 0.0
+
+    midpoint_b1 = (b1["open"] + b1["close"]) / 2.0
+    if b3["close"] >= midpoint_b1:
+        return False, 0.0
+    penetration = (midpoint_b1 - b3["close"]) / body1
+    if penetration < cfg.min_b3_penetration:
+        return False, 0.0
+    return True, penetration
+
+
+def is_key_reversal(
+    prev_bar: dict,
+    current_bar: dict,
+    direction: str,
+    cfg: KeyReversalCfg,
+) -> tuple[bool, float]:
+    """Key Reversal Bar (outside reversal, 2 bar).
+
+    direction='bullish': curr.low < prev.low AND curr.close > midpoint(prev)
+    direction='bearish': curr.high > prev.high AND curr.close < midpoint(prev)
+    raw_score = penetrazione del close oltre il midpoint normalizzata su range_prev.
+    """
+    direction = direction.lower()
+    rng_prev = _range(prev_bar)
+    if rng_prev <= 0:
+        return False, 0.0
+    midpoint_prev = (prev_bar["open"] + prev_bar["close"]) / 2.0
+
+    if direction == "bullish":
+        # outside break a ribasso, close di reversal sopra midpoint precedente
+        if not (current_bar["low"] < prev_bar["low"] - cfg.min_extreme_break_pips):
+            return False, 0.0
+        if current_bar["close"] <= midpoint_prev:
+            return False, 0.0
+        penetration = (current_bar["close"] - midpoint_prev) / rng_prev
+    elif direction == "bearish":
+        if not (current_bar["high"] > prev_bar["high"] + cfg.min_extreme_break_pips):
+            return False, 0.0
+        if current_bar["close"] >= midpoint_prev:
+            return False, 0.0
+        penetration = (midpoint_prev - current_bar["close"]) / rng_prev
+    else:
+        return False, 0.0
+
+    if penetration < cfg.min_close_penetration_ratio:
+        return False, 0.0
+    return True, penetration
+
+
+def is_inside_bar(
+    prev_bar: dict,
+    current_bar: dict,
+    cfg: InsideBarCfg,
+) -> tuple[bool, float]:
+    """Inside Bar: range corrente interamente contenuto nel range precedente.
+
+    curr.high <= prev.high AND curr.low >= prev.low.
+    raw_score = 1.0 - (range_curr / range_prev) — più compressione = score maggiore.
+    Direction = neutral (segnale di compressione, non di direzione).
+    """
+    rng_prev = _range(prev_bar)
+    rng_curr = _range(current_bar)
+    if rng_prev <= 0 or rng_curr <= 0:
+        return False, 0.0
+    if not (current_bar["high"] <= prev_bar["high"]
+            and current_bar["low"] >= prev_bar["low"]):
+        return False, 0.0
+    if rng_curr / rng_prev > cfg.max_compression_ratio:
+        return False, 0.0
+    raw = 1.0 - (rng_curr / rng_prev)
+    return True, raw
+
+
 def scan_patterns(
     bars: list[dict],
     last_n: int = 5,
