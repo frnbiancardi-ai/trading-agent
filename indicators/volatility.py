@@ -77,29 +77,41 @@ def keltner(
     length: int = 20,
     scalar: float = 2.0,
 ) -> KeltnerResult:
-    """Canale di Keltner: middle = EMA(length, close); upper/lower = middle ± scalar·ATR(length).
+    """Canale di Keltner: middle = EMA(length, close); band = EMA(length, true_range).
 
-    Convenzioni:
-    - `length` usato sia per EMA della baseline sia per il period dell'ATR (parity con
-      pandas-ta `kc(length=20, scalar=2, mamode='ema')`).
-    - Output dataclass `KeltnerResult` con tre liste di lunghezza len(closes), warmup→None.
+    Parity con pandas-ta `kc(length=20, scalar=2, mamode='ema')` che usa EMA del true
+    range (NON ATR di Wilder). Il true range alla bar 0 è `high[0] - low[0]` (non c'è
+    chiusura precedente). Upper/lower = middle ± scalar·EMA(TR).
+
+    Output dataclass `KeltnerResult` con tre liste di lunghezza len(closes), warmup→None.
     """
     if not (len(highs) == len(lows) == len(closes)):
         raise ValueError("highs, lows, closes devono avere la stessa lunghezza")
     if length <= 0:
         raise ValueError(f"length deve essere > 0, ricevuto {length}")
     n = len(closes)
+    # True range con convenzione pandas-ta: bar 0 → high - low; bar i>0 → max delle
+    # tre forme classiche (high-low, |high-prev_close|, |low-prev_close|).
+    tr: list[float] = [highs[0] - lows[0]] if n > 0 else []
+    for i in range(1, n):
+        tr.append(
+            max(
+                highs[i] - lows[i],
+                abs(highs[i] - closes[i - 1]),
+                abs(lows[i] - closes[i - 1]),
+            )
+        )
     middle = ema(closes, length)
-    atr_vals = atr(highs, lows, closes, length)
+    band = ema(tr, length)
     upper: list[float | None] = [None] * n
     lower: list[float | None] = [None] * n
     for i in range(n):
         m = middle[i]
-        a = atr_vals[i]
-        if m is None or a is None:
+        b = band[i]
+        if m is None or b is None:
             continue
-        upper[i] = m + scalar * a
-        lower[i] = m - scalar * a
+        upper[i] = m + scalar * b
+        lower[i] = m - scalar * b
     return KeltnerResult(upper=upper, middle=middle, lower=lower)
 
 
@@ -109,12 +121,17 @@ def bollinger_bands(
     std: float = 2.0,
     squeeze_lookback_bars: int = 180,
     squeeze_pct: float = 25.0,
+    ddof: int = 1,
     highs: list[float] | None = None,
     lows: list[float] | None = None,
     keltner_length: int = 20,
     keltner_scalar: float = 2.0,
 ) -> BollingerResult:
     """Bande di Bollinger (length, std) + squeeze percentile + squeeze TTM (BB-inside-Keltner).
+
+    Standard deviation: `ddof=1` (campionaria) di default per parity con pandas-ta
+    `bbands` (che usa pandas `.std(ddof=1)` quando talib non è installato). `ddof=0`
+    fornisce la varianza popolazionale (talib-style). Divisore = length - ddof.
 
     Squeeze percentile (primario): `bbw[i] < quantile_{squeeze_pct}` calcolato sulla
     finestra trailing di `squeeze_lookback_bars` valori BBW (richiesti tutti validi).
@@ -128,6 +145,8 @@ def bollinger_bands(
     """
     if length <= 0:
         raise ValueError(f"length deve essere > 0, ricevuto {length}")
+    if not (0 <= ddof < length):
+        raise ValueError(f"ddof deve essere in [0, length), ricevuto {ddof}")
     if squeeze_lookback_bars <= 0:
         raise ValueError(
             f"squeeze_lookback_bars deve essere > 0, ricevuto {squeeze_lookback_bars}"
@@ -143,8 +162,9 @@ def bollinger_bands(
     squeeze: list[bool | None] = [None] * n
     squeeze_ttm: list[bool | None] = [None] * n
 
-    # Middle = SMA(length); std deviation popolazionale via somma rolling cumulativa
-    # di valori e quadrati (parity con pandas-ta `bbands(ddof=0)`-equivalente).
+    # Middle = SMA(length); std deviation con divisore (length - ddof) via somma
+    # rolling cumulativa di valori e quadrati. Default ddof=1 → parity con pandas-ta.
+    divisor = length - ddof
     if n >= length:
         sq = [c * c for c in closes]
         cum = sum(closes[:length])
@@ -154,8 +174,11 @@ def bollinger_bands(
                 cum += closes[i] - closes[i - length]
                 cum_sq += sq[i] - sq[i - length]
             mean = cum / length
-            # Var popolazionale; clamp a 0 per evitare drift numerico negativo.
-            var = max(cum_sq / length - mean * mean, 0.0)
+            # Sample/population var via formula spostata: somma_sq_residui / divisor.
+            # Forma equivalente: (sum_sq - length·mean²) / divisor. Clamp a 0 per
+            # evitare drift numerico negativo da catastrophic cancellation.
+            ssr = cum_sq - length * mean * mean
+            var = max(ssr / divisor, 0.0)
             sd = var ** 0.5
             middle[i] = mean
             upper[i] = mean + std * sd

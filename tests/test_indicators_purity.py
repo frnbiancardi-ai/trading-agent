@@ -70,3 +70,37 @@ def test_no_future_leakage_sma_ema_rsi(eurusd_h1_500, idx):
     assert sma(closes, 20)[idx] == sma(prefix_closes, 20)[idx]
     assert ema(closes, 50)[idx] == ema(prefix_closes, 50)[idx]
     assert rsi(closes, 14)[idx] == rsi(prefix_closes, 14)[idx]
+
+
+@pytest.mark.parametrize("idx", [50, 100, 250, 400, 499])
+def test_no_future_leakage_bollinger(eurusd_h1_500, idx):
+    """Bollinger(prefix)[i] == (full)[i] su upper/lower/bbw/squeeze.
+
+    `squeeze_lookback_bars=60` per garantire che la finestra sia raggiungibile
+    anche al primo idx parametrizzato (50 < 60+19, quindi squeeze[i]=None=None: OK).
+    """
+    from indicators.volatility import bollinger_bands
+    closes = [b["close"] for b in eurusd_h1_500]
+    full = bollinger_bands(closes, length=20, std=2.0, squeeze_lookback_bars=60)
+    partial = bollinger_bands(closes[: idx + 1], length=20, std=2.0, squeeze_lookback_bars=60)
+    assert partial.upper[idx] == full.upper[idx]
+    assert partial.lower[idx] == full.lower[idx]
+    assert partial.bbw[idx] == full.bbw[idx]
+    assert partial.squeeze[idx] == full.squeeze[idx]
+
+
+@pytest.mark.parametrize("idx", [50, 100, 250, 400, 499])
+def test_no_future_leakage_keltner(eurusd_h1_500, idx):
+    """Keltner(prefix)[i] == (full)[i] su upper/middle/lower."""
+    from indicators.volatility import keltner
+    bars = eurusd_h1_500
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    full = keltner(highs, lows, closes, length=20, scalar=2.0)
+    partial = keltner(
+        highs[: idx + 1], lows[: idx + 1], closes[: idx + 1], length=20, scalar=2.0
+    )
+    assert partial.upper[idx] == full.upper[idx]
+    assert partial.middle[idx] == full.middle[idx]
+    assert partial.lower[idx] == full.lower[idx]
