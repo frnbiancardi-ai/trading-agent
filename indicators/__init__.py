@@ -9,7 +9,13 @@ continuano a funzionare invariate grazie ai re-export sotto.
 """
 from indicators.trend import sma, ema
 from indicators.momentum import rsi, check_rsi_divergence
-from indicators.volatility import atr
+from indicators.volatility import (
+    atr,
+    bollinger_bands,
+    keltner,
+    BollingerResult,
+    KeltnerResult,
+)
 from indicators.structure import find_support_resistance, check_breakout_quality
 from indicators.volume import avg_volume
 from indicators.bars import calculate_risk_reward
@@ -22,6 +28,10 @@ __all__ = [
     "ema",
     "rsi",
     "atr",
+    "bollinger_bands",
+    "keltner",
+    "BollingerResult",
+    "KeltnerResult",
     "avg_volume",
     "calculate_trend_strength",
     "find_support_resistance",
