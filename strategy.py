@@ -29,7 +29,7 @@ from models import (
     TechnicalSetup,
     TradeProposal,
 )
-from patterns import scan_patterns
+from patterns import scan_patterns, load_pattern_config
 
 
 def _last_valid(series: list) -> float | None:
@@ -160,6 +160,7 @@ class IntradayStrategy:
         self.mt5 = mt5_client
         self.log = logger or logging.getLogger(__name__)
         self.env = environment or StrategyEnvironment(cfg, self.log)
+        self._pattern_cfg = load_pattern_config()  # Phase 3: carica catalog cfg una volta a startup
 
     # ─────────────────────────────────────────────────────────────────────
     # Public API
@@ -226,7 +227,7 @@ class IntradayStrategy:
             bars, sr,
             volume_threshold=cfg.MIN_BREAKOUT_VOLUME_RATIO,
         )
-        patterns = scan_patterns(bars, last_n=cfg.PATTERN_CONFIRMATION_BARS) if cfg.ENABLE_CANDLESTICK_PATTERNS else []
+        patterns = scan_patterns(bars, last_n=cfg.PATTERN_CONFIRMATION_BARS, cfg=self._pattern_cfg) if cfg.ENABLE_CANDLESTICK_PATTERNS else []
 
         last_close = closes[-1]
 
@@ -312,10 +313,10 @@ class IntradayStrategy:
         rsi_in_band = cfg.MIN_RSI_OVERSOLD < rsi_val < cfg.MAX_RSI_OVERBOUGHT
 
         has_pattern_bull = any(
-            p["direction"] == "bullish" for p in patterns
+            p.direction == "bullish" for p in patterns
         )
         has_pattern_bear = any(
-            p["direction"] == "bearish" for p in patterns
+            p.direction == "bearish" for p in patterns
         )
         pattern_ok_bull = (not cfg.ENABLE_CANDLESTICK_PATTERNS) or has_pattern_bull
         pattern_ok_bear = (not cfg.ENABLE_CANDLESTICK_PATTERNS) or has_pattern_bear
@@ -617,7 +618,7 @@ class IntradayStrategy:
 
         # Pattern 0..0.2
         wanted = "bullish" if direction == "BUY" else "bearish"
-        has_aligned = any(p["direction"] == wanted for p in patterns)
+        has_aligned = any(p.direction == wanted for p in patterns)
         pattern_score = 0.2 if has_aligned else (0.05 if patterns else 0.0)
 
         # Volume / breakout 0..0.2
