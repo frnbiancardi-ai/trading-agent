@@ -30,6 +30,7 @@ from indicators.volume import avg_volume
 from indicators.bars import calculate_risk_reward
 from indicators.mtf import calculate_trend_strength
 from indicators.aggregate import compute_all
+from indicators.hurst import hurst_rs, HurstResult
 from indicators._helpers import _last_valid, _wilder_rsi  # privati, retro-compat per test
 
 __all__ = [
@@ -54,4 +55,6 @@ __all__ = [
     "calculate_risk_reward",
     "check_rsi_divergence",
     "compute_all",
+    "hurst_rs",
+    "HurstResult",
 ]
