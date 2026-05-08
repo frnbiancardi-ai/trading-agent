@@ -104,3 +104,49 @@ def test_no_future_leakage_keltner(eurusd_h1_500, idx):
     assert partial.upper[idx] == full.upper[idx]
     assert partial.middle[idx] == full.middle[idx]
     assert partial.lower[idx] == full.lower[idx]
+
+
+@pytest.mark.parametrize("idx", [50, 100, 250, 400, 499])
+def test_no_future_leakage_adx(eurusd_h1_500, idx):
+    """ADX(prefix)[i] == (full)[i] su adx/plus_di/minus_di."""
+    from indicators.momentum import adx
+    bars = eurusd_h1_500
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    full = adx(highs, lows, closes, period=14)
+    partial = adx(
+        highs[: idx + 1], lows[: idx + 1], closes[: idx + 1], period=14
+    )
+    assert partial.adx[idx] == full.adx[idx]
+    assert partial.plus_di[idx] == full.plus_di[idx]
+    assert partial.minus_di[idx] == full.minus_di[idx]
+
+
+@pytest.mark.parametrize("idx", [50, 100, 250, 400, 499])
+def test_no_future_leakage_macd(eurusd_h1_500, idx):
+    """MACD(prefix)[i] == (full)[i] su line/signal/histogram."""
+    from indicators.momentum import macd
+    closes = [b["close"] for b in eurusd_h1_500]
+    full = macd(closes, fast=12, slow=26, signal=9)
+    partial = macd(closes[: idx + 1], fast=12, slow=26, signal=9)
+    assert partial.macd[idx] == full.macd[idx]
+    assert partial.signal[idx] == full.signal[idx]
+    assert partial.histogram[idx] == full.histogram[idx]
+
+
+@pytest.mark.parametrize("idx", [50, 100, 250, 400, 499])
+def test_no_future_leakage_stochastic(eurusd_h1_500, idx):
+    """Stochastic(prefix)[i] == (full)[i] su k/d."""
+    from indicators.momentum import stochastic
+    bars = eurusd_h1_500
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    full = stochastic(highs, lows, closes, k_period=14, d_period=3, smooth_k=3)
+    partial = stochastic(
+        highs[: idx + 1], lows[: idx + 1], closes[: idx + 1],
+        k_period=14, d_period=3, smooth_k=3,
+    )
+    assert partial.k[idx] == full.k[idx]
+    assert partial.d[idx] == full.d[idx]

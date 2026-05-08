@@ -116,25 +116,105 @@ class StochasticResult:
 # --------------------------------------------------------------------------- #
 # ADX/DMI 14 — Wilder/RMA smoothing matching pandas-ta `mamode='rma'`         #
 # --------------------------------------------------------------------------- #
+def _rma_first_valid_seed(
+    values: list[float | None], period: int
+) -> list[float | None]:
+    """RMA pandas-ta-style: alpha=1/period, seed = primo valore non-None.
+
+    Differente da `_wilder_smooth` (Wave 0) che usa SMA-seed sui primi `period`
+    valori. Necessario per parity con `pandas_ta.adx` che chiama
+    `pos.ewm(alpha=1/length, adjust=False).mean()` su una serie con NaN al bar 0:
+    EWM senza seed SMA, parte dal primo non-NaN.
+    """
+    n = len(values)
+    out: list[float | None] = [None] * n
+    if period <= 0 or n == 0:
+        return out
+    alpha = 1.0 / period
+    one_minus_alpha = 1.0 - alpha
+    prev: float | None = None
+    for i, v in enumerate(values):
+        if prev is None:
+            if v is not None:
+                prev = v
+                out[i] = prev
+            # else: rimani None
+        else:
+            if v is None:
+                out[i] = prev  # propaga lo stato (analogo a pandas ewm su NaN)
+            else:
+                prev = one_minus_alpha * prev + alpha * v
+                out[i] = prev
+    return out
+
+
+def _atr_pta_compat(
+    highs: list[float],
+    lows: list[float],
+    closes: list[float],
+    period: int,
+) -> list[float | None]:
+    """ATR formula esatta di pandas-ta (`atr(prenan=True, presma=True, mamode='rma')`).
+
+    1. true_range con `prenan=True, drift=1`: tr[0] = NaN, tr[i>0] = max(h-l, |h-pc|, |l-pc|).
+    2. presma=True: tr[0..period-2] = NaN, tr[period-1] = mean(tr[0:period]) skipna
+       = sum(tr[1..period-1]) / (period-1). Posizione: indice `period-1`.
+    3. atr = ma('rma', tr, length=period) → ewm(alpha=1/period, adjust=False).mean()
+       sulla serie modificata: parte da `period-1` come seed, poi recursive.
+    """
+    n = len(closes)
+    out: list[float | None] = [None] * n
+    if period <= 0 or n < period:
+        return out
+    # tr[0] = NaN-equivalent; tr[i>=1] standard.
+    tr_full: list[float | None] = [None] * n
+    for i in range(1, n):
+        tr_full[i] = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1]),
+        )
+    # presma seed all'indice period-1: media skipna di tr[0:period] = somma di
+    # tr[1..period-1] divisa per (period-1).
+    seed_vals = [v for v in tr_full[0:period] if v is not None]
+    if len(seed_vals) == 0:
+        return out
+    seed = sum(seed_vals) / len(seed_vals)
+    # Costruisci la serie post-presma: None ovunque eccetto tr_modified[period-1]=seed
+    # e tr[i] nativo per i >= period.
+    tr_modified: list[float | None] = [None] * n
+    tr_modified[period - 1] = seed
+    for i in range(period, n):
+        tr_modified[i] = tr_full[i]
+    # RMA con seed = primo non-None (= seed presma, all'indice period-1).
+    return _rma_first_valid_seed(tr_modified, period)
+
+
 def adx(
     highs: list[float],
     lows: list[float],
     closes: list[float],
     period: int = 14,
 ) -> ADXResult:
-    """ADX/DMI 14 con smoothing Wilder/RMA.
+    """ADX/DMI 14 — parity 1e-6 con `pta.adx(length=14, mamode='rma')`.
 
-    Formula:
-      - +DM[i] = max(high[i]-high[i-1], 0) se up_move > down_move altrimenti 0
-      - -DM[i] = max(low[i-1]-low[i], 0)   se down_move > up_move altrimenti 0
-      - TR[i]  = max(h-l, |h-prev_c|, |l-prev_c|)
-      - sm_+DM, sm_-DM, sm_TR  = Wilder smooth (RMA period)
-      - +DI = 100 * sm_+DM / sm_TR ; -DI = 100 * sm_-DM / sm_TR
-      - DX  = 100 * |+DI - -DI| / (+DI + -DI)
-      - ADX = Wilder smooth (RMA period) di DX
+    Replica esattamente la sequenza pandas-ta (`pandas_ta/trend/adx.py`):
 
-    Parity 1e-6 vs `pta.adx(..., mamode='rma')`. I primi `2*period` valori
-    di ADX sono mascherati a `None` per skipparne il transient.
+      - up_move[i]   = high[i] - high[i-1]   (NaN al bar 0)
+      - down_move[i] = low[i-1] - low[i]     (NaN al bar 0)
+      - pos[i] = up_move[i] se (up>dn and up>0) else 0  (NaN al bar 0)
+      - neg[i] = down_move[i] se (dn>up and dn>0) else 0 (NaN al bar 0)
+      - atr_ = atr(prenan=True, presma=True): seed presma all'indice period-1
+      - dmp = 100 * RMA(pos, period) / atr_     (RMA = ewm senza seed SMA)
+      - dmn = 100 * RMA(neg, period) / atr_
+      - dx  = 100 * |dmp - dmn| / (dmp + dmn)
+      - adx = RMA(dx, period)
+
+    NOTE Wave 0 / RESEARCH Example 1: il pattern "doppio Wilder smooth con
+    `_wilder_smooth` (SMA-seed) e mask 2*period" NON matcha pandas-ta perche'
+    pandas-ta usa RMA con first-valid-seed (non SMA-seed) e atr con presma a
+    posizione period-1. Questa implementazione segue la sorgente vera di
+    pandas-ta (Rule 1 bug-fix vs RESEARCH Example 1).
     """
     if not (len(highs) == len(lows) == len(closes)):
         raise ValueError("highs, lows, closes devono avere la stessa lunghezza")
@@ -143,66 +223,51 @@ def adx(
     if n == 0 or period <= 0:
         return ADXResult(adx=[None] * n, plus_di=[None] * n, minus_di=[None] * n)
 
-    plus_dm = [0.0] * n
-    minus_dm = [0.0] * n
-    tr = [0.0] * n
-    # Bar 0: TR convenzionato come (high - low) (no chiusura precedente).
-    tr[0] = highs[0] - lows[0]
+    # pos / neg con NaN-equivalent al bar 0 (pandas-ta: up=high.diff(1) → NaN al bar 0).
+    pos: list[float | None] = [None] * n
+    neg: list[float | None] = [None] * n
     for i in range(1, n):
         up_move = highs[i] - highs[i - 1]
         down_move = lows[i - 1] - lows[i]
-        plus_dm[i] = up_move if (up_move > down_move and up_move > 0) else 0.0
-        minus_dm[i] = down_move if (down_move > up_move and down_move > 0) else 0.0
-        tr[i] = max(
-            highs[i] - lows[i],
-            abs(highs[i] - closes[i - 1]),
-            abs(lows[i] - closes[i - 1]),
-        )
+        pos[i] = up_move if (up_move > down_move and up_move > 0) else 0.0
+        neg[i] = down_move if (down_move > up_move and down_move > 0) else 0.0
 
-    sm_plus = _wilder_smooth(plus_dm, period)
-    sm_minus = _wilder_smooth(minus_dm, period)
-    sm_tr = _wilder_smooth(tr, period)
+    # atr_ = ATR pandas-ta con prenan=True, presma=True, mamode='rma'
+    atr_ = _atr_pta_compat(highs, lows, closes, period)
 
-    plus_di: list[float | None] = [None] * n
-    minus_di: list[float | None] = [None] * n
+    # dmp = 100 * RMA(pos)/atr_  ;  dmn = 100 * RMA(neg)/atr_
+    rma_pos = _rma_first_valid_seed(pos, period)
+    rma_neg = _rma_first_valid_seed(neg, period)
+    dmp: list[float | None] = [None] * n
+    dmn: list[float | None] = [None] * n
     for i in range(n):
-        t = sm_tr[i]
-        if t is None or t == 0:
+        a = atr_[i]
+        if a is None or a == 0:
             continue
-        p = sm_plus[i]
-        m = sm_minus[i]
-        if p is not None:
-            plus_di[i] = 100.0 * p / t
-        if m is not None:
-            minus_di[i] = 100.0 * m / t
+        rp = rma_pos[i]
+        rn = rma_neg[i]
+        if rp is not None:
+            dmp[i] = 100.0 * rp / a
+        if rn is not None:
+            dmn[i] = 100.0 * rn / a
 
-    # DX usato come input al secondo Wilder smoothing. Sostituisco i None con
-    # 0.0 per mantenere lunghezza fissa; verranno comunque mascherati a None
-    # nelle prime 2*period posizioni di ADX.
-    dx_for_smooth: list[float] = [0.0] * n
+    # dx = 100 * |dmp - dmn| / (dmp + dmn) ; dove uno e' None -> dx None.
+    dx: list[float | None] = [None] * n
     for i in range(n):
-        p = plus_di[i]
-        m = minus_di[i]
+        p = dmp[i]
+        m = dmn[i]
         if p is None or m is None:
-            dx_for_smooth[i] = 0.0
             continue
         denom = p + m
         if denom <= 0:
-            dx_for_smooth[i] = 0.0
+            dx[i] = 0.0
         else:
-            dx_for_smooth[i] = 100.0 * abs(p - m) / denom
+            dx[i] = 100.0 * abs(p - m) / denom
 
-    adx_vals = _wilder_smooth(dx_for_smooth, period)
-    # Maschera warmup: primi 2*period - 1 valori a None (sempre).
-    # Razionale: il primo DX valido e' all'indice period-1 (warmup di +/-DI),
-    # quindi il secondo Wilder smooth ha il suo primo valore valido all'indice
-    # 2*period - 2. I valori prima sono "spazzatura" perche' alimentati con
-    # zeri di rimpiazzo. Il plan prescrive mascheramento dei primi 2*period.
-    mask_until = min(2 * period, n)
-    for i in range(mask_until):
-        adx_vals[i] = None
+    # adx = RMA(dx, period) — first-valid-seed, propaga lo stato sui None interni.
+    adx_vals = _rma_first_valid_seed(dx, period)
 
-    return ADXResult(adx=adx_vals, plus_di=plus_di, minus_di=minus_di)
+    return ADXResult(adx=adx_vals, plus_di=dmp, minus_di=dmn)
 
 
 # --------------------------------------------------------------------------- #
