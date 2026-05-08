@@ -36,12 +36,13 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 
 ### Patterns
 
-- [ ] **PATT-01**: Hammer / Inverted Hammer detector
+- [ ] **PATT-01**: Hammer / Inverted Hammer detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) + 6+1 test (1 near-miss inv_hammer); full Complete dopo scan_patterns rebuild 03-03 + strategy.py callsite 03-04 -->
 - [ ] **PATT-02**: Shooting Star detector
-- [ ] **PATT-03**: Bullish / Bearish Engulfing detector
+- [ ] **PATT-03**: Bullish / Bearish Engulfing detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) + gate min_body_ratio + 4+1 test (1 near-miss partial); full Complete dopo scan_patterns rebuild 03-03 + strategy.py callsite 03-04 -->
 - [ ] **PATT-04**: Morning Star / Evening Star (3-bar) detector
 - [ ] **PATT-05**: Key Reversal Bar detector
-- [ ] **PATT-06**: Inside Bar / Pin Bar detector
+- [ ] **PATT-06**: Inside Bar / Pin Bar detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) PinBar 2 test; Inside Bar a carico 03-03; full Complete dopo scan_patterns rebuild + strategy.py callsite 03-04 -->
+
 - [ ] **PATT-07**: Pattern catalog returns confidence + structural reference points (bar index, extreme prices) <!-- progress 2026-05-08: foundation in 03-01 (PatternHit frozen + load_pattern_config + _calibrate + config/patterns.yaml); full Complete dopo refactor detectors in 03-04 -->
 
 

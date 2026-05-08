@@ -102,7 +102,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — PATT-07 foundation: dataclasses + _calibrate + load_pattern_config + config/patterns.yaml + tests/test_pattern_config.py
-- [ ] 03-02-PLAN.md — PATT-01/03/06: refactor 4 existing detectors (hammer/inverted/engulfing/pin_bar) to (matched, raw_score) + update existing tests
+- [x] 03-02-PLAN.md — PATT-01/03/06: refactor 4 existing detectors (hammer/inverted/engulfing/pin_bar) to (matched, raw_score) + update existing tests
 - [ ] 03-03-PLAN.md — PATT-02/04/05/06/07: 5 new detectors (shooting_star/morning_star/evening_star/key_reversal/inside_bar) + scan_patterns rebuild returning list[PatternHit]
 - [ ] 03-04-PLAN.md — PATT-07 integration: atomic strategy.py refactor (5 call sites + import + __init__ pattern_cfg) + full-suite regression
 

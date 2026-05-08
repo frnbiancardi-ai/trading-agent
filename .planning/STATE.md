@@ -17,7 +17,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
 | 2 | Indicators Library | ✓ complete | 9/9 | 100% |
-| 3 | Patterns Catalog | ◐ in-progress | 1/4 | 25% |
+| 3 | Patterns Catalog | ◐ in-progress | 2/4 | 50% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
 | 6 | MCP Tools (part 1) | ○ pending | 0/0 | 0% |
@@ -33,7 +33,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 ## Active Work
 
-Phase 3 — Patterns Catalog: 03-01-PLAN ✓ COMPLETE 2026-05-08 (commits `3c465c1`, `4b1a2fa`, `0768112`). PATT-07 foundation: `PatternHit` frozen dataclass (6 campi, hashable), `PatternConfig` nidificato + 9 sub-cfg + `CalibrationAnchors` (tutti frozen), `_calibrate` piecewise-linear con knee 0.7 a `typical`, `load_pattern_config` con precedenza param > `PATTERNS_CONFIG_PATH` env > `DEFAULT_CONFIG_PATH`. `config/patterns.yaml` con 10 chiavi (9 calibrati + doji geometry-only). Test 11/11 passed; full suite 385 passed, 1 skipped. Detector booleani esistenti (`is_hammer`/`is_inverted_hammer`/`is_engulfing`/`is_doji`/`is_pin_bar`/`scan_patterns`) **intoccati** — refactor demandato a 03-02/03-03. PATT-07 in progress (full Complete dopo 03-04). Next: `/gsd-execute-phase 3` continua con 03-02-PLAN.
+Phase 3 — Patterns Catalog: 03-02-PLAN ✓ COMPLETE 2026-05-08 (commits `93f86e7`, `847a0fb`). PATT-01/03/06 (parte): `is_hammer`, `is_inverted_hammer`, `is_engulfing`, `is_pin_bar` refattorizzati a firma `tuple[bool, float]` con sub-cfg dataclass injection (zero magic numbers — soglie da `config/patterns.yaml` via `HammerCfg`/`InvertedHammerCfg`/`EngulfingCfg`/`PinBarCfg`). raw_score per pattern: hammer=lower/body, inv_hammer=upper/body, engulfing=body_curr/body_prev, pin_bar=dominant_wick/range. `is_doji` invariato (bool, non calibrato). Geometry rules originali preservate verbatim. `is_engulfing` aggiunge gate `min_body_ratio` (esclude doji-like). `scan_patterns` ridotto a stub `[]` (Wave 3 lo ricostruisce a `list[PatternHit]`). Test 14 passed + 2 skipped (scan_patterns skip-marked riattivati in 03-03), 2 near-miss aggiunti (`test_is_inverted_hammer_rejects_short_upper`, `test_is_engulfing_partial_negative`). Suite globale 385 passed + 3 skipped (delta atteso: +2 skip volontari). 03-01 ✓ (commits `3c465c1`, `4b1a2fa`, `0768112`). PATT-07 in progress (full Complete dopo 03-04). Next: `/gsd-execute-phase 3` continua con 03-03-PLAN.
 
 Phase 2 — Indicators Library: ✓ COMPLETE 2026-05-08. VERIFICATION PASSED 4/4 ROADMAP truths + 14/14 INDIC requirements (`02-VERIFICATION.md`). 9 plani eseguiti in 4 wave (W0=01, W1=02-04, W2=05-07, W3=08-09) seriali per overlap intra-wave su `__init__.py` + `test_indicators_purity.py`. Suite 374 passed + 1 skipped (Mottl optional). `compute_all` 4-key dict bit-for-bit immutato (4 callsite invariati). `compute_all_extended` 37-key snapshot disponibile per Phase 1 backtest + Phase 4 strategy refactor. Known item NON-bloccante: Boomer A2 (CONTEXT.md verbatim) ≠ skill `forex-trader-pro`/`price_action.md:43` — reconciliation deferred a Phase 4. Branch `feature/update-pythono-pure-strategy`.
 
@@ -63,4 +63,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 3 plan 01 ✓ COMPLETE (PATT-07 foundation, 1/4 plans, 25%)*
+*Last updated: 2026-05-08 — Phase 3 plan 02 ✓ COMPLETE (4 detector tuple-return, 2/4 plans, 50%)*
