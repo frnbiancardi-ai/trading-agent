@@ -366,27 +366,28 @@ def test_single_slice_perf_budget(monkeypatch, tmp_path):
 
 
 def test_cost_deduction(monkeypatch, tmp_path):
-    """D-23: spread + commission + slippage figurano nel result dict.
+    """D-23: pipeline trade → metrics post Plan 05-08 deviation Rule 3.
 
-    Test smoke su composizione: il risultato del worker include `metrics`
-    proveniente da engine.run() — verifichiamo che le componenti di costo
-    siano referenziate (l'esecuzione reale del cost deduction è nel motore
-    Phase 1; qui validiamo solo la pipeline dati worker → result).
+    Plan 05-08 deviation Rule 3 (D-21 contract gap fix): engine.run() ritorna
+    `{run_id, trades, equity_curve, bars_processed}` (NON `decisions_rows` /
+    `drafts_rows` / `metrics` come supponeva il mock originale del Plan 05-06a).
+    slice_worker bridgia: `decisions_rows ← trades`, `metrics ← compute_metrics(
+    trades, tf)` (BacktestMetrics dataclass: sharpe / sortino / hit_rate /
+    expectancy_usd / profit_factor / total_pnl_usd / longest_dd_days / ...).
+
+    Spread/commission/slippage NON sono campi di `BacktestMetrics`: vengono
+    dedotti dentro engine.run() su `pnl_usd` (T-05-23 Phase 1) prima del
+    record di trade. Quindi questo test verifica solo la pipeline post-engine
+    (worker non duplica calcolo costi).
     """
     _stub_indicators_module(monkeypatch)
     fake_result = {
         "run_id": "stub",
-        "trades": [{"pnl_pips": 9.0}],
-        "decisions_rows": [{"pnl_pips": 9.0, "spread_at_entry_pips": 0.5}],
-        "drafts_rows": [],
-        "equity_curve": [10_000.0, 10_009.0],
-        "metrics": {
-            "sharpe": 1.0,
-            "spread_pips": 0.5,
-            "commission_pips_round_trip": 0.5,
-            "slippage_pips": 0.3,
-            "cost_total_pips": 1.3,
-        },
+        # Schema reale `_row_for_ledger` Phase 1: trade chiusi con pnl_usd / risk_usd.
+        "trades": [
+            {"pnl_usd": 90.0, "risk_usd": 100.0, "exit_time": "2024-01-02T10:00:00+00:00"},
+        ],
+        "equity_curve": [10_000.0, 10_090.0],
         "bars_processed": 200,
     }
     _patch_worker_io(monkeypatch, tmp_path, fake_engine_result=fake_result)
@@ -408,14 +409,18 @@ def test_cost_deduction(monkeypatch, tmp_path):
     )
     assert len(results) == 3
     for r in results:
-        assert r["status"] == "OK"
+        assert r["status"] == "OK", r
         m = r["metrics"]
-        # Tutte e 3 le componenti di costo sono presenti nel risultato
-        assert "spread_pips" in m
-        assert "commission_pips_round_trip" in m
-        assert "slippage_pips" in m
-        # n_trades == len(decisions_rows) (smoke su pipeline dati)
+        # BacktestMetrics fields prodotti da compute_metrics (worker bridge).
+        assert "sharpe" in m
+        assert "hit_rate" in m
+        assert "total_pnl_usd" in m
+        assert "longest_dd_days" in m
+        # n_trades == len(trades) (1-1 con decisions_rows post-bridge).
         assert r["n_trades"] == 1
+        # Single trade con pnl_usd>0 → hit_rate 1.0
+        assert m["hit_rate"] == 1.0
+        assert m["total_pnl_usd"] == 90.0
 
 
 # ── Wave 3 additions: orchestrator-level tests (Plan 05-07) ────────────────

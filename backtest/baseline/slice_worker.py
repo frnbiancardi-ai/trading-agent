@@ -86,6 +86,75 @@ def _git_sha() -> str:
         return "unknown"
 
 
+def _build_equity_dataframe(
+    balances: list[float],
+    trades: list[dict],
+    initial_eur: float,
+    bars: list,
+):
+    """Bridge format mismatch (Plan 05-08 deviation Rule 3 — Blocker).
+
+    engine.run() ritorna `equity_curve: list[float]` (1 sample iniziale +
+    1 sample dopo ogni evento di chiusura: SL, TP, timeout, end). Niente
+    timestamp né drawdown. plot_writer.plot_equity_curve attende un
+    `pd.DataFrame` con colonne `timestamp`, `equity_eur`, `drawdown_pct`.
+
+    Strategia di mapping:
+      - balance[0] = initial_eur → timestamp = bars[0].time (warm-up gia
+        applicato dal caller, primo bar utile post-warm-up).
+      - balance[k] = post-evento k → timestamp = trade[k-1].exit_time
+        (ISO 8601 stringa da `_row_for_ledger`).
+      - drawdown_pct[t] = (eq[t] - peak[t]) / peak[t] * 100  (≤ 0).
+
+    Edge cases:
+      - balances vuoto → DataFrame vuoto (caller logga warning + skip plot).
+      - trade meno di balances - 1 → trunca al min(len(balances), len(trades)+1).
+      - peak iniziale = initial_eur (no division-by-zero se balance[0]=0).
+    """
+    import pandas as pd  # noqa: E402 -- lazy import, dep solo quando si plotta
+    from datetime import datetime, timezone  # noqa: E402
+
+    if not balances:
+        return pd.DataFrame({"timestamp": [], "equity_eur": [], "drawdown_pct": []})
+
+    # Costruisci timestamp allineati a balances.
+    timestamps: list[datetime] = []
+    # Primo punto: usa il time del primo bar processato come anchor.
+    if bars:
+        timestamps.append(datetime.fromtimestamp(int(bars[0].time), tz=timezone.utc))
+    else:
+        timestamps.append(datetime.now(timezone.utc))
+
+    for t in trades:
+        ts_iso = t.get("exit_time") or t.get("entry_time")
+        if ts_iso is None:
+            timestamps.append(timestamps[-1])  # carry forward
+            continue
+        try:
+            timestamps.append(datetime.fromisoformat(str(ts_iso)))
+        except (TypeError, ValueError):
+            timestamps.append(timestamps[-1])
+
+    n = min(len(timestamps), len(balances))
+    timestamps = timestamps[:n]
+    balances = list(balances[:n])
+
+    # Drawdown running peak (peak iniziale = max(balance[0], initial_eur)).
+    peak = max(balances[0], float(initial_eur))
+    drawdowns: list[float] = []
+    for b in balances:
+        if b > peak:
+            peak = b
+        dd = ((b - peak) / peak * 100.0) if peak > 0 else 0.0
+        drawdowns.append(dd)
+
+    return pd.DataFrame({
+        "timestamp": timestamps,
+        "equity_eur": balances,
+        "drawdown_pct": drawdowns,
+    })
+
+
 def _audit_update_run(
     db_path: Path,
     run_id: str,
@@ -253,23 +322,52 @@ def run_slice_3profiles(
             )
             engine_result = engine.run()
 
-            # Persist parquet shards (D-01/D-02/D-03)
+            # Plan 05-08 deviation Rule 3 — Blocker: D-21 contract gap fra
+            # engine.run() (Phase 1, plan 01-05) e slice_worker (Phase 5,
+            # plan 05-06a). Engine ritorna {run_id, trades, equity_curve,
+            # bars_processed}; slice_worker assumeva chiavi `decisions_rows`
+            # / `drafts_rows` / `metrics` mai prodotte. Bridge in-worker:
+            #
+            #   decisions_rows ← engine_result["trades"] (1-1 mapping
+            #     per trade chiuso registrato a ledger; D-01/D-02 schema OK).
+            #   drafts_rows ← [] (DEFERRED a plan 05-09: engine non cattura
+            #     drafts FORMING/NONE; richiede hook in engine.run() per
+            #     persistere ogni proposta strategy. Phase 7 ML failure
+            #     analysis avrà dataset parziale finché non chiuso).
+            #   metrics ← compute_metrics(trades, tf) — calcolo locale.
             shard_dir = Path(baseline_cfg.training_data_dir)
-            n_trades = len(engine_result.get("decisions_rows", []))
-            n_drafts = len(engine_result.get("drafts_rows", []))
-            write_decisions_shard(
-                engine_result.get("decisions_rows", []), run_id, shard_dir,
-            )
-            write_drafts_shard(
-                engine_result.get("drafts_rows", []), run_id, shard_dir,
-            )
+            trades = engine_result.get("trades", []) or []
+            decisions_rows = trades
+            drafts_rows: list[dict] = []  # DEFERRED — vedi sopra
 
-            # Plot equity (D-19)
+            # Lazy import per evitare cost top-level (metrics dep solo qui).
+            from backtest.metrics import compute_metrics  # noqa: E402
+            metrics_obj = compute_metrics(trades, tf)
+            n_trades = len(decisions_rows)
+            n_drafts = len(drafts_rows)
+            write_decisions_shard(decisions_rows, run_id, shard_dir)
+            write_drafts_shard(drafts_rows, run_id, shard_dir)
+
+            # Plot equity (D-19) — bridge format mismatch.
+            # engine.run() ritorna `equity_curve: list[float]` (solo balance
+            # post-evento, niente timestamp/drawdown). plot_writer richiede
+            # DataFrame[timestamp, equity_eur, drawdown_pct]. Costruiamo qui.
             png_path = (
                 Path(baseline_cfg.equity_curves_dir)
                 / f"{symbol}_{tf}_{profile}.png"
             )
-            plot_equity_curve(engine_result["equity_curve"], png_path)
+            equity_df = _build_equity_dataframe(
+                engine_result.get("equity_curve", []) or [],
+                trades,
+                baseline_cfg.equity_initial_eur,
+                bars,
+            )
+            if not equity_df.empty:
+                plot_equity_curve(equity_df, png_path)
+            else:
+                _log.warning(
+                    "skip plot_equity_curve %s: equity_df vuoto (no trade)", run_id,
+                )
 
             # Audit trail extra: aggiorna backtest_runs con campi Phase 5
             # WARNING 7 fix: NO lambda — uso functools.partial (no truthiness bug,
@@ -283,11 +381,15 @@ def run_slice_3profiles(
             )
             with_retry(audit_call)
 
+            # metrics_obj è BacktestMetrics (dataclass). Convert to dict per
+            # report_writer (D-18) e Phase 7 ML downstream consumability.
+            from dataclasses import asdict  # noqa: E402
+            metrics_dict = asdict(metrics_obj)
             results.append({
                 "run_id": run_id,
                 "profile": profile,
                 "status": "OK",
-                "metrics": engine_result.get("metrics"),
+                "metrics": metrics_dict,
                 "n_trades": n_trades,
                 "n_drafts": n_drafts,
                 "equity_path": str(png_path),
