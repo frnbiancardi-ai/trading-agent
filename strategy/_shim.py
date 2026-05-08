@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 
 from models import (
     AccountState,
+    BrokerProtocol,
     DelayedFollowUpRequest,
     OpenPositionVerdict,
     PositionInfo,
@@ -94,7 +95,7 @@ class IntradayStrategy:
     def __init__(
         self,
         cfg,
-        mt5_client,
+        mt5_client: BrokerProtocol,
         logger: logging.Logger | None = None,
         environment: StrategyEnvironment | None = None,
     ):
@@ -147,9 +148,147 @@ class IntradayStrategy:
         draft = evaluate_proposal_for_bar(bars, indicators, ctx)
         setup = draft_to_technical_setup(draft, symbol, timeframe)
 
+        # Backward-compat: arricchisci setup.indicators con i campi legacy
+        # (sma_20, rsi_14, atr_14, last_close, pip_size, risk_reward) usati da
+        # backtest engine decision_context_json + _is_context_negative_for_position.
+        self._enrich_legacy_indicators(setup, bars, indicators, ctx)
+
         # Sentiment overlay (verbatim legacy 642-723)
         setup = self._apply_sentiment(setup, sentiment)
         return setup
+
+    def _enrich_legacy_indicators(
+        self,
+        setup: TechnicalSetup,
+        bars: list,
+        indicators,
+        ctx,
+    ) -> None:
+        """Inserisce i campi indicator legacy (sma_20, rsi_14, atr_14, ema_50,
+        last_close, pip_size, risk_reward) in setup.indicators per backward-compat
+        con backtest engine decision_context_json + position-negative-check.
+        """
+        try:
+            from indicators.trend import sma
+            closes = [b["close"] for b in bars] if bars else []
+            sma20 = None
+            sma50 = None
+            if closes:
+                sma20_series = sma(closes, 20)
+                sma50_series = sma(closes, 50)
+                sma20 = sma20_series[-1] if sma20_series and sma20_series[-1] is not None else None
+                sma50 = sma50_series[-1] if sma50_series and sma50_series[-1] is not None else None
+
+            rsi_last = None
+            atr_last = None
+            ema50_last = None
+            if indicators is not None:
+                rsi_seq = getattr(indicators, "rsi_14", None)
+                atr_seq = getattr(indicators, "atr_14", None)
+                ema50_seq = getattr(indicators, "ema50", None)
+                if rsi_seq:
+                    for v in reversed(rsi_seq):
+                        if v is not None:
+                            rsi_last = v
+                            break
+                if atr_seq:
+                    for v in reversed(atr_seq):
+                        if v is not None:
+                            atr_last = v
+                            break
+                if ema50_seq:
+                    for v in reversed(ema50_seq):
+                        if v is not None:
+                            ema50_last = v
+                            break
+
+            last_close = closes[-1] if closes else None
+
+            # Risk:reward derivato dai prezzi setup
+            rr = 0.0
+            if (
+                setup.setup_type == "READY"
+                and setup.entry_price is not None
+                and setup.stop_loss is not None
+                and setup.take_profit is not None
+            ):
+                if setup.direction == "BUY":
+                    risk = setup.entry_price - setup.stop_loss
+                    reward = setup.take_profit - setup.entry_price
+                else:
+                    risk = setup.stop_loss - setup.entry_price
+                    reward = setup.entry_price - setup.take_profit
+                rr = (reward / risk) if risk > 0 else 0.0
+
+            if setup.indicators is None:
+                setup.indicators = {}
+            setup.indicators.setdefault("sma_20", sma20)
+            setup.indicators.setdefault("sma_50", sma50)
+            setup.indicators.setdefault("ema_50", ema50_last)
+            setup.indicators.setdefault("rsi_14", rsi_last)
+            setup.indicators.setdefault("atr_14", atr_last)
+            setup.indicators.setdefault("last_close", last_close)
+            setup.indicators.setdefault("pip_size", ctx.pip_size if ctx else 0.0001)
+            setup.indicators["risk_reward"] = round(rr, 4)
+
+            # support_resistance dal context (legacy lo popolava da find_support_resistance)
+            if setup.support_resistance is None and ctx is not None and ctx.sr:
+                setup.support_resistance = dict(ctx.sr)
+        except Exception:
+            # Enrichment è best-effort: errori non devono spezzare il flow.
+            pass
+
+    def _analyze_technical(
+        self,
+        symbol: str,
+        account_state: AccountState,
+    ) -> TechnicalSetup:
+        """Alias backward-compat per evaluate_open_position (chiamata interna senza sentiment).
+
+        Il legacy IntradayStrategy aveva _analyze_technical come metodo separato
+        che _analyze_symbol_ chiamava internamente. tests/test_phase16.py patcha
+        questo metodo via `strategy._analyze_technical = fake` per simulare
+        contesti READY/NONE senza alimentare bars/indicators.
+        """
+        return self.analyze_symbol(symbol, account_state, sentiment=None)
+
+    def build_trade_proposal(
+        self,
+        symbol: str,
+        setup: TechnicalSetup,
+        bars: list | None = None,
+        indicators: dict | None = None,
+        account_state: AccountState | None = None,
+    ) -> TradeProposal:
+        """Converte TechnicalSetup READY in TradeProposal (verbatim legacy 389-417).
+
+        Preservato sul shim per backward-compat: backtest/engine.py:168 e altri
+        caller esterni continuano a chiamarlo. Il `comment` è fissato a
+        'python_strategy' per parity con la convenzione legacy.
+        """
+        if setup.setup_type != "READY" or setup.direction is None:
+            raise ValueError(
+                f"build_trade_proposal richiede setup READY, ricevuto {setup.setup_type}"
+            )
+        if setup.entry_price is None or setup.stop_loss is None or setup.take_profit is None:
+            raise ValueError("setup READY senza entry/sl/tp")
+
+        rr = (setup.indicators or {}).get("risk_reward", 0)
+        rationale = (
+            f"{setup.direction} {symbol} su {setup.timeframe}: {setup.reason}. "
+            f"Confidence {setup.confidence:.2f}, R:R {rr:.2f}."
+        )
+        return TradeProposal(
+            symbol=symbol,
+            direction=setup.direction,
+            entry_price=setup.entry_price,
+            stop_loss_price=setup.stop_loss,
+            take_profit_price=setup.take_profit,
+            timeframe=setup.timeframe,
+            comment="python_strategy",
+            confidence=setup.confidence,
+            rationale=rationale,
+        )
 
     def evaluate_open_position(
         self,
@@ -185,7 +324,9 @@ class IntradayStrategy:
         risk_amount = estimate_position_risk_amount(position, sym_info)
         profit_r = (position.profit / risk_amount) if risk_amount > 0 else 0.0
 
-        setup = self.analyze_symbol(position.symbol, account_state)
+        # Usa _analyze_technical (alias di analyze_symbol senza sentiment) per
+        # consentire il monkeypatch test_phase16._patch_analyze_technical.
+        setup = self._analyze_technical(position.symbol, account_state)
         is_negative = self._is_context_negative_for_position(position, setup)
 
         if is_negative and profit_r >= cfg.MIN_PROTECT_PROFIT_R_MULTIPLIER:

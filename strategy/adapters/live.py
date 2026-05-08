@@ -46,11 +46,10 @@ def _build_extended_indicators(bars: list[dict]) -> SimpleNamespace:
     Deve essere coerente col contratto _stub_indicators_a/b/c/d in
     tests/test_strategy_setups.py (sequenze indicizzabili via [-1]).
     """
-    from indicators.trend import ema, sma  # noqa: F401  sma usato indirettamente
+    from indicators.trend import ema
     from indicators.momentum import rsi
-    from indicators.volatility import atr, bollinger_bands, volatility_regime
+    from indicators.volatility import atr, bollinger_bands
     from indicators.bars import closing_score, narrow_range
-    from indicators.structure import fibonacci_retracements
 
     closes = [b["close"] for b in bars]
     highs = [b["high"] for b in bars]
@@ -69,6 +68,7 @@ def _build_extended_indicators(bars: list[dict]) -> SimpleNamespace:
         else:
             slope_series.append(v - ema50_series[i - 1])
 
+    # bollinger_bands con squeeze gate richiede keltner per il calcolo dello squeeze
     bb = bollinger_bands(
         closes, length=20, std=2.0,
         highs=highs, lows=lows,
@@ -76,10 +76,11 @@ def _build_extended_indicators(bars: list[dict]) -> SimpleNamespace:
     )
     cs = closing_score(bars)
     nr = narrow_range(bars)
-    try:
-        fib = fibonacci_retracements(bars, lookback=100, window=2)
-    except Exception:
-        fib = None
+    # Fibonacci computation è costosa per backtest per-bar (loop su 100 bar);
+    # lasciato a None — Setup D ha fallback OR-logic in_ema20_zone che funziona
+    # senza Fib (vedi 04-05-SUMMARY pullback zone OR-logic). Phase 5/8 backtest
+    # potrà ricomputarlo a livello engine_state se necessario.
+    fib = None
 
     # volatility_regime richiede regime_cfg dict; senza cfg ritorna None per ogni bar.
     regime_series = [None] * len(bars)
