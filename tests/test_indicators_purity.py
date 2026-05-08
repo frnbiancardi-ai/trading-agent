@@ -164,3 +164,37 @@ def test_no_future_leakage_hurst(eurusd_h1_500, idx):
     full = hurst_rs(closes, 100)
     partial = hurst_rs(closes[: idx + 1], 100)
     assert partial.hurst[idx] == full.hurst[idx], f"future leakage hurst @ i={idx}"
+
+
+@pytest.mark.parametrize("idx", [50, 100, 250, 400, 499])
+def test_no_future_leakage_donchian(eurusd_h1_500, idx):
+    """Donchian(prefix)[i] == (full)[i] su upper/lower/middle. INDIC-05."""
+    from indicators.structure import donchian
+    bars = eurusd_h1_500
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    full = donchian(highs, lows, 20)
+    partial = donchian(highs[: idx + 1], lows[: idx + 1], 20)
+    assert partial.upper[idx] == full.upper[idx]
+    assert partial.lower[idx] == full.lower[idx]
+    assert partial.middle[idx] == full.middle[idx]
+
+
+@pytest.mark.parametrize("idx", [100, 200, 300, 400, 499])
+def test_no_future_leakage_pivots(eurusd_h1_500, idx):
+    """Pivots(prefix)[i] == (full)[i] su P + Camarilla h1. INDIC-09.
+
+    Anchor 'daily': bar usa H/L/C della sessione precedentemente chiusa, quindi
+    pivots su prefix[:idx+1] e su full devono concordare a indice idx purché
+    almeno un boundary di sessione sia già stato attraversato. Tutti i 5 idx
+    parametrizzati sono >= 100 per garantirlo (la fixture H1 attraversa la
+    prima sessione entro le prime ~24 bar)."""
+    from indicators.structure import pivots
+    bars = eurusd_h1_500
+    full = pivots(bars, anchor="daily")
+    partial = pivots(bars[: idx + 1], anchor="daily")
+    assert partial.p[idx] == full.p[idx], f"future leakage pivots.p @ i={idx}"
+    assert partial.r1[idx] == full.r1[idx]
+    assert partial.s3[idx] == full.s3[idx]
+    assert partial.camarilla["h1"][idx] == full.camarilla["h1"][idx]
+    assert partial.camarilla["l4"][idx] == full.camarilla["l4"][idx]
