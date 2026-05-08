@@ -19,6 +19,14 @@ parquet_compression: snappy    # D-20 default; alternativa zstd in deferred
 force_rerun: false             # D-14 — default safe; CLI flag --force overrides
 progress_bar: true             # tqdm su 27 run
 
+# Date range (Plan 05-08 Option B — scope reduction 10y per
+# completare smoke entro hard gate BACK-07 SC#1 <30min e
+# evitare engine O(N^2) sul full-history 23.5y).
+# Filtri ISO UTC, inclusive/exclusive (vedi backtest.loader.load_bars).
+# null = nessun filtro (full history, sconsigliato finché Phase 1 perf non ottimizzata).
+date_start: "2015-05-08"
+date_end:   "2025-05-08"
+
 # Output paths
 training_data_dir: "data/training"
 report_dir: ".planning/research"

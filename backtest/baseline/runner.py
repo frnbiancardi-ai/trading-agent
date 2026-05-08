@@ -53,6 +53,10 @@ class BaselineConfig:
     training_data_dir: str
     report_dir: str
     equity_curves_dir: str
+    # Plan 05-08 Option B (scope reduction). ISO date string oppure None.
+    # Trasformati in datetime dal worker prima di chiamare load_bars().
+    date_start: str | None = None
+    date_end: str | None = None
 
 
 def load_baseline_config(yaml_path: Path | None = None) -> BaselineConfig:
@@ -80,6 +84,8 @@ def load_baseline_config(yaml_path: Path | None = None) -> BaselineConfig:
         report_dir=str(cfg.get("report_dir", ".planning/research")),
         equity_curves_dir=str(cfg.get("equity_curves_dir",
                                        ".planning/research/baseline-equity-curves")),
+        date_start=(cfg.get("date_start") if cfg.get("date_start") else None),
+        date_end=(cfg.get("date_end") if cfg.get("date_end") else None),
     )
 
 

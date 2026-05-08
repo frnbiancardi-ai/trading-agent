@@ -146,7 +146,20 @@ def run_slice_3profiles(
     if csv_path is None:
         # Convention Phase 1: data/{symbol}_{tf}.csv (placeholder; runner lo passa esplicito).
         csv_path = Path(f"data/{symbol}_{tf}.csv")
-    bars = load_bars(csv_path, symbol, tf)
+    # Plan 05-08 Option B (scope reduction 10y): filtra date_start/date_end dal
+    # baseline_cfg PRIMA del warm_up slicing per evitare il full-history 23.5y
+    # (engine O(N^2) → smoke fuori budget BACK-07 SC#1 <30min). load_bars
+    # supporta datetime|None inclusive/exclusive (backtest/loader.py:30-31).
+    from datetime import datetime  # noqa: E402 -- lazy import per evitare cost top-level
+    ds = (
+        datetime.fromisoformat(baseline_cfg.date_start)
+        if getattr(baseline_cfg, "date_start", None) else None
+    )
+    de = (
+        datetime.fromisoformat(baseline_cfg.date_end)
+        if getattr(baseline_cfg, "date_end", None) else None
+    )
+    bars = load_bars(csv_path, symbol, tf, date_start=ds, date_end=de)
 
     # 2. Warm-up adaptive (D-07 BLOCKER 3 fix): max(warm_up_min_bars, longest_lookback)
     # Reads strategy.yaml indicator config; fallback 200 se non parseable.
