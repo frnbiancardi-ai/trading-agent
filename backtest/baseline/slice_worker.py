@@ -168,8 +168,24 @@ def run_slice_3profiles(
     )
 
     # 3. Indicator cache UNA volta per slice (D-15)
+    # Plan 05-08 deviation Rule 3 — Blocker: indicators.compute_all_extended
+    # accetta list[dict] (Phase 2 API reale, indicators/aggregate.py:68
+    # accede `b["close"]`), MA backtest.engine.BacktestEngine accetta
+    # list[Bar] (dataclass). Convertiamo Bar->dict SOLO per il calcolo
+    # indicatori, lasciando bars come list[Bar] per il resto del worker.
     from indicators import compute_all_extended  # noqa: E402  -- lazy import Phase 2 dep
-    indicators_full = compute_all_extended(bars)
+    bars_dict = [
+        {
+            "time": b.time,
+            "open": b.open,
+            "high": b.high,
+            "low": b.low,
+            "close": b.close,
+            "volume": b.volume,
+        }
+        for b in bars
+    ]
+    indicators_full = compute_all_extended(bars_dict)
 
     # 4. Cost model (Phase 1 contract richiede entry_price per pip-value JPY)
     entry_price_hint = float(bars[0].close) if bars else 1.0

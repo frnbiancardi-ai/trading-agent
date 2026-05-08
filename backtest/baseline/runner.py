@@ -97,8 +97,16 @@ def _git_sha() -> str:
 
 
 def _csv_path_for(symbol: str, tf: str) -> Path:
-    """Convention Phase 1: data/{symbol}_{tf}.csv (placeholder coerente con slice_worker default)."""
-    return Path(f"data/{symbol}_{tf}.csv")
+    """Convention reale repo: data/historical/{SYMBOL}/{TF}.csv (Phase 1 BACK-01).
+
+    Plan 05-08 deviation Rule 3 — Blocker: il placeholder originale
+    `data/{symbol}_{tf}.csv` (slice_worker default + runner pre-Plan 05-08)
+    NON corrisponde al layout reale dei CSV storici 23.5y, che vivono in
+    `data/historical/EURUSD/M15.csv`, `data/historical/GBPUSD/H1.csv`, ecc.
+    Questa funzione viene chiamata dal runner come csv_path esplicito al
+    worker (vedi 05-06a-SUMMARY deviation #4 e 05-07-SUMMARY).
+    """
+    return Path("data") / "historical" / symbol / f"{tf}.csv"
 
 
 def _make_pool_executor(max_workers: int, ctx):
@@ -154,6 +162,15 @@ def run_baseline(
 
     # Abilita WAL una tantum dal main process (D-16) — persiste cross-connection.
     enable_sqlite_wal(ledger_path)
+
+    # Plan 05-08 deviation Rule 2 — Critical functionality: assicura lo schema
+    # `backtest_runs`/`backtest_trades` SIA esistente PRIMA dello spawn dei
+    # worker. `_run_id_exists` (slice_worker) interroga `backtest_runs` su una
+    # connection che NON crea tabelle, quindi un DB vergine fa crashare tutti
+    # i 9 worker su `OperationalError: no such table`. LedgerWriter.__init__
+    # invoca `ensure_schema()` (CREATE TABLE IF NOT EXISTS + ALTER TABLE).
+    from backtest.ledger import LedgerWriter  # noqa: E402
+    LedgerWriter(ledger_path).ensure_schema()
 
     tasks = list(product(PAIRS, TFS))  # 9 (symbol, tf)
     run_date = date.today().isoformat()
