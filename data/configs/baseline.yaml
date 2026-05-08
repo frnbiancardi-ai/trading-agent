@@ -1,0 +1,25 @@
+# data/configs/baseline.yaml
+# Phase 5 baseline backtest orchestration knobs (D-15, D-17, D-19, D-20).
+# Loaded da backtest.baseline.runner via load_baseline_config().
+# NB: lockato — modifiche invalidano baseline_yaml_hash → re-run baseline obbligatorio.
+
+equity_initial_eur: 10000      # D-10 — equity start per slice
+slippage_seed: 42              # D-17 — seed lockato (per-run derivato via sha256(run_id))
+
+timeout_bars:                  # D-05 — timeout policy per-TF
+  M15: 96                      # ~24h
+  M30: 96                      # ~48h
+  H1: 120                      # ~5 giorni
+
+warm_up_min_bars: 200          # D-07 — warm-up adaptive: max(200, longest_lookback_required)
+
+max_workers: 9                 # D-15 — 9 task (symbol × tf), 3 profile sequenziali per worker
+parquet_compression: snappy    # D-20 default; alternativa zstd in deferred
+
+force_rerun: false             # D-14 — default safe; CLI flag --force overrides
+progress_bar: true             # tqdm su 27 run
+
+# Output paths
+training_data_dir: "data/training"
+report_dir: ".planning/research"
+equity_curves_dir: ".planning/research/baseline-equity-curves"
