@@ -1,0 +1,93 @@
+# config/patterns.yaml
+# Soglie di geometria + calibrazione (min, typical, max) per ogni pattern.
+# raw_score per detector definito in 03-RESEARCH.md "Per-pattern raw-score formula".
+# Pure geometria — nessun trend/ATR/volume in questa fase (Phase 4+).
+
+hammer:
+  geometry:
+    body_ratio_max: 0.4
+    lower_shadow_body_min: 2.0
+    upper_shadow_range_max: 0.2
+  calibration:
+    min: 2.0
+    typical: 3.5
+    max: 6.0
+
+inverted_hammer:
+  geometry:
+    body_ratio_max: 0.4
+    upper_shadow_body_min: 2.0
+    lower_shadow_range_max: 0.2
+  calibration:
+    min: 2.0
+    typical: 3.5
+    max: 6.0
+
+shooting_star:
+  geometry:
+    body_ratio_max: 0.3
+    upper_shadow_body_min: 2.0
+    lower_shadow_range_max: 0.15
+  calibration:
+    min: 2.0
+    typical: 3.5
+    max: 6.0
+
+engulfing:
+  geometry:
+    min_engulfment_ratio: 1.0
+    min_body_ratio: 0.3
+  calibration:
+    min: 1.0
+    typical: 1.5
+    max: 2.5
+
+morning_star:
+  geometry:
+    trend_body_min_ratio: 0.6
+    star_body_max_ratio: 0.3
+    min_b3_penetration: 0.5
+  calibration:
+    min: 0.5
+    typical: 0.8
+    max: 1.2
+
+evening_star:
+  geometry:
+    trend_body_min_ratio: 0.6
+    star_body_max_ratio: 0.3
+    min_b3_penetration: 0.5
+  calibration:
+    min: 0.5
+    typical: 0.8
+    max: 1.2
+
+key_reversal:
+  geometry:
+    min_extreme_break_pips: 0.0
+    min_close_penetration_ratio: 0.5
+  calibration:
+    min: 0.5
+    typical: 0.75
+    max: 1.0
+
+inside_bar:
+  geometry:
+    max_compression_ratio: 0.9
+  calibration:
+    min: 0.1
+    typical: 0.4
+    max: 0.7
+
+pin_bar:
+  geometry:
+    body_ratio_max: 0.333
+    dominant_wick_ratio_min: 0.667
+  calibration:
+    min: 0.667
+    typical: 0.75
+    max: 0.9
+
+doji:
+  geometry:
+    body_tolerance: 0.1
