@@ -10,7 +10,7 @@
 |---|-------|------|--------------|------------------|
 | 1 | Backtest Engine | Event-driven replay of Italian-CSV historical bars with realistic costs and walk-forward harness | BACK-01..06 | 6 |
 | 2 | Indicators Library | Expand indicator coverage to support all 4 setups + ML features | INDIC-01..14 | 4 |
-| 3 | Patterns Catalog | Full candlestick pattern detection library (3/4 plans, scan_patterns rebuild done) | PATT-01..07 | 3 |
+| 3 | Patterns Catalog | Full candlestick pattern detection library (4/4 plans, strategy.py callsite refactor done — pending verify) | PATT-01..07 | 3 |
 | 4 | Strategy Refactor | Setup A/B/C/D detectors as pure functions, 5-factor confluence, shared by live + backtest | STRAT-01..09 | 5 |
 | 5 | Baseline Backtest | Run strategy-only backtest on 23.5y × 3 pairs × 3 TFs, produce metrics + ML training data | BACK-07, INT-01 | 4 |
 | 6 | MCP Tools (part 1) | Backtest, position-management, multi-TF, session, correlation, pattern-catalog tools | MCP-01..03, MCP-09, MCP-11..12, MCP-14..17, MCP-R1..R3 | 4 |
@@ -104,7 +104,7 @@ Plans:
 - [x] 03-01-PLAN.md — PATT-07 foundation: dataclasses + _calibrate + load_pattern_config + config/patterns.yaml + tests/test_pattern_config.py
 - [x] 03-02-PLAN.md — PATT-01/03/06: refactor 4 existing detectors (hammer/inverted/engulfing/pin_bar) to (matched, raw_score) + update existing tests
 - [x] 03-03-PLAN.md — PATT-02/04/05/06/07: 5 new detectors (shooting_star/morning_star/evening_star/key_reversal/inside_bar) + scan_patterns rebuild returning list[PatternHit]
-- [ ] 03-04-PLAN.md — PATT-07 integration: atomic strategy.py refactor (5 call sites + import + __init__ pattern_cfg) + full-suite regression
+- [x] 03-04-PLAN.md — PATT-07 integration: atomic strategy.py refactor (5 call sites + import + __init__ pattern_cfg) + full-suite regression
 
 ---
 
