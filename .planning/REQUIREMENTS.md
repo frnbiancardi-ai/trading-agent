@@ -55,7 +55,7 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [ ] **STRAT-05**: 5-factor confluence scorer (trend / setup / momentum / volatility / spread+session)
 - [ ] **STRAT-06**: Confidence calibrator: grade → starting confidence + ±0.05 adjusters
 - [ ] **STRAT-07**: ATR-based R:R proposal builder with profile-aware minimums
-- [ ] **STRAT-08**: Strategy module side-effect-free (no broker calls, no DB writes, no print/log) — testable in milliseconds
+- [x] **STRAT-08**: Strategy module side-effect-free (no broker calls, no DB writes, no print/log) — testable in milliseconds
 - [ ] **STRAT-09**: Same strategy module called by live loop AND backtest engine (no fork)
 
 ### ML Layer
@@ -193,7 +193,7 @@ Updated during roadmap creation.
 | STRAT-05 | Phase 4 | In-progress (04-01 Wave 0: confluence.py stub + config/strategy.yaml D-08; Wave 1 implements) |
 | STRAT-06 | Phase 4 | In-progress (04-01 Wave 0: base_confidence + adjusters + bounds in config; Wave 1 implements) |
 | STRAT-07 | Phase 4 | In-progress (04-01 Wave 0: ProposalDraft + profile_filters in config; Wave 1 implements) |
-| STRAT-08 | Phase 4 | In-progress (04-01 Wave 0: pure-fn skeleton + test_strategy_purity stubs; Wave 1 implements AST gate) |
+| STRAT-08 | Phase 4 | Complete (04-04 Wave 1: AST gate 232 LOC, 5 test no-skip, copre import+logging+print/open su 7 moduli puri; adapters/ esclusi by design; negative-test verificato; commit 0260126) |
 | STRAT-09 | Phase 4 | In-progress (04-01 Wave 0: adapter stubs + regression baseline JSON; Wave 3/4 wires + verifies) |
 | ML-01 | Phase 7 | Pending |
 | ML-02 | Phase 7 | Pending |
