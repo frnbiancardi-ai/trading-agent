@@ -27,6 +27,10 @@ class BacktestMetrics:
     sharpe: float
     sortino: float
     max_drawdown_pct: float
+    # Phase 5 D-18: lunghezza massima della run "underwater" (equity < running peak)
+    # misurata in BAR UNITS. Caller (report_writer) converte in giorni via
+    # bars_per_day del timeframe (M15→0.0104, M30→0.0208, H1→0.0416).
+    longest_dd_days: float
     hit_rate: float
     expectancy_usd: float
     profit_factor: float
@@ -41,6 +45,7 @@ def _empty_metrics() -> BacktestMetrics:
         sharpe=0.0,
         sortino=0.0,
         max_drawdown_pct=0.0,
+        longest_dd_days=0.0,
         hit_rate=0.0,
         expectancy_usd=0.0,
         profit_factor=0.0,
@@ -48,6 +53,35 @@ def _empty_metrics() -> BacktestMetrics:
         total_trades=0,
         total_pnl_usd=0.0,
     )
+
+
+def _longest_underwater_run(equity_curve: list[float]) -> int:
+    """Conta la lunghezza massima di run consecutivo dove equity[t] < running_peak.
+
+    Phase 5 D-18: l'equity_curve passato è la sequenza dei livelli post-trade
+    (cumulativa). Un sample è "underwater" se è stretto al di sotto del peak
+    corrente. Il run termina quando l'equity supera il peak (nuovo high).
+    Restituisce il run più lungo in BAR UNITS (qui 1 unit = 1 trade chiuso;
+    il caller può rimappare a bar di mercato moltiplicando per bars/trade
+    medio o per bars-per-day del timeframe).
+    """
+    if not equity_curve:
+        return 0
+    peak = equity_curve[0]
+    current_run = 0
+    max_run = 0
+    for eq in equity_curve:
+        if eq > peak:
+            peak = eq
+            current_run = 0
+        else:
+            # Sample = peak conta come "underwater run length 1" — coerente
+            # con la convenzione "non-strict": dopo un peak, ogni sample non
+            # nuovo-high estende la run.
+            current_run += 1
+            if current_run > max_run:
+                max_run = current_run
+    return max_run
 
 
 def _std(values: list[float], mean: float) -> float:
@@ -108,11 +142,14 @@ def compute_metrics(trades: list[dict], timeframe: str = "H1") -> BacktestMetric
         sortino = 0.0
 
     # Max drawdown on cumulative-PnL equity curve, running peak subtraction.
+    # Costruisco la curva esplicita per riusarla in _longest_underwater_run.
+    equity_curve_values: list[float] = []
     equity = 0.0
     peak = 0.0
     max_dd_pct = 0.0
     for p in pnl:
         equity += p
+        equity_curve_values.append(equity)
         if equity > peak:
             peak = equity
         if peak > 0:
@@ -120,10 +157,18 @@ def compute_metrics(trades: list[dict], timeframe: str = "H1") -> BacktestMetric
             if dd_pct > max_dd_pct:
                 max_dd_pct = dd_pct
 
+    # Phase 5 D-18: longest underwater run sulla curva equity cumulativa.
+    # NB: il campo si chiama "_days" ma qui restituiamo BAR UNITS (=trade
+    # chiusi). report_writer Phase 5 (Plan 05-06) applica la conversione
+    # bar→days via bars_per_day del timeframe.
+    longest_dd_bars = _longest_underwater_run(equity_curve_values)
+    longest_dd_days_value = float(longest_dd_bars)
+
     return BacktestMetrics(
         sharpe=round(sharpe, 4),
         sortino=round(sortino, 4),
         max_drawdown_pct=round(max_dd_pct, 4),
+        longest_dd_days=longest_dd_days_value,
         hit_rate=round(hit_rate, 4),
         expectancy_usd=round(expectancy, 2),
         profit_factor=profit_factor if math.isinf(profit_factor) else round(profit_factor, 4),
