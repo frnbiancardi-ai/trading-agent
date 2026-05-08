@@ -34,7 +34,9 @@ _TABLE_HEADER = (
 def _row(r: dict) -> str:
     """Formatta una riga della tabella metrics dal result dict.
 
-    Result OK: leggi metrics dataclass via getattr (robusto a MagicMock nei test).
+    Result OK: leggi metrics — accetta sia dict (post Plan 05-08 bridge:
+    slice_worker fa `asdict(BacktestMetrics)`) sia dataclass instance
+    (compat MagicMock nei test legacy).
     Result FAILED/SKIPPED: riga con marker FAILED + error message troncato.
     """
     m = r.get("metrics")
@@ -43,11 +45,19 @@ def _row(r: dict) -> str:
         err = (r.get("error") or "")[:40]
         return (f"| {r.get('symbol','-')} | {r.get('timeframe','-')} | {r.get('profile','-')} "
                 f"| FAILED ({err}) | - | - | - | - | - | - | - | - |")
+
+    def _g(obj, key, default=0.0):
+        # Dual-mode access: dict.get OR getattr — Plan 05-08 deviation Rule 3.
+        # asdict() serializza BacktestMetrics → dict; mock dataclass test resta supportato.
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+
     return (f"| {r['symbol']} | {r['timeframe']} | {r['profile']} | {r['n_trades']} "
-            f"| {getattr(m, 'sharpe', 0.0):.3f} | {getattr(m, 'sortino', 0.0):.3f} "
-            f"| {getattr(m, 'max_drawdown_pct', 0.0):.2f} | {getattr(m, 'hit_rate', 0.0):.3f} "
-            f"| {getattr(m, 'expectancy_usd', 0.0):.2f} | {getattr(m, 'profit_factor', 0.0):.2f} "
-            f"| {getattr(m, 'avg_r', 0.0):.2f} | {getattr(m, 'longest_dd_days', 0.0):.1f} |")
+            f"| {_g(m, 'sharpe'):.3f} | {_g(m, 'sortino'):.3f} "
+            f"| {_g(m, 'max_drawdown_pct'):.2f} | {_g(m, 'hit_rate'):.3f} "
+            f"| {_g(m, 'expectancy_usd'):.2f} | {_g(m, 'profit_factor'):.2f} "
+            f"| {_g(m, 'avg_r'):.2f} | {_g(m, 'longest_dd_days'):.1f} |")
 
 
 def _per_slice_section(r: dict) -> str:
