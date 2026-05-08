@@ -198,3 +198,19 @@ def test_no_future_leakage_pivots(eurusd_h1_500, idx):
     assert partial.s3[idx] == full.s3[idx]
     assert partial.camarilla["h1"][idx] == full.camarilla["h1"][idx]
     assert partial.camarilla["l4"][idx] == full.camarilla["l4"][idx]
+
+
+@pytest.mark.parametrize("idx", [50, 100, 250, 400, 499])
+def test_no_future_leakage_vwap_intraday(eurusd_h1_500, idx):
+    """VWAP intraday(prefix)[i] == (full)[i] su vwap/cumulative_pv/cumulative_v. INDIC-07.
+
+    Reset session NY-17 è funzione locale dei timestamp delle bar, quindi il
+    cumulativo di una sessione dipende solo dalle bar precedenti nella stessa
+    sessione — leakage-free per costruzione."""
+    from indicators.volume import vwap_intraday
+    bars = eurusd_h1_500
+    full = vwap_intraday(bars)
+    partial = vwap_intraday(bars[: idx + 1])
+    assert partial.vwap[idx] == full.vwap[idx], f"future leakage vwap @ i={idx}"
+    assert partial.cumulative_pv[idx] == full.cumulative_pv[idx]
+    assert partial.cumulative_v[idx] == full.cumulative_v[idx]
