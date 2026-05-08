@@ -18,7 +18,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
 | 2 | Indicators Library | ✓ complete | 9/9 | 100% |
 | 3 | Patterns Catalog | ✓ complete | 4/4 | 100% |
-| 4 | Strategy Refactor | ◐ in-progress | 1/8 | 13% |
+| 4 | Strategy Refactor | ◐ in-progress | 2/8 | 25% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
 | 6 | MCP Tools (part 1) | ○ pending | 0/0 | 0% |
 | 7 | ML Classifier | ○ pending | 0/0 | 0% |
@@ -33,7 +33,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 ## Active Work
 
-Phase 4 — Strategy Refactor: ◐ Wave 0 COMPLETE 2026-05-08 (1/8 plans). 04-01-PLAN: skeleton + regression baseline + config + RiskProfile alias. 5 task atomici (8324d5f, b8237c1, c545826, e1a87a6, 0bfd18c). 21 file creati, 2 modificati. `strategy/` package con 12 moduli stub (context + proposal frozen dataclass; confluence, risk_utils, 4 setups, 2 adapters Wave-pending); legacy renamed `strategy.py → strategy_legacy.py` con re-export selettivo da `strategy/__init__.py` (IntradayStrategy, StrategyEnvironment, _last_valid, _pip_size, _pip_value_amount, 3 estimate_*). Backward-compat verificata: full suite 402 passed + 31 skipped (1 pre-esistente Mottl + 30 nuovi Wave-pending). Baseline regression `tests/fixtures/strategy_regression_baseline.json` deterministica (10 scenari, tutti `setup_type=NONE confidence=0.0` col legacy code — gate trend_strength+CLEAN+pattern molto restrittivo). `config/strategy.yaml` D-08 schema completo (5-factor + grade_map A+/A/B/C + base_confidence + 6 adjusters + bounds + 3 profile_filters). `models.RiskProfile = Literal[CONS, MOD, AGG]` aggiunto. STRAT-01..09 in-progress (full completion in Wave 1/2/3/4). 3 deviazioni auto-fix documentate (Rule 3 estese re-export, Rule 1 AccountState signature, Rule 2 stub MT5 in capture script). Branch `feature/update-pythono-pure-strategy`. Next: 04-02-PLAN Wave 1 (confluence.py + proposal.py adapters + test_strategy_purity AST gate).
+Phase 4 — Strategy Refactor: ◐ Wave 1 IN-PROGRESS (2/8 plans). 04-02-PLAN COMPLETE 2026-05-08: confluence.py 5-factor scorer + grade + confidence calibrator (STRAT-05/06 in-progress, full complete dopo Wave 4). 2 task atomici (b0f35e7 feat + 2e16fb2 test). 315 LOC source (12 funzioni: load_strategy_config con lru_cache + StrategyConfig frozen + 5 factor predicates None-safe + score_factors/grade_for/compute_confidence) + 221 LOC test (10 hand-calc no-skip via SimpleNamespace + tmp_path env-override). Full suite 412 passed + 22 skip (+10 pass, –9 skip vs Wave 0). 2 deviazioni Rule 1 inline (FP epsilon 1e-6 su spread_tighter, datetime.now(UTC) deprecation Python 3.12). Pure module verificato: zero broker/logging/print, solo yaml.safe_load cached. Adjuster math A+ +0.15→clamp 0.95, C -0.15→0.25 (no-clamp documentato in deviation §clamp_at_min). compute_confidence ritorna 0.0 (NON min_confidence) per grade='reject' — coerente baseline regression D-11.
+
+04-01-PLAN COMPLETE 2026-05-08 (1/8 plans). Skeleton + regression baseline + config + RiskProfile alias. 5 task atomici (8324d5f, b8237c1, c545826, e1a87a6, 0bfd18c). 21 file creati, 2 modificati. `strategy/` package con 12 moduli stub; legacy renamed `strategy.py → strategy_legacy.py` con re-export selettivo. Backward-compat verificata: 402 passed + 31 skipped. Baseline regression `tests/fixtures/strategy_regression_baseline.json` deterministica (10 scenari `setup_type=NONE confidence=0.0`). `config/strategy.yaml` D-08 schema completo. `models.RiskProfile = Literal[CONS, MOD, AGG]` aggiunto. 3 deviazioni Rule 1/2/3 documentate. Branch `feature/update-pythono-pure-strategy`. Next: 04-03-PLAN Wave 1 (proposal.py adapters + R:R floor + ATR cap helper).
 
 Phase 3 — Patterns Catalog: ✓ COMPLETE 2026-05-08. VERIFICATION PASSED 3/3 ROADMAP truths + 7/7 PATT-01..07 (`03-VERIFICATION.md`). 4 plani in 4 wave seriali. `PatternHit` frozen dataclass (6 campi) + `PatternConfig`/`CalibrationAnchors` + `_calibrate` knee 0.7. 9 detector + Doji emessi da `scan_patterns(bars, last_n, cfg) → list[PatternHit]`. `strategy.py` refactor end-to-end: import `load_pattern_config`, `self._pattern_cfg` init, callsite riga 230, 3 dict-access → attribute access. Suite 402 passed + 1 skipped (Mottl). `config/patterns.yaml` 10 chiavi (9 calibrati + doji geometry-only). Branch `feature/update-pythono-pure-strategy`.
 
@@ -65,4 +67,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 4 Plan 01 (Wave 0) COMPLETE (1/8 plans, skeleton + regression baseline locked, full suite 402 passed + 31 skip)*
+*Last updated: 2026-05-08 — Phase 4 Plan 02 (Wave 1 confluence) COMPLETE (2/8 plans, STRAT-05/06 in-progress; 412 passed + 22 skip; 2 task atomici b0f35e7 + 2e16fb2; 2 bug-fix Rule 1 inline)*

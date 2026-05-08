@@ -127,7 +127,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Wave 0 scaffolding: regression baseline capture (D-14), strategy/ package skeleton, types, config/strategy.yaml, RiskProfile, test stubs ✓ 2026-05-08 (5 task atomici, 21 file creati, 402 passed + 31 skip; baseline 10 scenari NONE confidence=0.0 locked; SUMMARY: `.planning/phases/04-strategy-refactor/04-01-SUMMARY.md`)
-- [ ] 04-02-PLAN.md — Wave 1: confluence.py — 5-factor scorer + grade + confidence calibrator (STRAT-05, STRAT-06)
+- [x] 04-02-PLAN.md — Wave 1: confluence.py — 5-factor scorer + grade + confidence calibrator (STRAT-05, STRAT-06) ✓ 2026-05-08 (2 task atomici b0f35e7 + 2e16fb2; 315 LOC source + 221 LOC test; 10 test pass no-skip; 412 passed + 22 skip; 2 bug-fix Rule 1 inline: FP epsilon spread + datetime.now(UTC); SUMMARY: `.planning/phases/04-strategy-refactor/04-02-SUMMARY.md`)
 - [ ] 04-03-PLAN.md — Wave 1: proposal.py adapters + R:R floor + ATR cap helper (STRAT-07)
 - [ ] 04-04-PLAN.md — Wave 1: AST purity gate test — living invariant (STRAT-08)
 - [ ] 04-05-PLAN.md — Wave 2: Setup A breakout + Setup D pullback detectors (STRAT-01, STRAT-04)
