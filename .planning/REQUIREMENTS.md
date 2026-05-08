@@ -186,15 +186,15 @@ Updated during roadmap creation.
 | PATT-05 | Phase 3 | Complete |
 | PATT-06 | Phase 3 | Complete |
 | PATT-07 | Phase 3 | Complete |
-| STRAT-01 | Phase 4 | Pending |
-| STRAT-02 | Phase 4 | Pending |
-| STRAT-03 | Phase 4 | Pending |
-| STRAT-04 | Phase 4 | Pending |
-| STRAT-05 | Phase 4 | Pending |
-| STRAT-06 | Phase 4 | Pending |
-| STRAT-07 | Phase 4 | Pending |
-| STRAT-08 | Phase 4 | Pending |
-| STRAT-09 | Phase 4 | Pending |
+| STRAT-01 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 implements) |
+| STRAT-02 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 implements) |
+| STRAT-03 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 implements) |
+| STRAT-04 | Phase 4 | In-progress (04-01 Wave 0: detector stub created; Wave 2 implements) |
+| STRAT-05 | Phase 4 | In-progress (04-01 Wave 0: confluence.py stub + config/strategy.yaml D-08; Wave 1 implements) |
+| STRAT-06 | Phase 4 | In-progress (04-01 Wave 0: base_confidence + adjusters + bounds in config; Wave 1 implements) |
+| STRAT-07 | Phase 4 | In-progress (04-01 Wave 0: ProposalDraft + profile_filters in config; Wave 1 implements) |
+| STRAT-08 | Phase 4 | In-progress (04-01 Wave 0: pure-fn skeleton + test_strategy_purity stubs; Wave 1 implements AST gate) |
+| STRAT-09 | Phase 4 | In-progress (04-01 Wave 0: adapter stubs + regression baseline JSON; Wave 3/4 wires + verifies) |
 | ML-01 | Phase 7 | Pending |
 | ML-02 | Phase 7 | Pending |
 | ML-03 | Phase 7 | Pending |
