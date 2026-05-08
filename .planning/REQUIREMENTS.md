@@ -36,14 +36,14 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 
 ### Patterns
 
-- [ ] **PATT-01**: Hammer / Inverted Hammer detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) + 6+1 test (1 near-miss inv_hammer); full Complete dopo scan_patterns rebuild 03-03 + strategy.py callsite 03-04 -->
-- [ ] **PATT-02**: Shooting Star detector
-- [ ] **PATT-03**: Bullish / Bearish Engulfing detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) + gate min_body_ratio + 4+1 test (1 near-miss partial); full Complete dopo scan_patterns rebuild 03-03 + strategy.py callsite 03-04 -->
-- [ ] **PATT-04**: Morning Star / Evening Star (3-bar) detector
-- [ ] **PATT-05**: Key Reversal Bar detector
-- [ ] **PATT-06**: Inside Bar / Pin Bar detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) PinBar 2 test; Inside Bar a carico 03-03; full Complete dopo scan_patterns rebuild + strategy.py callsite 03-04 -->
+- [ ] **PATT-01**: Hammer / Inverted Hammer detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) + 6+1 test (1 near-miss inv_hammer); 03-03 emesso come PatternHit dallo scan; full Complete dopo strategy.py callsite 03-04 -->
+- [ ] **PATT-02**: Shooting Star detector <!-- progress 2026-05-08: 03-03 is_shooting_star (matched, raw_score) + 1 positivo + 1 near-miss; emesso come PatternHit nello scan; full Complete dopo strategy.py callsite 03-04 -->
+- [ ] **PATT-03**: Bullish / Bearish Engulfing detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) + gate min_body_ratio + 4+1 test (1 near-miss partial); 03-03 emesso come PatternHit (bull/bear) dallo scan; full Complete dopo strategy.py callsite 03-04 -->
+- [ ] **PATT-04**: Morning Star / Evening Star (3-bar) detector <!-- progress 2026-05-08: 03-03 is_morning_star + is_evening_star (b1,b2,b3 anchor su b3, no look-ahead) + 2 positivi + 2 near-miss; emessi come PatternHit nello scan span_bars=3; full Complete dopo strategy.py callsite 03-04 -->
+- [ ] **PATT-05**: Key Reversal Bar detector <!-- progress 2026-05-08: 03-03 is_key_reversal (bullish/bearish) + 1 positivo bullish + 1 positivo bearish + 1 near-miss; emesso come PatternHit nello scan span_bars=2; full Complete dopo strategy.py callsite 03-04 -->
+- [ ] **PATT-06**: Inside Bar / Pin Bar detector <!-- progress 2026-05-08: 03-02 firma (matched, raw_score) PinBar 2 test; 03-03 is_inside_bar + 1 positivo + 1 near-miss + Inside+Pin coexist test (Pitfall 4); emessi come PatternHit nello scan span_bars=2 direction='neutral' per inside_bar; full Complete dopo strategy.py callsite 03-04 -->
 
-- [ ] **PATT-07**: Pattern catalog returns confidence + structural reference points (bar index, extreme prices) <!-- progress 2026-05-08: foundation in 03-01 (PatternHit frozen + load_pattern_config + _calibrate + config/patterns.yaml); full Complete dopo refactor detectors in 03-04 -->
+- [ ] **PATT-07**: Pattern catalog returns confidence + structural reference points (bar index, extreme prices) <!-- progress 2026-05-08: 03-01 foundation (PatternHit frozen + load_pattern_config + _calibrate + config/patterns.yaml); 03-03 scan_patterns ricostruito a list[PatternHit] su tutti 9 pattern + Doji con extreme_price corretto (swing low bullish / swing high bearish), span_bars 1/2/3, confidence calibrata in [0,1], 4 test scan_patterns coverage; full Complete dopo strategy.py callsite 03-04 -->
 
 
 ### Strategy Refactor

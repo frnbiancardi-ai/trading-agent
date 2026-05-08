@@ -17,7 +17,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
 | 2 | Indicators Library | ✓ complete | 9/9 | 100% |
-| 3 | Patterns Catalog | ◐ in-progress | 2/4 | 50% |
+| 3 | Patterns Catalog | ◐ in-progress | 3/4 | 75% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
 | 6 | MCP Tools (part 1) | ○ pending | 0/0 | 0% |
@@ -33,7 +33,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 ## Active Work
 
-Phase 3 — Patterns Catalog: 03-02-PLAN ✓ COMPLETE 2026-05-08 (commits `93f86e7`, `847a0fb`). PATT-01/03/06 (parte): `is_hammer`, `is_inverted_hammer`, `is_engulfing`, `is_pin_bar` refattorizzati a firma `tuple[bool, float]` con sub-cfg dataclass injection (zero magic numbers — soglie da `config/patterns.yaml` via `HammerCfg`/`InvertedHammerCfg`/`EngulfingCfg`/`PinBarCfg`). raw_score per pattern: hammer=lower/body, inv_hammer=upper/body, engulfing=body_curr/body_prev, pin_bar=dominant_wick/range. `is_doji` invariato (bool, non calibrato). Geometry rules originali preservate verbatim. `is_engulfing` aggiunge gate `min_body_ratio` (esclude doji-like). `scan_patterns` ridotto a stub `[]` (Wave 3 lo ricostruisce a `list[PatternHit]`). Test 14 passed + 2 skipped (scan_patterns skip-marked riattivati in 03-03), 2 near-miss aggiunti (`test_is_inverted_hammer_rejects_short_upper`, `test_is_engulfing_partial_negative`). Suite globale 385 passed + 3 skipped (delta atteso: +2 skip volontari). 03-01 ✓ (commits `3c465c1`, `4b1a2fa`, `0768112`). PATT-07 in progress (full Complete dopo 03-04). Next: `/gsd-execute-phase 3` continua con 03-03-PLAN.
+Phase 3 — Patterns Catalog: 03-03-PLAN ✓ COMPLETE 2026-05-08 (commits `8753b12`, `9fbe21c`, `dc7676a`). Wave 3 chiusa: 5 nuovi detector + scan_patterns ricostruito a `list[PatternHit]`. (1) `is_shooting_star(bar, cfg)` raw=upper/body. (2) `is_morning_star(b1,b2,b3,cfg)` e (3) `is_evening_star(b1,b2,b3,cfg)` 3-bar Murphy ch.10 con anchor=b3, NO look-ahead, raw=penetrazione close oltre midpoint(b1) normalizzata su body_b1. (4) `is_key_reversal(prev,curr,direction,cfg)` outside reversal 2-bar bullish/bearish, raw=penetrazione close oltre midpoint(prev) su range_prev. (5) `is_inside_bar(prev,curr,cfg)` direction='neutral', raw=1.0-range_curr/range_prev. Tutti tuple-return + guard rng<=0/body<=0 (T-3-07). `scan_patterns(bars, last_n, cfg)` thin orchestrator: itera ultime last_n barre, emette PatternHit con extreme_price = swing low bullish / swing high bearish lungo span (1/2/3 bar), bar_index offset negativo, confidence via `_calibrate(raw, cfg.X.calibration)`, Doji confidence=1.0 hardcoded (CONTEXT — non calibrato), Inside Bar+Pin Bar coexist 2 hit distinti (Pitfall 4). 15 nuovi test (5 positivi + 5 near-miss + 1 bearish key_reversal + 4 scan_patterns coverage) + 2 skip Wave 2 rimossi → 31 test attivi in test_patterns.py (era 14+2 skip), 0 skip residui. Suite globale 402 passed + 1 skipped (Mottl optional). 03-02 ✓ (commits `93f86e7`, `847a0fb`), 03-01 ✓ (commits `3c465c1`, `4b1a2fa`, `0768112`). PATT-01..07 implementati end-to-end nella patterns layer; full Complete dopo 03-04 (strategy.py callsite refactor dict→attribute). Next: `/gsd-execute-phase 3` continua con 03-04-PLAN.
 
 Phase 2 — Indicators Library: ✓ COMPLETE 2026-05-08. VERIFICATION PASSED 4/4 ROADMAP truths + 14/14 INDIC requirements (`02-VERIFICATION.md`). 9 plani eseguiti in 4 wave (W0=01, W1=02-04, W2=05-07, W3=08-09) seriali per overlap intra-wave su `__init__.py` + `test_indicators_purity.py`. Suite 374 passed + 1 skipped (Mottl optional). `compute_all` 4-key dict bit-for-bit immutato (4 callsite invariati). `compute_all_extended` 37-key snapshot disponibile per Phase 1 backtest + Phase 4 strategy refactor. Known item NON-bloccante: Boomer A2 (CONTEXT.md verbatim) ≠ skill `forex-trader-pro`/`price_action.md:43` — reconciliation deferred a Phase 4. Branch `feature/update-pythono-pure-strategy`.
 
@@ -63,4 +63,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 3 plan 02 ✓ COMPLETE (4 detector tuple-return, 2/4 plans, 50%)*
+*Last updated: 2026-05-08 — Phase 3 plan 03 ✓ COMPLETE (5 nuovi detector + scan_patterns rebuild, 3/4 plans, 75%)*
