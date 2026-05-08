@@ -11,7 +11,7 @@
 | 1 | Backtest Engine | Event-driven replay of Italian-CSV historical bars with realistic costs and walk-forward harness | BACK-01..06 | 6 |
 | 2 | Indicators Library | Expand indicator coverage to support all 4 setups + ML features | INDIC-01..14 | 4 |
 | 3 | Patterns Catalog | Full candlestick pattern detection library (4/4 plans, strategy.py callsite refactor done — pending verify) | PATT-01..07 | 3 |
-| 4 | Strategy Refactor | Setup A/B/C/D detectors as pure functions, 5-factor confluence, shared by live + backtest | STRAT-01..09 | 5 |
+| 4 | Strategy Refactor | Setup A/B/C/D detectors as pure functions, 5-factor confluence, shared by live + backtest (6/8 plans) | STRAT-01..09 | 5 |
 | 5 | Baseline Backtest | Run strategy-only backtest on 23.5y × 3 pairs × 3 TFs, produce metrics + ML training data | BACK-07, INT-01 | 4 |
 | 6 | MCP Tools (part 1) | Backtest, position-management, multi-TF, session, correlation, pattern-catalog tools | MCP-01..03, MCP-09, MCP-11..12, MCP-14..17, MCP-R1..R3 | 4 |
 | 7 | ML Classifier | LightGBM trade-quality classifier with walk-forward training and calibration | ML-01..06, ML-10 | 5 |
@@ -131,7 +131,7 @@ Plans:
 - [x] 04-03-PLAN.md — Wave 1: proposal.py adapters + R:R floor + ATR cap helper (STRAT-07) ✓ 2026-05-08 (3 task atomici cc2ef77 RED + 17c0504 GREEN + d7e10bf test; 217 LOC source + 239 LOC test; 25 test pass no-skip; 437 passed + 16 skip; 1 bug-fix Rule 1 inline: FP epsilon 1e-9 su rr>=min_rr boundary; SUMMARY: `.planning/phases/04-strategy-refactor/04-03-SUMMARY.md`)
 - [x] 04-04-PLAN.md — Wave 1: AST purity gate test — living invariant (STRAT-08) ✓ 2026-05-08 (1 task atomico 0260126; 232 LOC test; 5 test pass 0.16s; 442 passed + 13 skip; negative-test verificato; gate copre import+logging+print/open con eccezione yaml loader confluence; adapters/ esclusi by design; SUMMARY: `.planning/phases/04-strategy-refactor/04-04-SUMMARY.md`)
 - [x] 04-05-PLAN.md — Wave 2: Setup A breakout + Setup D pullback detectors (STRAT-01, STRAT-04) ✓ 2026-05-08 (3 task atomici 69ad6cd feat A + a963130 feat D + b52aff0 test; 208 LOC a_breakout + 298 LOC d_pullback + 235 LOC test; 5 test no-skip A+D; 447 passed + 8 skip; pure modules verificati; confidence READY = 0.90 A+ con spread_tighter; 0 deviazioni; SUMMARY: `.planning/phases/04-strategy-refactor/04-05-SUMMARY.md`)
-- [ ] 04-06-PLAN.md — Wave 2: Setup B reversal (D-07 counter-trend gate) + Setup C compression (STRAT-02, STRAT-03)
+- [x] 04-06-PLAN.md — Wave 2: Setup B reversal (D-07 counter-trend gate) + Setup C compression (STRAT-02, STRAT-03) ✓ 2026-05-08 (3 task atomici d1d6d56 feat B + e021dce feat C + 1f94a38 test; 300 LOC b_reversal + 333 LOC c_compression + 211 LOC test delta; 4 test no-skip B/C; 451 passed + 4 skip; pure modules verificati; counter-trend gate D-07 attivo; Boomer A2 reconciliation final-locked CONTEXT.md verbatim; 1 deviation Rule 1 test fixture math; SUMMARY: `.planning/phases/04-strategy-refactor/04-06-SUMMARY.md`)
 - [ ] 04-07-PLAN.md — Wave 3: evaluate_proposal_for_bar + IntradayStrategy shim + adapters live/backtest + risk_utils (STRAT-08, STRAT-09)
 - [ ] 04-08-PLAN.md — Wave 4 PHASE GATE: regression fixture replay + reconciliation checkpoint + strategy_legacy.py cleanup (STRAT-09, SC-3/4/5)
 
