@@ -141,26 +141,55 @@ def _check_indicators() -> None:
         _fail(f"import indicators.compute_all_extended: {exc}")
         return
     _ok(f"indicators.compute_all_extended callable={callable(compute_all_extended)}")
-    # Shape probe: chiamata con bars sintetici minimi → output deve essere dict-of-lists
+    # Shape probe: chiamata con bars sintetici minimi -> output deve essere dict-of-lists
     # OPPURE oggetto con .slice_until(i). Branch documentato.
     try:
-        from backtest.loader import Bar  # type: ignore
-        bars = [Bar(time=i*900, open=1.0, high=1.001, low=0.999, close=1.0,
-                    tick_volume=10, spread=2, real_volume=0) for i in range(50)]
+        # Plan 05-08 deferred recalibration: indicators.compute_all_extended
+        # accetta list[dict] (Phase 2 API reale, vedi indicators/aggregate.py:49),
+        # NON list[Bar]. slice_worker (Plan 05-06a) converte Bar->dict prima
+        # di chiamare compute_all_extended. Il probe usa la stessa shape.
+        bars = [
+            {
+                "time": i * 900,
+                "open": 1.0 + i * 1e-5,
+                "high": 1.001 + i * 1e-5,
+                "low": 0.999 + i * 1e-5,
+                "close": 1.0 + i * 1e-5,
+                "volume": 10,
+            }
+            for i in range(50)
+        ]
         out = compute_all_extended(bars)
+        # Plan 05-05 deviation #1: Phase 2 API corrente è dict-of-scalars
+        # (snapshot finale calcolato sull'intera sequenza). Test D-21
+        # (test_indicator_full_slice_equals_recompute) usa dual-branch runtime
+        # detection per supportare sia scalar (corrente) che list (forward-compat
+        # Phase 2 D-04). Il preflight accetta entrambe le shape.
         if hasattr(out, "slice_until"):
-            _ok("compute_all_extended output ha slice_until() → engine usa branch slice_until")
+            _ok("compute_all_extended output ha slice_until() -> branch slice_until")
         elif isinstance(out, dict):
-            # Verifica almeno una chiave punta a list (dict-of-lists)
             has_list = any(isinstance(v, list) for v in out.values())
             if has_list:
-                _ok("compute_all_extended output dict-of-lists → engine usa branch slicing dict")
+                _ok("compute_all_extended output dict-of-lists -> branch slicing dict")
             else:
-                _fail("compute_all_extended output dict ma nessuna chiave list — "
-                      "Phase 2 contract incerto, slice_worker engine adapter da rivedere")
+                # dict-of-scalars: Phase 2 corrente. Sanity check minimo:
+                # almeno qualche chiave numerica presente (escluso flag empty)
+                has_numeric = any(
+                    isinstance(v, (int, float)) for v in out.values()
+                )
+                if has_numeric:
+                    _ok(
+                        "compute_all_extended output dict-of-scalars -> "
+                        "branch scalar (Phase 2 corrente, D-21 dual-branch)"
+                    )
+                else:
+                    _fail(
+                        "compute_all_extended output dict-of-scalars senza "
+                        "chiavi numeriche — Phase 2 API rotta o input vuoto"
+                    )
         else:
-            _fail(f"compute_all_extended output type {type(out).__name__} non riconosciuto "
-                  "(atteso dict-of-lists OR oggetto con slice_until())")
+            _fail(f"compute_all_extended output type {type(out).__name__} "
+                  "non riconosciuto (atteso dict OR oggetto con slice_until())")
     except Exception as exc:  # noqa: BLE001
         _fail(f"compute_all_extended shape probe: {exc}")
 
