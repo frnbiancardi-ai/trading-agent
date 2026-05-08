@@ -16,7 +16,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | # | Phase | Status | Plans | Progress |
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
-| 2 | Indicators Library | ◐ in-progress | 2/9 | 22% |
+| 2 | Indicators Library | ◐ in-progress | 3/9 | 33% |
 | 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
@@ -39,6 +39,8 @@ Phase 6 — MCP Tools (part 1): CONTEXT.md captured (4 areas, 11 questions, 12 d
 
 Phase 5 — Baseline Backtest: 9 PLAN.md scritti (W0..W4), checker PASS iter 2/3, 6 blocker risolti (parquet directory, SC#3 hard/soft, warmup adattivo, D-21 real test, engine slice_until dual-branch, preflight contract probe). Pronto per `/gsd-execute-phase 5` — bloccato in attesa che Phase 1-4 completino esecuzione (preflight gate in 05-08).
 
+Phase 2 — Indicators Library: Wave 0 (plan 01) + Wave 1 plan 02 + Wave 1 plan 03 COMPLETE 2026-05-08. Plan 03 in ~8.5min: `adx` (ADX/DMI 14 Wilder/RMA), `macd` (12/26/9 EMA-of-EMA), `stochastic` (14/3/3) implementati con dataclass-of-lists (ADXResult, MACDResult, StochasticResult), parity 1e-6 vs pandas-ta su 500 bar EURUSD H1 (>100 confronti per serie), leakage-free a 5 indici, runtime purity preservata. 2 deviazioni Rule 1: (1) ADX riscritto rispetto al RESEARCH Example 1 — pandas-ta usa pta.rma (ewm senza SMA-seed) e atr(prenan+presma), NON `_wilder_smooth` con SMA-seed e mask 2*period; aggiunti due helper privati `_rma_first_valid_seed`, `_atr_pta_compat`. (2) Test MACD signal-lag su parabola (i*i) invece di lineare (range): su lineare line e signal convergono per costruzione. Suite 275/275 verde (252 → 275, +23). INDIC-02 + INDIC-03 + INDIC-04 completati. Commits Wave 1 plan 03: 8c0c35a (feat), 5ae3e73 (test+bug-fix). Wave 1 plan 04 (Hurst) e Wave 2 sbloccati. Branch: `feature/update-pythono-pure-strategy`.
+
 Phase 2 — Indicators Library: Wave 0 (plan 01) + Wave 1 plan 02 COMPLETE 2026-05-08. Plan 02 in ~5min: `bollinger_bands` (BB 20/2σ + BBW + squeeze percentile + squeeze TTM Carter) e `keltner` (EMA ± scalar·EMA(TR)) implementati con dataclass-of-lists (BollingerResult, KeltnerResult), parity 1e-6 vs pandas-ta su 500 bar EURUSD H1, leakage-free a 5 indici, runtime purity preservata. 3 deviazioni Rule 1 (ddof=1 per parity bbands, EMA-TR per parity kc, off-by-one nel test sanity keltner). Suite 252/252 verde (236 → 252, +16). INDIC-01 + INDIC-06 completati. Commits Wave 1 plan 02: 466fe97 (feat), e10e6d5 (test+bug-fix). Wave 1 plan 03 (ADX/MACD/Stoch) e plan 04 (Hurst) sbloccati. Branch: `feature/update-pythono-pure-strategy`.
 
 Phase 1 — Backtest Engine: COMPLETE 2026-05-07. All 8 plans + VERIFICATION.md PASSED (6/6 truths). Engine event-driven, costs.yaml, walk-forward, metrics, smoke 12-month <60s (6.78s actual). Legacy RSI/SMA grid archived.
@@ -59,4 +61,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 2 plan 02 (Wave 1: Bollinger + Keltner) complete*
+*Last updated: 2026-05-08 — Phase 2 plan 03 (Wave 1: ADX/MACD/Stochastic) complete*
