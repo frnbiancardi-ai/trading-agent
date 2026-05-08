@@ -449,17 +449,153 @@ def scan_patterns(
     bars: list[dict],
     last_n: int = 5,
     cfg: "PatternConfig | None" = None,
-) -> list:
-    """STUB Wave 2 — scan_patterns completo è ricostruito in Wave 3 (piano 03).
+) -> list[PatternHit]:
+    """Scansiona ultime `last_n` barre e restituisce PatternHit calibrati.
 
-    Questa versione provvisoria preserva il contratto chiamabile (firma compatibile
-    con strategy.py:229) ma restituisce solo doji hits per evitare di chiamare
-    detector dalla firma cambiata. La Wave 3 ricostruisce la lista completa
-    PatternHit dal cfg.
+    cfg=None -> carica `config/patterns.yaml` di default. Tutti i detector
+    sono pure functions; questa funzione è un thin orchestrator.
     """
     if not bars:
         return []
-    return []
+    if cfg is None:
+        cfg = load_pattern_config()
+
+    n = len(bars)
+    start = max(0, n - last_n)
+    out: list[PatternHit] = []
+
+    for i in range(start, n):
+        bar = bars[i]
+        rel = i - n  # -1 = ultima barra
+
+        # -- 1-bar patterns --------------------------------------------------
+        ok, raw = is_hammer(bar, cfg.hammer)
+        if ok:
+            out.append(PatternHit(
+                name="hammer", bar_index=rel, span_bars=1,
+                extreme_price=bar["low"],
+                confidence=_calibrate(raw, cfg.hammer.calibration),
+                direction="bullish",
+            ))
+
+        ok, raw = is_inverted_hammer(bar, cfg.inverted_hammer)
+        if ok:
+            out.append(PatternHit(
+                name="inverted_hammer", bar_index=rel, span_bars=1,
+                extreme_price=bar["low"],
+                confidence=_calibrate(raw, cfg.inverted_hammer.calibration),
+                direction="bullish",
+            ))
+
+        ok, raw = is_shooting_star(bar, cfg.shooting_star)
+        if ok:
+            out.append(PatternHit(
+                name="shooting_star", bar_index=rel, span_bars=1,
+                extreme_price=bar["high"],
+                confidence=_calibrate(raw, cfg.shooting_star.calibration),
+                direction="bearish",
+            ))
+
+        if is_doji(bar, tolerance=cfg.doji.body_tolerance):
+            mid = (bar["high"] + bar["low"]) / 2.0
+            out.append(PatternHit(
+                name="doji", bar_index=rel, span_bars=1,
+                extreme_price=mid,
+                confidence=1.0,  # Doji non calibrato (CONTEXT)
+                direction="neutral",
+            ))
+
+        ok, raw = is_pin_bar(bar, "bullish", cfg.pin_bar)
+        if ok:
+            out.append(PatternHit(
+                name="pin_bar", bar_index=rel, span_bars=1,
+                extreme_price=bar["low"],
+                confidence=_calibrate(raw, cfg.pin_bar.calibration),
+                direction="bullish",
+            ))
+
+        ok, raw = is_pin_bar(bar, "bearish", cfg.pin_bar)
+        if ok:
+            out.append(PatternHit(
+                name="pin_bar", bar_index=rel, span_bars=1,
+                extreme_price=bar["high"],
+                confidence=_calibrate(raw, cfg.pin_bar.calibration),
+                direction="bearish",
+            ))
+
+        # -- 2-bar patterns --------------------------------------------------
+        if i >= 1:
+            prev = bars[i - 1]
+
+            ok, raw = is_engulfing(prev, bar, "bullish", cfg.engulfing)
+            if ok:
+                out.append(PatternHit(
+                    name="engulfing", bar_index=rel, span_bars=2,
+                    extreme_price=min(prev["low"], bar["low"]),
+                    confidence=_calibrate(raw, cfg.engulfing.calibration),
+                    direction="bullish",
+                ))
+
+            ok, raw = is_engulfing(prev, bar, "bearish", cfg.engulfing)
+            if ok:
+                out.append(PatternHit(
+                    name="engulfing", bar_index=rel, span_bars=2,
+                    extreme_price=max(prev["high"], bar["high"]),
+                    confidence=_calibrate(raw, cfg.engulfing.calibration),
+                    direction="bearish",
+                ))
+
+            ok, raw = is_key_reversal(prev, bar, "bullish", cfg.key_reversal)
+            if ok:
+                out.append(PatternHit(
+                    name="key_reversal", bar_index=rel, span_bars=2,
+                    extreme_price=min(prev["low"], bar["low"]),
+                    confidence=_calibrate(raw, cfg.key_reversal.calibration),
+                    direction="bullish",
+                ))
+
+            ok, raw = is_key_reversal(prev, bar, "bearish", cfg.key_reversal)
+            if ok:
+                out.append(PatternHit(
+                    name="key_reversal", bar_index=rel, span_bars=2,
+                    extreme_price=max(prev["high"], bar["high"]),
+                    confidence=_calibrate(raw, cfg.key_reversal.calibration),
+                    direction="bearish",
+                ))
+
+            ok, raw = is_inside_bar(prev, bar, cfg.inside_bar)
+            if ok:
+                mid = (bar["high"] + bar["low"]) / 2.0
+                out.append(PatternHit(
+                    name="inside_bar", bar_index=rel, span_bars=2,
+                    extreme_price=mid,
+                    confidence=_calibrate(raw, cfg.inside_bar.calibration),
+                    direction="neutral",
+                ))
+
+        # -- 3-bar patterns --------------------------------------------------
+        if i >= 2:
+            b1, b2, b3 = bars[i - 2], bars[i - 1], bar
+
+            ok, raw = is_morning_star(b1, b2, b3, cfg.morning_star)
+            if ok:
+                out.append(PatternHit(
+                    name="morning_star", bar_index=rel, span_bars=3,
+                    extreme_price=min(b1["low"], b2["low"], b3["low"]),
+                    confidence=_calibrate(raw, cfg.morning_star.calibration),
+                    direction="bullish",
+                ))
+
+            ok, raw = is_evening_star(b1, b2, b3, cfg.evening_star)
+            if ok:
+                out.append(PatternHit(
+                    name="evening_star", bar_index=rel, span_bars=3,
+                    extreme_price=max(b1["high"], b2["high"], b3["high"]),
+                    confidence=_calibrate(raw, cfg.evening_star.calibration),
+                    direction="bearish",
+                ))
+
+    return out
 
 
 def _calibrate(raw: float, anchors: CalibrationAnchors) -> float:
