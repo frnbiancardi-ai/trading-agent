@@ -7,7 +7,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 **Core value:** Every trade pre-filtered by a calibrated ML classifier whose probabilities match realized hit rate, trained on the agent's own decisions, improving with every cycle.
 
 **Current milestone:** v2-ml-backtest
-**Current focus:** Phase 5 — Baseline Backtest (Phase 4 ✓ COMPLETE 2026-05-08)
+**Current focus:** Phase 6 — MCP Tools (part 1) (Phase 5 ✓ COMPLETE 2026-05-08 con Rule 4 deviation accepted)
 
 ---
 
@@ -19,7 +19,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 2 | Indicators Library | ✓ complete | 9/9 | 100% |
 | 3 | Patterns Catalog | ✓ complete | 4/4 | 100% |
 | 4 | Strategy Refactor | ✓ complete | 8/8 | 100% |
-| 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
+| 5 | Baseline Backtest | ✓ complete | 9/9 | 100% |
 | 6 | MCP Tools (part 1) | ○ pending | 0/0 | 0% |
 | 7 | ML Classifier | ○ pending | 0/0 | 0% |
 | 8 | MCP Tools (part 2) | ○ pending | 0/0 | 0% |
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 10 | Intermarket + News | ○ pending | 0/0 | 0% |
 | 11 | Paper Deploy Gate | ○ pending | 0/0 | 0% |
 
-**Overall progress:** 4/11 phases complete (36%)
+**Overall progress:** 5/11 phases complete (45%)
 
 ---
 
@@ -58,7 +58,7 @@ Phase 7 — ML Classifier: CONTEXT.md captured (4 aree, 15 questions, 20 decisio
 
 Phase 6 — MCP Tools (part 1): CONTEXT.md captured (4 areas, 11 questions, 12 decisioni dirette). Async backtest queue + cancel, in-process trail daemon (position_trails), additive backward-compat MCP-R1/R2/R3, BarSource adapter (live default + as_of_ts opt), replay_decision union lookup, mcp/ package split. Tool surface 25 totali (11 esistenti + 13 REQUIREMENTS + 1 derivato cancel_backtest). Resume: `.planning/phases/06-mcp-tools-part-1/06-CONTEXT.md`. Next: `/gsd-plan-phase 6`.
 
-Phase 5 — Baseline Backtest: 9 PLAN.md scritti (W0..W4), checker PASS iter 2/3, 6 blocker risolti (parquet directory, SC#3 hard/soft, warmup adattivo, D-21 real test, engine slice_until dual-branch, preflight contract probe). Pronto per `/gsd-execute-phase 5` — bloccato in attesa che Phase 1-4 completino esecuzione (preflight gate in 05-08).
+Phase 5 — Baseline Backtest: ✓ COMPLETE 2026-05-08. 9/9 plans eseguiti in 5 wave. SMOKE E2E 10y window (Option B scope reduction): 27/27 run ok, 1076 trade SQLite ledger (>= 1000 hard gate SC#3 BACK-07 PASS), 27 PNG equity curves, parquet `baseline_decisions/part-0.parquet` finalizzato, report MD `baseline-2026-05-08.md` con metrics reali (post Bug #5 fix `report_writer._g()` dual-mode dict/dataclass). Wall-clock 11922s (3h18m) viola SC#1 <30min — Rule 4 deviation user-accepted (engine Phase 1 O(N²) bottleneck, defer perf-opt a futuro plan 01-09 vectorization). 5 deviation totali documentate: 3 Rule 3 architectural (D-21 contract gap engine.run() output → slice_worker bridge: decisions_rows/drafts_rows/metrics, equity_curve format mismatch list[float] → DataFrame, csv layout data/historical/), 1 Rule 2 (load_bars date filter wiring per scope 10y), 1 Rule 1 auto-fix (Bug #5 dict access). drafts_rows = [] (DEFERRED — engine non cattura FORMING/NONE; futuro plan per Phase 7 failure analysis). Hit rate globale 27.7% (298 win/778 loss), PnL -$8596 — strategia baseline negative-edge come atteso (input dataset per Phase 7 ML, NON risultato finale). Distribuzione: USDJPY 775 trade > EURUSD 168 > GBPUSD 133; M15 841 > M30 170 > H1 65; AGGRESSIVE 540 > MODERATE 448 > CONSERVATIVE 88. Phase 7 ML readiness: dataset parquet pronto (1076 row, 19+ colonne); drafts dataset deferred. Branch `feature/update-pythono-pure-strategy`. SUMMARY: `.planning/phases/05-baseline-backtest/05-08-SUMMARY.md`. Next: `/gsd-plan-phase 6` (MCP Tools part 1).
 
 
 Phase 1 — Backtest Engine: COMPLETE 2026-05-07. All 8 plans + VERIFICATION.md PASSED (6/6 truths). Engine event-driven, costs.yaml, walk-forward, metrics, smoke 12-month <60s (6.78s actual). Legacy RSI/SMA grid archived.
@@ -79,4 +79,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 4 Plan 08 (Wave 4 regression gate STRAT-09) COMPLETE (8/8 plans, 100%; option-a applied: re-baseline fixture + archive legacy; 5 task commits 5db3049+21abb91+dd3e45d+575b484+a7a252a; 11/11 regression PASS; 75/75 strategy suite PASS; SC-1..5 verified; Phase 4 ✓ CLOSED; next: Phase 5 baseline backtest)*
+*Last updated: 2026-05-08 — Phase 5 ✓ CLOSED (9/9 plans, 100%; smoke E2E 10y 27/27 run, 1076 trade > 1000 hard gate SC#3, 27 PNG equity, parquet finalizzato; 5 deviation incluso Rule 4 user-accepted wall-clock 3h18m vs 30min; engine perf-opt defer plan 01-09; Phase 7 ML dataset ready; next: Phase 6 MCP Tools part 1)*

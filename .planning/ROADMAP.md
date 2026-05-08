@@ -154,14 +154,15 @@ Plans:
 **Plans:** 8 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Wave 0 scaffolding: pyarrow+matplotlib install, baseline.yaml, ledger schema migration (D-15, D-17)
-- [ ] 05-02-PLAN.md — Wave 0 test scaffolding: conftest.py + 7 stub test_baseline_*.py (Nyquist 23 test)
-- [ ] 05-03-PLAN.md — Wave 1: determinism.py (sha256 seed) + wal_setup.py (PRAGMA WAL + retry-with-jitter) (D-16, D-17)
-- [ ] 05-04-PLAN.md — Wave 1: dataset_writer.py (parquet shard + finalize) + plot_writer.py (matplotlib Agg) (D-01/D-02/D-03/D-19/D-20)
-- [ ] 05-05-PLAN.md — Wave 2: backtest/engine.py extension (4 kwargs Phase 5 + timeout enforcement) + metrics.longest_dd_days (D-05, D-15, D-18)
-- [ ] 05-06-PLAN.md — Wave 2: slice_worker.py (run_slice_3profiles + idempotency D-14) + report_writer.py (D-18 schema)
-- [ ] 05-07-PLAN.md — Wave 3: runner.py (ProcessPoolExecutor + BaselineConfig) + scripts/run_baseline_backtest.py CLI + profile_baseline_slice.py (D-15)
-- [ ] 05-08-PLAN.md — Wave 4 PHASE GATE: pre-flight Phase 1-4 + smoke run end-to-end + checkpoint qualitative + git commit deliverable (BACK-07 SC#1, INT-01)
+- [x] 05-01-PLAN.md — Wave 0 scaffolding ✓ 2026-05-08 (5 commit; pyarrow+matplotlib + baseline.yaml + warmup.py + ledger schema migration + preflight script)
+- [x] 05-02-PLAN.md — Wave 0 test scaffolding ✓ 2026-05-08 (3 commit; 30 test stub + 5 active warmup; Nyquist gate verde)
+- [x] 05-03-PLAN.md — Wave 1 determinism + WAL ✓ 2026-05-08 (3 commit; 9/9 test pass cross-process determinism + multi-writer concurrency)
+- [x] 05-04-PLAN.md — Wave 1 parquet + plot writers ✓ 2026-05-08 (3 commit; 9/9 test pass; Agg backend headless)
+- [x] 05-05-PLAN.md — Wave 2 engine extension + metrics ✓ 2026-05-08 (4 commit; 4 kwargs Phase 5 + virtual_positions + force_close + longest_dd_days; 4/5 preflight gate chiusi)
+- [x] 05-06a-PLAN.md — Wave 2 slice_worker ✓ 2026-05-08 (4 commit; D-14/D-15/D-07; WARNING 7/8/12 chiusi)
+- [x] 05-06b-PLAN.md — Wave 2 report_writer ✓ 2026-05-08 (3 commit; D-18 schema; INT-01 + WARNING 12)
+- [x] 05-07-PLAN.md — Wave 3 runner + CLI ✓ 2026-05-08 (4 commit; ProcessPoolExecutor + BaselineConfig + profiler; ThreadPool injection per testability)
+- [x] 05-08-PLAN.md — Wave 4 PHASE GATE smoke E2E ✓ 2026-05-08 (5 commit; 27/27 run, 1076 trade > 1000 hard gate SC#3; SC#1 wall-clock 11922s vs 1800s = Rule 4 deviation user-accepted, defer perf-opt plan 01-09; 5 deviation totali; Phase 7 ML dataset ready)
 
 ---
 
