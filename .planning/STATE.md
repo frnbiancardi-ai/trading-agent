@@ -18,7 +18,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
 | 2 | Indicators Library | ✓ complete | 9/9 | 100% |
 | 3 | Patterns Catalog | ✓ complete | 4/4 | 100% |
-| 4 | Strategy Refactor | ◐ in-progress | 2/8 | 25% |
+| 4 | Strategy Refactor | ◐ in-progress | 3/8 | 38% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
 | 6 | MCP Tools (part 1) | ○ pending | 0/0 | 0% |
 | 7 | ML Classifier | ○ pending | 0/0 | 0% |
@@ -33,7 +33,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 ## Active Work
 
-Phase 4 — Strategy Refactor: ◐ Wave 1 IN-PROGRESS (2/8 plans). 04-02-PLAN COMPLETE 2026-05-08: confluence.py 5-factor scorer + grade + confidence calibrator (STRAT-05/06 in-progress, full complete dopo Wave 4). 2 task atomici (b0f35e7 feat + 2e16fb2 test). 315 LOC source (12 funzioni: load_strategy_config con lru_cache + StrategyConfig frozen + 5 factor predicates None-safe + score_factors/grade_for/compute_confidence) + 221 LOC test (10 hand-calc no-skip via SimpleNamespace + tmp_path env-override). Full suite 412 passed + 22 skip (+10 pass, –9 skip vs Wave 0). 2 deviazioni Rule 1 inline (FP epsilon 1e-6 su spread_tighter, datetime.now(UTC) deprecation Python 3.12). Pure module verificato: zero broker/logging/print, solo yaml.safe_load cached. Adjuster math A+ +0.15→clamp 0.95, C -0.15→0.25 (no-clamp documentato in deviation §clamp_at_min). compute_confidence ritorna 0.0 (NON min_confidence) per grade='reject' — coerente baseline regression D-11.
+Phase 4 — Strategy Refactor: ◐ Wave 1 IN-PROGRESS (3/8 plans). 04-03-PLAN COMPLETE 2026-05-08: proposal.py adapters + R:R floor + ATR cap helper (STRAT-07 in-progress, full complete dopo Wave 4). 3 task TDD-backed (cc2ef77 RED smoke import + 17c0504 GREEN 4 funzioni + d7e10bf test 25 cases). 217 LOC source (ProposalDraft W0 preservato + 4 funzioni: draft_to_trade_proposal con comment="python_strategy" literal, draft_to_technical_setup con field-name mapping stop_loss_price→stop_loss/take_profit_price→take_profit + indicators dict carry factors/grade/setup_name/rationale_parts, rr_meets_profile_floor con epsilon FP 1e-9 + (False,0.0) fail-safe per risk≤0, compute_levels_with_atr_cap universale 4 setup con cap 1.5×ATR di default) + 239 LOC test (3 parametrize × 3 cases per profile boundary + SELL symmetric + invalid paths + 4 quadranti ATR cap BUY/SELL × buffer/cap). Full suite 437 passed + 16 skip (+25 pass, –6 skip vs Wave 1-02). 1 deviazione Rule 1 inline (FP epsilon su rr=1.3 boundary aggressive: 0.001*1.3 produce 0.0012999... → fix +1e-9). 1 deviazione Rule 2 (test extra non prescritti per coverage SELL/invalid/inverted). Pure module verificato (0 broker/logging/print/datetime.now). Field name mapping documentato per Wave 4 regression reference.
+
+04-02-PLAN COMPLETE 2026-05-08: confluence.py 5-factor scorer + grade + confidence calibrator (STRAT-05/06 in-progress, full complete dopo Wave 4). 2 task atomici (b0f35e7 feat + 2e16fb2 test). 315 LOC source (12 funzioni: load_strategy_config con lru_cache + StrategyConfig frozen + 5 factor predicates None-safe + score_factors/grade_for/compute_confidence) + 221 LOC test (10 hand-calc no-skip via SimpleNamespace + tmp_path env-override). Full suite 412 passed + 22 skip (+10 pass, –9 skip vs Wave 0). 2 deviazioni Rule 1 inline (FP epsilon 1e-6 su spread_tighter, datetime.now(UTC) deprecation Python 3.12). Pure module verificato: zero broker/logging/print, solo yaml.safe_load cached. Adjuster math A+ +0.15→clamp 0.95, C -0.15→0.25 (no-clamp documentato in deviation §clamp_at_min). compute_confidence ritorna 0.0 (NON min_confidence) per grade='reject' — coerente baseline regression D-11.
 
 04-01-PLAN COMPLETE 2026-05-08 (1/8 plans). Skeleton + regression baseline + config + RiskProfile alias. 5 task atomici (8324d5f, b8237c1, c545826, e1a87a6, 0bfd18c). 21 file creati, 2 modificati. `strategy/` package con 12 moduli stub; legacy renamed `strategy.py → strategy_legacy.py` con re-export selettivo. Backward-compat verificata: 402 passed + 31 skipped. Baseline regression `tests/fixtures/strategy_regression_baseline.json` deterministica (10 scenari `setup_type=NONE confidence=0.0`). `config/strategy.yaml` D-08 schema completo. `models.RiskProfile = Literal[CONS, MOD, AGG]` aggiunto. 3 deviazioni Rule 1/2/3 documentate. Branch `feature/update-pythono-pure-strategy`. Next: 04-03-PLAN Wave 1 (proposal.py adapters + R:R floor + ATR cap helper).
 
@@ -67,4 +69,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 4 Plan 02 (Wave 1 confluence) COMPLETE (2/8 plans, STRAT-05/06 in-progress; 412 passed + 22 skip; 2 task atomici b0f35e7 + 2e16fb2; 2 bug-fix Rule 1 inline)*
+*Last updated: 2026-05-08 — Phase 4 Plan 03 (Wave 1 proposal.py adapters + R:R floor + ATR cap) COMPLETE (3/8 plans, STRAT-07 in-progress; 437 passed + 16 skip; 3 task TDD-backed cc2ef77 RED + 17c0504 GREEN + d7e10bf test; 1 bug-fix Rule 1 inline FP epsilon 1e-9 boundary; 1 deviation Rule 2 test extra coverage)*
