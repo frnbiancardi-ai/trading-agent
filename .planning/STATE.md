@@ -7,7 +7,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 **Core value:** Every trade pre-filtered by a calibrated ML classifier whose probabilities match realized hit rate, trained on the agent's own decisions, improving with every cycle.
 
 **Current milestone:** v2-ml-backtest
-**Current focus:** Phase 3 — Patterns Catalog (4/4 ✓ pronto per verification)
+**Current focus:** Phase 4 — Strategy Refactor (next)
 
 ---
 
@@ -17,7 +17,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
 | 2 | Indicators Library | ✓ complete | 9/9 | 100% |
-| 3 | Patterns Catalog | ◐ in-progress | 4/4 | 100% (pending verify) |
+| 3 | Patterns Catalog | ✓ complete | 4/4 | 100% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
 | 6 | MCP Tools (part 1) | ○ pending | 0/0 | 0% |
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 10 | Intermarket + News | ○ pending | 0/0 | 0% |
 | 11 | Paper Deploy Gate | ○ pending | 0/0 | 0% |
 
-**Overall progress:** 2/11 phases complete (18%)
+**Overall progress:** 3/11 phases complete (27%)
 
 ---
 
 ## Active Work
 
-Phase 3 — Patterns Catalog: 03-04-PLAN ✓ COMPLETE 2026-05-08 (commits `42e41dd`, `e61f541`). Wave 4 chiusa: refactor atomico `strategy.py` per consumare nuovo schema `PatternHit`. 5 call site + 1 import + 1 init line modificati: (a) import `load_pattern_config` accanto a `scan_patterns`; (b) `IntradayStrategy.__init__` instanzia `self._pattern_cfg = load_pattern_config()` (D-19, una volta a startup, no hot path reload); (c) `scan_patterns(bars, last_n=cfg.PATTERN_CONFIRMATION_BARS, cfg=self._pattern_cfg)` riga 230; (d) 3 dict-access `p["direction"]` → `p.direction` (righe 316, 319, 621). `indicators_snapshot["patterns"]` ora `list[PatternHit]` (assegnamento invariato, tipo cambiato). `StrategyEnvironment` intoccato. Rule 1 fix in `tests/test_strategy.py`: 2 fixture `_score_confidence` migrate da `[{"pattern": "hammer", "direction": "bullish"}]` a `PatternHit(name=..., span_bars=1, extreme_price=..., confidence=0.8, direction="bullish")` (commit `e61f541`). Suite globale 402 passed + 1 skipped (Mottl optional). 03-03 ✓ (commits `8753b12`, `9fbe21c`, `dc7676a`), 03-02 ✓ (commits `93f86e7`, `847a0fb`), 03-01 ✓ (commits `3c465c1`, `4b1a2fa`, `0768112`). **Phase 3 ROADMAP success criteria #1, #2, #3 tutti soddisfatti**: (1) ogni pattern ha positive + near-miss test; (2) `PatternHit` dataclass con 6 campi emesso da `scan_patterns`; (3) callers updated, no adapter shim. PATT-01..07 implementati end-to-end. Next: `/gsd-verify-phase 3`.
+Phase 3 — Patterns Catalog: ✓ COMPLETE 2026-05-08. VERIFICATION PASSED 3/3 ROADMAP truths + 7/7 PATT-01..07 (`03-VERIFICATION.md`). 4 plani in 4 wave seriali. `PatternHit` frozen dataclass (6 campi) + `PatternConfig`/`CalibrationAnchors` + `_calibrate` knee 0.7. 9 detector + Doji emessi da `scan_patterns(bars, last_n, cfg) → list[PatternHit]`. `strategy.py` refactor end-to-end: import `load_pattern_config`, `self._pattern_cfg` init, callsite riga 230, 3 dict-access → attribute access. Suite 402 passed + 1 skipped (Mottl). `config/patterns.yaml` 10 chiavi (9 calibrati + doji geometry-only). Branch `feature/update-pythono-pure-strategy`.
 
 Phase 2 — Indicators Library: ✓ COMPLETE 2026-05-08. VERIFICATION PASSED 4/4 ROADMAP truths + 14/14 INDIC requirements (`02-VERIFICATION.md`). 9 plani eseguiti in 4 wave (W0=01, W1=02-04, W2=05-07, W3=08-09) seriali per overlap intra-wave su `__init__.py` + `test_indicators_purity.py`. Suite 374 passed + 1 skipped (Mottl optional). `compute_all` 4-key dict bit-for-bit immutato (4 callsite invariati). `compute_all_extended` 37-key snapshot disponibile per Phase 1 backtest + Phase 4 strategy refactor. Known item NON-bloccante: Boomer A2 (CONTEXT.md verbatim) ≠ skill `forex-trader-pro`/`price_action.md:43` — reconciliation deferred a Phase 4. Branch `feature/update-pythono-pure-strategy`.
 
@@ -63,4 +63,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 3 plan 04 ✓ COMPLETE (strategy.py callsite refactor + chiusura Phase 3, 4/4 plans, pending verification)*
+*Last updated: 2026-05-08 — Phase 3 ✓ COMPLETE (verifier PASSED 3/3 + 7/7 PATT); pushing branch*
