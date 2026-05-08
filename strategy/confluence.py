@@ -274,7 +274,7 @@ def compute_confidence(
     if last5 and any(getattr(t, "outcome", None) == "WIN" for t in last5):
         delta += float(adj["recent_winning_trade_same_pair"])
 
-    # Adjuster 3: spread_tighter_than_baseline
+    # Adjuster 3: spread_tighter_than_baseline (epsilon per evitare drift FP)
     if (
         ctx.spread_baseline_pips is not None
         and ctx.symbol_info is not None
@@ -285,15 +285,16 @@ def compute_confidence(
         ask = getattr(sym, "ask", None)
         if bid is not None and ask is not None:
             cur_pips = (ask - bid) / ctx.pip_size
-            if cur_pips < ctx.spread_baseline_pips:
+            # Strictly tighter: 1e-6 epsilon contro float arithmetic noise
+            if cur_pips < ctx.spread_baseline_pips - 1e-6:
                 delta += float(adj["spread_tighter_than_baseline"])
 
     # Adjuster 4: macro_event_within_60min (D-09 stub callable)
     if ctx.news_blackout_fn is not None:
         try:
-            from datetime import datetime
+            from datetime import datetime, timezone
 
-            if ctx.news_blackout_fn(datetime.utcnow()):
+            if ctx.news_blackout_fn(datetime.now(timezone.utc)):
                 delta += float(adj["macro_event_within_60min"])
         except Exception:
             pass
