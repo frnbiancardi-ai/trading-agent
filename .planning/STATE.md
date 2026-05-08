@@ -16,7 +16,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | # | Phase | Status | Plans | Progress |
 |---|-------|--------|-------|----------|
 | 1 | Backtest Engine | ✓ complete | 8/8 | 100% |
-| 2 | Indicators Library | ◐ in-progress | 6/9 | 67% |
+| 2 | Indicators Library | ◐ in-progress | 7/9 | 78% |
 | 3 | Patterns Catalog | ○ pending | 0/0 | 0% |
 | 4 | Strategy Refactor | ○ pending | 0/0 | 0% |
 | 5 | Baseline Backtest | ◐ planned | 9/9 | plans only |
@@ -32,6 +32,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 ---
 
 ## Active Work
+
+Phase 2 — Indicators Library: Wave 0 (01) + Wave 1 (02, 03, 04) + Wave 2 (05, 06, 07) COMPLETE 2026-05-08. Plan 07 (NR4/NR7+Inside+Boomer + Closing Score) in ~4min: `narrow_range(bars)` ritorna `NRResult(nr4, nr7, inside, boomer)` length-N con definizioni Crabel canonical (NR4: range[i]<range[j] ∀ j∈{i-1..i-3}; NR7: stessa regola su {i-1..i-6}); Inside via `high<=prev AND low>=prev`; Boomer per A2 = `inside[i] AND inside[i-1] AND (nr4[i] OR nr7[i])`. `closing_score(bars)` ritorna `(close-low)/(high-low)*100` per bar, `None` su `high==low` (range nullo). `calculate_risk_reward` Wave 0 preservato verbatim. `NRResult`+`ClosingScoreResult` dataclass. 23 hand-calc test (NR4 basic/false-when-prior-smaller, NR7 monotonic, Inside+equal-extremes, Boomer 4-bar+inside-pair-required+nr-window-required, Closing Score canonical+100-deterministic+empty, output length, warmup parametrizzato). 10 leakage test (5 NR + 5 CS). Discrepancy Boomer flagged: skill `forex-trader-pro` `price_action.md:43` richiede inside+NR4 su ENTRAMBI bar (più stretta, ignora NR7); plan A2 + CONTEXT.md:153 richiedono inside su entrambi ma NR4 OR NR7 solo sul corrente — implementato A2 verbatim come da istruzione plan ('uses CONTEXT.md specifics verbatim'). 0 deviazioni di codice. Suite intera 350/350 verde + 1 skipped (317 → 350, +33: 23 hand-calc + 5 NR leakage + 5 CS leakage). INDIC-10 + INDIC-11 completati. Commits Wave 2 plan 07: c22df3d (feat), db76242 (test). Wave 2 plan 08 (MTF align — INDIC-13) e Wave 3 plan 09 (regime classifier — INDIC-14) sbloccati.
 
 Phase 2 — Indicators Library: Wave 0 (01) + Wave 1 (02, 03, 04) + Wave 2 (05, 06) COMPLETE 2026-05-08. Plan 06 (VWAP intraday + anchored) in ~4min: `vwap_intraday(bars)` cumula tp*v / v per sessione FX e resetta al boundary NY-17 via `_session_id_ny17` (DST-aware: winter 22:00 UTC, summer 21:00 UTC) riusato verbatim da Wave 0; `vwap_anchored(bars, anchor_ts)` cumula da prima bar con `bar.ts >= anchor_ts` (Pitfall 3 RESEARCH), ValueError fail-fast su anchor naive. `VWAPResult` dataclass length-N (vwap, cumulative_pv, cumulative_v) per D-04..D-06. Helper privati `_typical_price` + `_bar_volume` co-located. `avg_volume` Wave 0 preservato verbatim. Hand-calc test 7/7: single-bar tp=1.5, reset session winter (22:00 UTC) e summer (21:00 UTC), zero-volume → vwap=None (no div-by-zero), anchored before/at/raise. Leakage gate `test_no_future_leakage_vwap_intraday` 5/5 idx [50,100,250,400,499]. Spot-check fixture EURUSD H1 (500 bar): vwap_intraday last ≈ 1.16909, 500/500 non-None, anchored idx100 last ≈ 1.17357. 0 deviazioni — plan eseguito esattamente come scritto. Suite intera 317/317 verde + 1 skipped (305 → 317, +12: 7 hand-calc + 5 vwap_intraday leakage). INDIC-07 completato. Commits Wave 2 plan 06: ad5ed9a (feat), 78f85e5 (test). Wave 2 plan 07 (NR4/NR7+Closing Score) e plan 08 (MTF align) sbloccati.
 
@@ -67,4 +69,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 2 plan 06 (Wave 2: VWAP intraday + anchored) complete*
+*Last updated: 2026-05-08 — Phase 2 plan 07 (Wave 2: NR4/NR7+Boomer + Closing Score) complete*

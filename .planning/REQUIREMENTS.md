@@ -28,8 +28,8 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [x] **INDIC-07**: VWAP intraday + anchored (session/day anchor)
 - [x] **INDIC-08**: Fibonacci retracement levels (38.2%, 50%, 61.8%) on detected swing legs
 - [x] **INDIC-09**: Pivot points daily / session / weekly (classic + Camarilla)
-- [ ] **INDIC-10**: NR4 / NR7 detector + Boomer (inside-narrow sequence)
-- [ ] **INDIC-11**: Closing Score (Defendi formula): position of close in bar range, 0-100
+- [x] **INDIC-10**: NR4 / NR7 detector + Boomer (inside-narrow sequence)
+- [x] **INDIC-11**: Closing Score (Defendi formula): position of close in bar range, 0-100
 - [x] **INDIC-12**: Hurst exponent (rolling) for trend-vs-mean-revert regime
 - [ ] **INDIC-13**: Multi-TF alignment helper (H4 + H1 + M15 trend coherence score)
 - [ ] **INDIC-14**: Volatility-regime classifier: compressed / normal / expanded via ATR percentile vs 200-bar window
@@ -172,8 +172,8 @@ Updated during roadmap creation.
 | INDIC-07 | Phase 2 | Complete |
 | INDIC-08 | Phase 2 | Pending |
 | INDIC-09 | Phase 2 | Pending |
-| INDIC-10 | Phase 2 | Pending |
-| INDIC-11 | Phase 2 | Pending |
+| INDIC-10 | Phase 2 | Complete |
+| INDIC-11 | Phase 2 | Complete |
 | INDIC-12 | Phase 2 | Pending |
 | INDIC-13 | Phase 2 | Pending |
 | INDIC-14 | Phase 2 | Pending |
