@@ -8,6 +8,7 @@ import pytest
 from datetime import datetime, timezone
 
 from models import AccountState, SentimentAnalysis, TechnicalSetup, TradeProposal
+from patterns import PatternHit
 from strategy import IntradayStrategy
 
 
@@ -245,7 +246,10 @@ def test_confidence_higher_with_aligned_pattern():
     )
     boosted = strat._score_confidence(
         trend_strength=0.8,
-        patterns=[{"pattern": "hammer", "bar_index": -1, "direction": "bullish"}],
+        patterns=[PatternHit(
+            name="hammer", bar_index=-1, span_bars=1,
+            extreme_price=1.1000, confidence=0.8, direction="bullish",
+        )],
         breakout="CLEAN", rr=2.0, direction="BUY",
     )
     assert boosted > base
@@ -256,7 +260,10 @@ def test_confidence_above_threshold_for_strong_setup():
     strat = _make_strategy(cfg)
     score = strat._score_confidence(
         trend_strength=0.85,
-        patterns=[{"pattern": "hammer", "bar_index": -1, "direction": "bullish"}],
+        patterns=[PatternHit(
+            name="hammer", bar_index=-1, span_bars=1,
+            extreme_price=1.1000, confidence=0.8, direction="bullish",
+        )],
         breakout="CLEAN", rr=2.5, direction="BUY",
     )
     assert score >= cfg.MIN_CONFIDENCE_TO_PROPOSE
