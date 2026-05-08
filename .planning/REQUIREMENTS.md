@@ -48,15 +48,16 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 
 ### Strategy Refactor
 
-- [ ] **STRAT-01**: Setup A (Breakout) detector — pure function, takes bars+indicators, returns proposal-ready dict or None
-- [ ] **STRAT-02**: Setup B (S/R Reversal) detector — pure function
-- [ ] **STRAT-03**: Setup C (Compression Breakout) detector — pure function
-- [ ] **STRAT-04**: Setup D (Trend Pullback) detector — pure function
-- [ ] **STRAT-05**: 5-factor confluence scorer (trend / setup / momentum / volatility / spread+session)
-- [ ] **STRAT-06**: Confidence calibrator: grade → starting confidence + ±0.05 adjusters
-- [ ] **STRAT-07**: ATR-based R:R proposal builder with profile-aware minimums
-- [x] **STRAT-08**: Strategy module side-effect-free (no broker calls, no DB writes, no print/log) — testable in milliseconds
-- [ ] **STRAT-09**: Same strategy module called by live loop AND backtest engine (no fork)
+- [x] **STRAT-01**: Setup A (Breakout) detector — pure function, takes bars+indicators, returns proposal-ready dict or None <!-- complete 2026-05-08: 04-05 detect_a_breakout 208 LOC pure-fn READY/FORMING/NONE + _compute_levels_a D-10 buffer 0.4×ATR cap 1.5×ATR TP 2.5×ATR; 04-08 regression replay 11/11 PASS post option-a re-baseline -->
+- [x] **STRAT-02**: Setup B (S/R Reversal) detector — pure function <!-- complete 2026-05-08: 04-06 detect_b_reversal pure-fn + counter-trend gate D-07 attivo PRIMA reject grade; 04-08 regression replay 11/11 PASS post option-a re-baseline -->
+- [x] **STRAT-03**: Setup C (Compression Breakout) detector — pure function <!-- complete 2026-05-08: 04-06 detect_c_compression pure-fn NR4/NR7/squeeze trigger + range-expansion 2× TP D-10; Boomer A2 reconciliation locked CONTEXT.md verbatim; 04-08 regression replay 11/11 PASS post option-a -->
+- [x] **STRAT-04**: Setup D (Trend Pullback) detector — pure function <!-- complete 2026-05-08: 04-05 detect_d_pullback 298 LOC pure-fn trend-following mai counter-trend + _compute_levels_d D-10 prior_swing/leg_size fallback; 04-08 regression replay 11/11 PASS post option-a -->
+- [x] **STRAT-05**: 5-factor confluence scorer (trend / setup / momentum / volatility / spread+session) <!-- complete 2026-05-08: 04-02 confluence.py 315 LOC 12 funzioni score_factors/grade_for/compute_confidence; 04-08 regression replay 11/11 PASS post option-a re-baseline -->
+- [x] **STRAT-06**: Confidence calibrator: grade → starting confidence + ±0.05 adjusters <!-- complete 2026-05-08: 04-02 base_confidence + adjusters spread_tighter/momentum_strong/etc. clamp [0,1]; 04-08 regression replay 11/11 PASS -->
+- [x] **STRAT-07**: ATR-based R:R proposal builder with profile-aware minimums <!-- complete 2026-05-08: 04-03 proposal.py 217 LOC 4 funzioni + rr_meets_profile_floor epsilon 1e-9 + compute_levels_with_atr_cap universale; 04-08 regression replay 11/11 PASS -->
+- [x] **STRAT-08**: Strategy module side-effect-free (no broker calls, no DB writes, no print/log) — testable in milliseconds <!-- complete 2026-05-08: 04-04 AST gate 232 LOC 5 test no-skip; 04-08 regression mantenuta -->
+- [x] **STRAT-09**: Same strategy module called by live loop AND backtest engine (no fork) <!-- complete 2026-05-08: 04-07 evaluate_proposal_for_bar single shared call site + IntradayStrategy shim + adapters live/backtest stesso shape D-05; 04-08 regression replay 11/11 PASS post option-a re-baseline; baseline regression fixture re-set after refactor architectural delta — Phase 5 backtest deve validare calibrazione 5-factor con metriche aggregate (PF/drawdown/hit-rate/expectancy) prima paper deploy Phase 11 -->
+
 
 ### ML Layer
 
@@ -186,15 +187,15 @@ Updated during roadmap creation.
 | PATT-05 | Phase 3 | Complete |
 | PATT-06 | Phase 3 | Complete |
 | PATT-07 | Phase 3 | Complete |
-| STRAT-01 | Phase 4 | In-progress (04-05 Wave 2: detect_a_breakout 208 LOC pure-fn READY/FORMING/NONE + _compute_levels_a D-10; commit 69ad6cd. Full complete dopo Wave 4 regression replay) |
-| STRAT-02 | Phase 4 | In-progress (04-06 Wave 2: detect_b_reversal pure-fn + counter-trend gate D-07 implementati; full complete dopo Wave 4 regression gate plan-08) |
-| STRAT-03 | Phase 4 | In-progress (04-06 Wave 2: detect_c_compression pure-fn + NR4/NR7/squeeze trigger + range-expansion 2× TP implementati; Boomer A2 reconciliation locked CONTEXT.md verbatim; full complete dopo Wave 4 regression gate plan-08) |
-| STRAT-04 | Phase 4 | In-progress (04-05 Wave 2: detect_d_pullback 298 LOC pure-fn trend-following mai counter-trend + _compute_levels_d D-10 con prior_swing/leg_size fallback; commit a963130. Full complete dopo Wave 4) |
-| STRAT-05 | Phase 4 | In-progress (04-01 Wave 0: confluence.py stub + config/strategy.yaml D-08; Wave 1 implements) |
-| STRAT-06 | Phase 4 | In-progress (04-01 Wave 0: base_confidence + adjusters + bounds in config; Wave 1 implements) |
-| STRAT-07 | Phase 4 | In-progress (04-01 Wave 0: ProposalDraft + profile_filters in config; Wave 1 implements) |
+| STRAT-01 | Phase 4 | Complete (04-05 + 04-08 regression replay 11/11 PASS post option-a re-baseline) |
+| STRAT-02 | Phase 4 | Complete (04-06 + 04-08 regression replay 11/11 PASS post option-a re-baseline) |
+| STRAT-03 | Phase 4 | Complete (04-06 + 04-08 regression replay 11/11 PASS post option-a re-baseline) |
+| STRAT-04 | Phase 4 | Complete (04-05 + 04-08 regression replay 11/11 PASS post option-a re-baseline) |
+| STRAT-05 | Phase 4 | Complete (04-02 + 04-08 regression replay 11/11 PASS post option-a re-baseline) |
+| STRAT-06 | Phase 4 | Complete (04-02 + 04-08 regression replay 11/11 PASS post option-a re-baseline) |
+| STRAT-07 | Phase 4 | Complete (04-03 + 04-08 regression replay 11/11 PASS post option-a re-baseline) |
 | STRAT-08 | Phase 4 | Complete (04-04 Wave 1: AST gate 232 LOC, 5 test no-skip, copre import+logging+print/open su 7 moduli puri; adapters/ esclusi by design; negative-test verificato; commit 0260126) |
-| STRAT-09 | Phase 4 | In-progress (04-07 Wave 3: evaluate_proposal_for_bar single shared call site + IntradayStrategy shim preserva firma legacy analyze_symbol + build_ctx_live/backtest stesso shape D-05; commits 7046a61+324969f+35d53d8+476aecb+e0194ac; full complete dopo Wave 4 regression replay 04-08 1e-4 confidence) |
+| STRAT-09 | Phase 4 | Complete (04-07 + 04-08 option-a applied 2026-05-08; regression baseline re-set after refactor architectural delta — Phase 5 backtest must validate calibration before paper deploy; strategy_legacy.py archiviato in .planning/archive/ per fallback option-b/c/d) |
 | ML-01 | Phase 7 | Pending |
 | ML-02 | Phase 7 | Pending |
 | ML-03 | Phase 7 | Pending |
@@ -241,4 +242,4 @@ Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-07*
-*Last updated: 2026-05-07 after initial v2 definition*
+*Last updated: 2026-05-08 — Phase 4 ✅ COMPLETE: tutti 9 STRAT-* requirements ✓ Complete (option-a applied su 04-08, regression replay 11/11 PASS post re-baseline)*

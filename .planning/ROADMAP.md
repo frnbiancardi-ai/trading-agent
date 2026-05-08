@@ -11,7 +11,7 @@
 | 1 | Backtest Engine | Event-driven replay of Italian-CSV historical bars with realistic costs and walk-forward harness | BACK-01..06 | 6 |
 | 2 | Indicators Library | Expand indicator coverage to support all 4 setups + ML features | INDIC-01..14 | 4 |
 | 3 | Patterns Catalog | Full candlestick pattern detection library (4/4 plans, strategy.py callsite refactor done — pending verify) | PATT-01..07 | 3 |
-| 4 | Strategy Refactor | Setup A/B/C/D detectors as pure functions, 5-factor confluence, shared by live + backtest (6/8 plans) | STRAT-01..09 | 5 |
+| 4 | Strategy Refactor | Setup A/B/C/D detectors as pure functions, 5-factor confluence, shared by live + backtest (8/8 plans ✅) | STRAT-01..09 | 5 |
 | 5 | Baseline Backtest | Run strategy-only backtest on 23.5y × 3 pairs × 3 TFs, produce metrics + ML training data | BACK-07, INT-01 | 4 |
 | 6 | MCP Tools (part 1) | Backtest, position-management, multi-TF, session, correlation, pattern-catalog tools | MCP-01..03, MCP-09, MCP-11..12, MCP-14..17, MCP-R1..R3 | 4 |
 | 7 | ML Classifier | LightGBM trade-quality classifier with walk-forward training and calibration | ML-01..06, ML-10 | 5 |
@@ -133,7 +133,7 @@ Plans:
 - [x] 04-05-PLAN.md — Wave 2: Setup A breakout + Setup D pullback detectors (STRAT-01, STRAT-04) ✓ 2026-05-08 (3 task atomici 69ad6cd feat A + a963130 feat D + b52aff0 test; 208 LOC a_breakout + 298 LOC d_pullback + 235 LOC test; 5 test no-skip A+D; 447 passed + 8 skip; pure modules verificati; confidence READY = 0.90 A+ con spread_tighter; 0 deviazioni; SUMMARY: `.planning/phases/04-strategy-refactor/04-05-SUMMARY.md`)
 - [x] 04-06-PLAN.md — Wave 2: Setup B reversal (D-07 counter-trend gate) + Setup C compression (STRAT-02, STRAT-03) ✓ 2026-05-08 (3 task atomici d1d6d56 feat B + e021dce feat C + 1f94a38 test; 300 LOC b_reversal + 333 LOC c_compression + 211 LOC test delta; 4 test no-skip B/C; 451 passed + 4 skip; pure modules verificati; counter-trend gate D-07 attivo; Boomer A2 reconciliation final-locked CONTEXT.md verbatim; 1 deviation Rule 1 test fixture math; SUMMARY: `.planning/phases/04-strategy-refactor/04-06-SUMMARY.md`)
 - [x] 04-07-PLAN.md — Wave 3: evaluate_proposal_for_bar + IntradayStrategy shim + adapters live/backtest + risk_utils (STRAT-08, STRAT-09) ✓ 2026-05-08 (5 task atomici 7046a61 risk_utils + 324969f adapters + 35d53d8 shim cutover + 476aecb test multi-match + e0194ac backward-compat; 95 LOC risk_utils + 199 LOC adapters/live + 76 LOC adapters/backtest + 110 LOC __init__ + 438 LOC _shim + 83 LOC test multi-match; 12 test legacy Category C rimossi da test_strategy.py; strategy_legacy.py ORPHANED; 95 strategy+phase16 passed, full 436 passed minus backtest perf; 6 deviazioni: 4 Rule 3 blocking (adapter scalari→sequenze gap, build_trade_proposal/_analyze_technical/decision_context_json backward-compat) + 2 Rule 1 (BrokerProtocol annotation, RISK_MODE fixture); 1 deferred backtest smoke +3-4s perf overshoot; single shared call site D-09 attivo live/backtest; SUMMARY: `.planning/phases/04-strategy-refactor/04-07-SUMMARY.md`)
-- [ ] 04-08-PLAN.md — Wave 4 PHASE GATE: regression fixture replay + reconciliation checkpoint + strategy_legacy.py cleanup (STRAT-09, SC-3/4/5)
+- [x] 04-08-PLAN.md — Wave 4 PHASE GATE: regression fixture replay + reconciliation checkpoint + strategy_legacy.py cleanup (STRAT-09, SC-3/4/5) ✓ 2026-05-08 (5 task commits 5db3049 test + 21abb91 fix + dd3e45d docs + 575b484 re-baseline + a7a252a archive; user decision option-a: ACCEPT calibration + re-baseline fixture nuovo motore 5-factor; 8/10 setup fire vs legacy 10/10 NONE; 11/11 regression PASS in 111s; strategy_legacy.py ARCHIVIATO in .planning/archive/ con provenance README — deviation Plan Task 3 da delete a archive per Phase 5 backtest validation safety; Rule 1 fix spread_baseline_pips defensive cast; Phase 4 SC-1..5 tutti ✅; STRAT-09 ✓ Complete con nota Phase 5 validation requirement; pre-existing 04-07 perf 63.5s deferred a Phase 5 plan-08; SUMMARY: `.planning/phases/04-strategy-refactor/04-08-SUMMARY.md`)
 
 ---
 
@@ -270,4 +270,4 @@ Plans:
 - **Skills:** consult `forex-trader-pro` for setup/confluence/risk specifics; `forex-algo-dev` for ML pipeline + data quality + backtesting + failure modes; `forex-strategy-builder` for book-grounded patterns.
 
 ---
-*Last updated: 2026-05-07 after initial roadmap creation*
+*Last updated: 2026-05-08 — Phase 4 ✅ COMPLETE (8/8 plans 100%, plan 04-08 closed via option-a re-baseline + archive)*

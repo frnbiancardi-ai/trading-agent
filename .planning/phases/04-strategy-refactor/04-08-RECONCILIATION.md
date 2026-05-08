@@ -1,10 +1,12 @@
 # Plan 04-08 Reconciliation Report — Wave 4 Regression Gate
 
-**Status:** ❌ **CHECKPOINT — drift severo, decisione umana richiesta**
+**Status:** ✅ **CLOSED — Decision: option-a, executed 2026-05-08**
 **Date:** 2026-05-08
 **Git SHA pre-replay:** `21abb91` (fix spread_baseline_pips difensivo)
-**Git SHA proposto post-rebaseline:** N/A (re-baseline non eseguito — `autonomous: false`)
+**Git SHA post re-baseline:** `575b484` (test: re-baseline regression fixture)
+**Git SHA post archive:** `a7a252a` (refactor: archivia strategy_legacy.py)
 **Plan:** `04-08-PLAN.md` Task 2 — checkpoint:human-verify
+**Final outcome:** option-a (ACCEPT calibration + re-baseline fixture). Phase 5 backtest deve validare metriche aggregate (PF, drawdown, hit-rate, expectancy) prima paper deploy. strategy_legacy.py ARCHIVIATO in `.planning/archive/` (preserva fallback per option-b/c/d se Phase 5 invalida).
 
 ---
 
@@ -225,3 +227,38 @@ Reply al checkpoint con uno di:
 
 *Reconciliation document — Plan 04-08 Task 2*
 *Generato: 2026-05-08*
+*Decisione finale: 2026-05-08 (option-a)*
+
+---
+
+## Appendice — Esecuzione finale (2026-05-08, post option-a)
+
+**Decisione utente:** `option-a` — ACCEPT calibration + re-baseline fixture.
+
+### Step eseguiti
+
+1. **Re-baseline fixture:** `python tests/capture_regression_baseline.py` re-eseguito contro `strategy.IntradayStrategy` shim (post Wave 3). Nuovo JSON sostituisce baseline legacy. Aggiunto annotation header `tests/fixtures/strategy_regression_baseline.README.md` con storia + Phase 5 validation requirement. Commit: `575b484`.
+2. **Regression test re-eseguita:** 11/11 PASS (1 fixture loads + 10 parametrizzati) in 111s. Drift azzerato; nuovo motore è ora il ground truth.
+3. **strategy_legacy.py archiviato** (NON deletato come prescriveva Plan Task 3): `git mv strategy_legacy.py .planning/archive/strategy_legacy.py`. Rationale: Phase 5 backtest validation potrebbe richiedere fallback a option-b/c/d. Archive preserva blame trail e permette re-import esplicito via sys.path injection (documentato in `.planning/archive/README.md`). Commit: `a7a252a`.
+4. **Verifiche post-archive:** nessun callsite live importa `strategy_legacy` (grep clean su `*.py`). Strategy package barrel resta single source of truth (D-09 invariato). Suite strategy 75/75 PASS; full suite 353 passed + 10 skip + 1 pre-existing fail (backtest perf 04-07, deferred a Phase 5).
+
+### Validazione richiesta Phase 5
+
+Phase 5 baseline backtest DEVE confrontare metriche aggregate del nuovo motore vs legacy su 23.5y × 3 pairs × 3 TFs. Soglie raccomandate per "non degrado":
+
+- **Profit Factor:** non degradato > 5%
+- **Max Drawdown:** non aumentato > 10%
+- **Hit Rate:** non degradato > 3pp
+- **Expectancy:** non degradato > 5%
+
+Se Phase 5 invalida la calibrazione, revert paths disponibili:
+- **option-b** (gate `trend_strength > 0.65` sui detector) — modifica `strategy/setups/*.py`
+- **option-c** (feature flag `gate_min_trend_strength` in `config/strategy.yaml`) — modifica config + detector
+- **option-d** (env `STRATEGY_ENGINE=legacy|pure`, default legacy) — re-import da `.planning/archive/`
+
+### Phase 4 stato finale
+
+- **8/8 plans complete** (100%)
+- **STRAT-09 ✅ Complete** (con nota re-baseline)
+- **SC-5 ✅ verified** (post architectural delta accept)
+- **Phase 11 paper deploy:** condizionale a Phase 5 validation positiva
