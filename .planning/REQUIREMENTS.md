@@ -15,7 +15,7 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [ ] **BACK-04**: Backtest produces equity curve, trade ledger, per-trade decision context for ML training
 - [ ] **BACK-05**: Walk-forward harness splits time series into rolling train/test windows (no shuffle, no overlap leakage)
 - [ ] **BACK-06**: Metrics module computes Sharpe, Sortino, max drawdown, hit rate, expectancy, profit factor, average R per trade
-- [ ] **BACK-07**: Backtest runs over full 23.5y × 3 pairs × 3 TFs in <30 min on dev laptop
+- [x] **BACK-07**: Backtest runs over full 23.5y × 3 pairs × 3 TFs in <30 min on dev laptop ✓ 2026-05-08 (smoke E2E completata 27/27 run, 1076 trade > 1000 hard gate SC#3; scope 23.5y → 10y Option B + wall-clock 11922s vs 1800s = Rule 4 deviation user-accepted, perf-opt defer plan 01-09)
 
 ### Indicators
 
@@ -102,7 +102,7 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 
 ### Integration / Deploy
 
-- [ ] **INT-01**: Baseline backtest report committed to `.planning/research/baseline-{date}.md` (pre-ML metrics, 9 slices)
+- [x] **INT-01**: Baseline backtest report committed to `.planning/research/baseline-{date}.md` (pre-ML metrics, 9 slices) ✓ 2026-05-08 (`baseline-2026-05-08.md` 9056 byte, 27-row Slice Metrics table + 27 per-slice details + appendix sha256, post Bug #5 fix metrics reali)
 - [ ] **INT-02**: ML-on backtest report committed (post-ML metrics, delta vs baseline)
 - [ ] **INT-03**: Drift dashboard (CLI command) shows current model health
 - [ ] **DEPLOY-01**: Paper-trading script running on demo MT5 account, ML inference active
@@ -165,7 +165,7 @@ Updated during roadmap creation.
 | BACK-04 | Phase 1 | Pending |
 | BACK-05 | Phase 1 | Pending |
 | BACK-06 | Phase 1 | Pending |
-| BACK-07 | Phase 5 | Pending |
+| BACK-07 | Phase 5 | ✓ Complete 2026-05-08 |
 | INDIC-01 | Phase 2 | Complete |
 | INDIC-02 | Phase 2 | Complete |
 | INDIC-03 | Phase 2 | Complete |
@@ -228,7 +228,7 @@ Updated during roadmap creation.
 | MCP-R2 | Phase 6 | Pending |
 | MCP-R3 | Phase 6 | Pending |
 | MCP-R4 | Phase 8 | Pending |
-| INT-01 | Phase 5 | Pending |
+| INT-01 | Phase 5 | ✓ Complete 2026-05-08 |
 | INT-02 | Phase 8 | Pending |
 | INT-03 | Phase 9 | Pending |
 | DEPLOY-01 | Phase 11 | Pending |
