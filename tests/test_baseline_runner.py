@@ -416,3 +416,127 @@ def test_cost_deduction(monkeypatch, tmp_path):
         assert "slippage_pips" in m
         # n_trades == len(decisions_rows) (smoke su pipeline dati)
         assert r["n_trades"] == 1
+
+
+# ── Wave 3 additions: orchestrator-level tests (Plan 05-07) ────────────────
+
+
+def test_load_baseline_config(tmp_path):
+    """Plan 05-07 Task 1 Test 3: load_baseline_config -> frozen dataclass."""
+    from backtest.baseline.runner import load_baseline_config, BaselineConfig
+    yaml_path = tmp_path / "baseline.yaml"
+    yaml_path.write_text(
+        "equity_initial_eur: 10000\n"
+        "slippage_seed: 42\n"
+        "timeout_bars: {M15: 96, M30: 96, H1: 120}\n"
+        "warm_up_min_bars: 200\n"
+        "max_workers: 9\n"
+        "parquet_compression: snappy\n"
+        "force_rerun: false\n"
+        "progress_bar: true\n"
+        'training_data_dir: "data/training"\n'
+        'report_dir: ".planning/research"\n'
+        'equity_curves_dir: ".planning/research/baseline-equity-curves"\n',
+        encoding="utf-8",
+    )
+    cfg = load_baseline_config(yaml_path)
+    assert isinstance(cfg, BaselineConfig)
+    assert cfg.equity_initial_eur == 10000.0
+    assert cfg.slippage_seed == 42
+    assert cfg.timeout_bars == {"M15": 96, "M30": 96, "H1": 120}
+    assert cfg.max_workers == 9
+    assert cfg.parquet_compression == "snappy"
+    assert cfg.progress_bar is True
+
+
+def test_run_baseline_orchestrates_27_runs(monkeypatch, tmp_path):
+    """Plan 05-07 Task 1 Test 1: run_baseline raccoglie 9*3=27 result, invoca finalize+report."""
+    baseline_path = tmp_path / "baseline.yaml"
+    baseline_path.write_text(
+        "equity_initial_eur: 10000\nslippage_seed: 42\n"
+        "timeout_bars: {M15: 96, M30: 96, H1: 120}\n"
+        "warm_up_min_bars: 200\nmax_workers: 2\n"  # ridotto per test
+        "parquet_compression: snappy\nforce_rerun: false\nprogress_bar: false\n"
+        f'training_data_dir: "{tmp_path.as_posix()}"\n'
+        f'report_dir: "{tmp_path.as_posix()}"\n'
+        f'equity_curves_dir: "{tmp_path.as_posix()}"\n',
+        encoding="utf-8",
+    )
+    costs_path = tmp_path / "costs.yaml"
+    costs_path.write_text("EURUSD: {spread_pips: 0.5}\n", encoding="utf-8")
+    strategy_path = tmp_path / "strategy.yaml"
+    strategy_path.write_text("dummy: 1\n", encoding="utf-8")
+    ledger_db = tmp_path / "trades.db"
+
+    finalize_calls = {"n": 0}
+    wal_calls = {"n": 0}
+
+    def fake_worker(sym, tf, *args, **kwargs):
+        return [{"run_id": f"r_{sym}_{tf}_{p}", "symbol": sym, "timeframe": tf,
+                 "profile": p, "status": "OK", "metrics": None,
+                 "n_trades": 0, "n_drafts": 0, "equity_path": ""}
+                for p in ("CONSERVATIVE", "MODERATE", "AGGRESSIVE")]
+
+    def fake_finalize(p):
+        finalize_calls["n"] += 1
+
+    def fake_wal(p):
+        wal_calls["n"] += 1
+
+    monkeypatch.setattr("backtest.baseline.runner.run_slice_3profiles", fake_worker)
+    monkeypatch.setattr("backtest.baseline.runner.enable_sqlite_wal", fake_wal)
+    monkeypatch.setattr("backtest.baseline.runner.finalize_parquet_shards", fake_finalize)
+
+    from backtest.baseline.runner import run_baseline
+    results = run_baseline(
+        force=False, baseline_yaml=baseline_path, costs_yaml=costs_path,
+        strategy_yaml=strategy_path, ledger_db=ledger_db,
+    )
+    assert len(results) == 27, f"atteso 27 result (9 sym/tf × 3 profile), got {len(results)}"
+    assert finalize_calls["n"] == 1, "finalize_parquet_shards deve essere chiamato 1 volta post-pool"
+    assert wal_calls["n"] == 1, "enable_sqlite_wal deve essere chiamato 1 volta pre-pool"
+    # Report MD scritto?
+    import datetime as _dt
+    report_path = tmp_path / f"baseline-{_dt.date.today().isoformat()}.md"
+    assert report_path.exists(), f"report MD mancante: {report_path}"
+
+
+def test_run_baseline_handles_worker_failure(monkeypatch, tmp_path):
+    """Plan 05-07 Task 1 Test 2: worker exception -> status=FAILED nel result list, pool continua."""
+    baseline_path = tmp_path / "baseline.yaml"
+    baseline_path.write_text(
+        "equity_initial_eur: 10000\nslippage_seed: 42\n"
+        "timeout_bars: {M15: 96, M30: 96, H1: 120}\n"
+        "warm_up_min_bars: 200\nmax_workers: 2\nparquet_compression: snappy\n"
+        "force_rerun: false\nprogress_bar: false\n"
+        f'training_data_dir: "{tmp_path.as_posix()}"\nreport_dir: "{tmp_path.as_posix()}"\n'
+        f'equity_curves_dir: "{tmp_path.as_posix()}"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "costs.yaml").write_text("EURUSD: {}\n", encoding="utf-8")
+    (tmp_path / "strategy.yaml").write_text("x: 1\n", encoding="utf-8")
+
+    def flaky_worker(sym, tf, *args, **kwargs):
+        if sym == "EURUSD" and tf == "M15":
+            raise RuntimeError("synthetic worker failure")
+        return [{"run_id": f"r_{sym}_{tf}_{p}", "symbol": sym, "timeframe": tf,
+                 "profile": p, "status": "OK"}
+                for p in ("CONSERVATIVE", "MODERATE", "AGGRESSIVE")]
+    monkeypatch.setattr("backtest.baseline.runner.run_slice_3profiles", flaky_worker)
+    monkeypatch.setattr("backtest.baseline.runner.enable_sqlite_wal", lambda p: None)
+    monkeypatch.setattr("backtest.baseline.runner.finalize_parquet_shards", lambda p: None)
+
+    from backtest.baseline.runner import run_baseline
+    results = run_baseline(
+        baseline_yaml=baseline_path,
+        costs_yaml=tmp_path / "costs.yaml",
+        strategy_yaml=tmp_path / "strategy.yaml",
+        ledger_db=tmp_path / "trades.db",
+    )
+    # 27 totali, 3 di EURUSD/M15 sono FAILED, altri 24 OK
+    assert len(results) == 27
+    failed = [r for r in results if r.get("status") == "FAILED"]
+    ok = [r for r in results if r.get("status") == "OK"]
+    assert len(failed) == 3, f"atteso 3 FAILED (1 slice × 3 profile), got {len(failed)}"
+    assert len(ok) == 24, f"atteso 24 OK (8 slice × 3 profile), got {len(ok)}"
+    assert all(r["symbol"] == "EURUSD" and r["timeframe"] == "M15" for r in failed)
