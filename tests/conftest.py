@@ -1,7 +1,9 @@
-"""Shared fixtures for backtest + indicators test suites (Phase 1, Phase 2)."""
+"""Shared fixtures for backtest + indicators test suites (Phase 1, Phase 2, Phase 5)."""
 from __future__ import annotations
 import csv
+import sqlite3
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
@@ -75,3 +77,99 @@ def eurusd_h1_500() -> list[dict]:
                 "tick_volume": int(row["volume"]),
             })
     return out
+
+
+# ─── Phase 5 baseline fixtures (D-15, D-16, D-21) ──────────────────────────────
+# Plan 05-02 Task 1: shared infra per test_baseline_*.py.
+# Vincoli VALIDATION.md: nessun fixture autouse, ognuno additive (cross-test isolation).
+#
+# DEVIATION (Rule 1 bug fix): il plan dichiarava `tick_volume`, `spread`, `real_volume`
+# come field di `Bar`, ma `backtest.loader.Bar` ha `volume`, `symbol`, `timeframe`
+# (Phase 1 D-08 contract). Uso la signature reale → altrimenti fixture solleva
+# `TypeError` su collection. Documentato in 05-02-SUMMARY.md.
+
+
+@pytest.fixture
+def synthetic_bars() -> list:
+    """100 bar uptrend deterministico M15 EURUSD (mirror tests/test_backtest_engine.py::_uptrend_bars).
+
+    Usato da test Wave 1+ per stub indicator/runner. NON è autouse — opt-in per test.
+    """
+    from backtest.loader import Bar  # import locale: evita side-effect collection
+    bars: list = []
+    base_price = 1.1000
+    base_time = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
+    for i in range(100):
+        bars.append(Bar(
+            time=base_time + i * 900,  # M15 = 900s
+            open=base_price + i * 0.0001,
+            high=base_price + i * 0.0001 + 0.0002,
+            low=base_price + i * 0.0001 - 0.0001,
+            close=base_price + i * 0.0001 + 0.0001,
+            volume=100 + i,
+            symbol="EURUSD",
+            timeframe="M15",
+        ))
+    return bars
+
+
+@pytest.fixture
+def synthetic_indicators_full(synthetic_bars):
+    """Mock ExtendedIndicators dataclass-of-lists. Phase 2 D-04 schema placeholder.
+
+    Restituisce dict con chiavi minime per detector A/B/C/D + risk_engine.
+    Wave 1+ rimpiazza con vera istanza `ExtendedIndicators` quando Phase 2 landed.
+    """
+    n = len(synthetic_bars)
+    return {
+        "atr": [0.0010] * n,
+        "ema20": [b.close for b in synthetic_bars],
+        "ema50": [b.close for b in synthetic_bars],
+        "ema200": [b.close for b in synthetic_bars],
+        "ema50_slope": [0.0001] * n,
+        "rsi": [55.0] * n,
+        "adx": [25.0] * n,
+        "regime": ["normal"] * n,
+    }
+
+
+@pytest.fixture
+def tmp_db_with_wal(tmp_path: Path) -> Path:
+    """Tmp SQLite con WAL mode già attivato. D-16 multi-writer test.
+
+    Pragma applicati: journal_mode=WAL, busy_timeout=30000, synchronous=NORMAL.
+    """
+    db_path = tmp_path / "trades.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.commit()
+    return db_path
+
+
+@pytest.fixture
+def mock_baseline_cfg(tmp_path: Path) -> Path:
+    """Tmp baseline.yaml minimale per test runner (D-15 keys subset).
+
+    `max_workers` ridotto a 2 vs prod 9 — i test sono single-machine.
+    """
+    path = tmp_path / "baseline.yaml"
+    path.write_text(
+        "equity_initial_eur: 10000\n"
+        "slippage_seed: 42\n"
+        "timeout_bars:\n"
+        "  M15: 96\n"
+        "  M30: 96\n"
+        "  H1: 120\n"
+        "warm_up_min_bars: 200\n"
+        "max_workers: 2\n"
+        "parquet_compression: snappy\n"
+        "force_rerun: false\n"
+        "progress_bar: false\n"
+        'training_data_dir: "data/training"\n'
+        'report_dir: ".planning/research"\n'
+        'equity_curves_dir: ".planning/research/baseline-equity-curves"\n',
+        encoding="utf-8",
+    )
+    return path
