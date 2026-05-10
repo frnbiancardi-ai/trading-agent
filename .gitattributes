@@ -1,0 +1,18 @@
+# Auto-detect text files and normalize EOL to LF on commit; keep LF in working tree.
+* text=auto eol=lf
+
+# Force binary for known binary types (no EOL conversion).
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.tar   binary
+*.xlsx  binary
+*.xls   binary
+*.db    binary
+*.sqlite binary
+*.sqlite3 binary

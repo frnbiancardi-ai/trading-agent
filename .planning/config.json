@@ -10,7 +10,8 @@
     "verifier": true,
     "nyquist_validation": true,
     "auto_advance": false,
-    "research_before_questions": false
+    "research_before_questions": false,
+    "_auto_chain_active": false
   },
   "milestone": "v2-ml-backtest",
   "branching": {
