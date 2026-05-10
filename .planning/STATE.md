@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
+last_updated: "2026-05-10T21:30:29.250Z"
+progress:
+  total_phases: 11
+  completed_phases: 5
+  total_plans: 42
+  completed_plans: 38
+  percent: 90
+---
+
 # Project State
 
 ## Project Reference
@@ -7,7 +21,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 **Core value:** Every trade pre-filtered by a calibrated ML classifier whose probabilities match realized hit rate, trained on the agent's own decisions, improving with every cycle.
 
 **Current milestone:** v2-ml-backtest
-**Current focus:** Phase 6 — MCP Tools (part 1) (Phase 5 ✓ COMPLETE 2026-05-08 con Rule 4 deviation accepted)
+**Current focus:** Phase 06 — mcp-tools-part-1
 
 ---
 
@@ -53,13 +67,11 @@ Phase 3 — Patterns Catalog: ✓ COMPLETE 2026-05-08. VERIFICATION PASSED 3/3 R
 
 Phase 2 — Indicators Library: ✓ COMPLETE 2026-05-08. VERIFICATION PASSED 4/4 ROADMAP truths + 14/14 INDIC requirements (`02-VERIFICATION.md`). 9 plani eseguiti in 4 wave (W0=01, W1=02-04, W2=05-07, W3=08-09) seriali per overlap intra-wave su `__init__.py` + `test_indicators_purity.py`. Suite 374 passed + 1 skipped (Mottl optional). `compute_all` 4-key dict bit-for-bit immutato (4 callsite invariati). `compute_all_extended` 37-key snapshot disponibile per Phase 1 backtest + Phase 4 strategy refactor. Known item NON-bloccante: Boomer A2 (CONTEXT.md verbatim) ≠ skill `forex-trader-pro`/`price_action.md:43` — reconciliation deferred a Phase 4. Branch `feature/update-pythono-pure-strategy`.
 
-
 Phase 7 — ML Classifier: CONTEXT.md captured (4 aree, 15 questions, 20 decisioni D-01..D-20 + 7 Claude discretion). Target: y=1 iff TP_HIT, TIMEOUT/BE=loss, scale_pos_weight per fold. Walk-forward expanding 10 fold, embargo timeout_bars[tf], train/val 80/20 temporal early-stop su Brier. Single LightGBM + categorical (symbol, timeframe, profile, setup_name, regime) + raw features. Hybrid hook: prediction in `evaluate_proposal_for_bar` (attacca prob a ProposalDraft, no filter), decision in `risk_engine.evaluate_trade` (threshold gate). Threshold profit-curve optimized per profile, mediana 10 fold. Artifact: joblib + sidecar metadata.json. Resume: `.planning/phases/07-ml-classifier/07-CONTEXT.md`. Next: `/gsd-plan-phase 7`.
 
 Phase 6 — MCP Tools (part 1): CONTEXT.md captured (4 areas, 11 questions, 12 decisioni dirette). Async backtest queue + cancel, in-process trail daemon (position_trails), additive backward-compat MCP-R1/R2/R3, BarSource adapter (live default + as_of_ts opt), replay_decision union lookup, mcp/ package split. Tool surface 25 totali (11 esistenti + 13 REQUIREMENTS + 1 derivato cancel_backtest). Resume: `.planning/phases/06-mcp-tools-part-1/06-CONTEXT.md`. Next: `/gsd-plan-phase 6`.
 
 Phase 5 — Baseline Backtest: ✓ COMPLETE 2026-05-08. 9/9 plans eseguiti in 5 wave. SMOKE E2E 10y window (Option B scope reduction): 27/27 run ok, 1076 trade SQLite ledger (>= 1000 hard gate SC#3 BACK-07 PASS), 27 PNG equity curves, parquet `baseline_decisions/part-0.parquet` finalizzato, report MD `baseline-2026-05-08.md` con metrics reali (post Bug #5 fix `report_writer._g()` dual-mode dict/dataclass). Wall-clock 11922s (3h18m) viola SC#1 <30min — Rule 4 deviation user-accepted (engine Phase 1 O(N²) bottleneck, defer perf-opt a futuro plan 01-09 vectorization). 5 deviation totali documentate: 3 Rule 3 architectural (D-21 contract gap engine.run() output → slice_worker bridge: decisions_rows/drafts_rows/metrics, equity_curve format mismatch list[float] → DataFrame, csv layout data/historical/), 1 Rule 2 (load_bars date filter wiring per scope 10y), 1 Rule 1 auto-fix (Bug #5 dict access). drafts_rows = [] (DEFERRED — engine non cattura FORMING/NONE; futuro plan per Phase 7 failure analysis). Hit rate globale 27.7% (298 win/778 loss), PnL -$8596 — strategia baseline negative-edge come atteso (input dataset per Phase 7 ML, NON risultato finale). Distribuzione: USDJPY 775 trade > EURUSD 168 > GBPUSD 133; M15 841 > M30 170 > H1 65; AGGRESSIVE 540 > MODERATE 448 > CONSERVATIVE 88. Phase 7 ML readiness: dataset parquet pronto (1076 row, 19+ colonne); drafts dataset deferred. Branch `feature/update-pythono-pure-strategy`. SUMMARY: `.planning/phases/05-baseline-backtest/05-08-SUMMARY.md`. Next: `/gsd-plan-phase 6` (MCP Tools part 1).
-
 
 Phase 1 — Backtest Engine: COMPLETE 2026-05-07. All 8 plans + VERIFICATION.md PASSED (6/6 truths). Engine event-driven, costs.yaml, walk-forward, metrics, smoke 12-month <60s (6.78s actual). Legacy RSI/SMA grid archived.
 
