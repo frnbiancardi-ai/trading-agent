@@ -47,7 +47,9 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
     -- Phase 5 sha256 full-64 (Warning 12 fix — coexist con legacy cost_yaml_hash md5[:16]):
     cost_yaml_sha256 TEXT,
     strategy_yaml_sha256 TEXT,
-    baseline_yaml_sha256 TEXT
+    baseline_yaml_sha256 TEXT,
+    -- Phase 6 addition (D-A1, D-A3, D-A4 — ciclo di vita run: running/done/failed/cancelled):
+    status      TEXT NOT NULL DEFAULT 'running'
 )
 """
 
@@ -96,6 +98,8 @@ _BT_RUNS_COLUMNS: tuple[str, ...] = (
     "slippage_seed_effective", "strategy_yaml_hash", "baseline_yaml_hash", "git_sha",
     # Phase 5 sha256 full-64 (Warning 12 fix — coexist con legacy cost_yaml_hash md5[:16]):
     "cost_yaml_sha256", "strategy_yaml_sha256", "baseline_yaml_sha256",
+    # Phase 6 addition (D-A1, D-A3, D-A4 — lifecycle column):
+    "status",
 )
 
 _BT_TRADES_COLUMNS: tuple[str, ...] = (
@@ -138,6 +142,22 @@ def _migrate_backtest_runs(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE backtest_runs ADD COLUMN {col} {typ}")
 
 
+def _migrate_status_column(conn: sqlite3.Connection) -> None:
+    """Aggiunge backtest_runs.status se manca (DB pre-Phase 6).
+
+    Idempotente: usa PRAGMA table_info per probe; ALTER TABLE solo se necessario.
+    Tutte le righe esistenti ricevono default 'running'; verranno aggiornate a
+    'done' al prossimo finalize_run o restano 'running' fino al riconcile post-restart.
+    Threat model: T-6-01-01 — ALTER TABLE SQLite è atomico + rapido (1 colonna).
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(backtest_runs)")}
+    if "status" not in cols:
+        conn.execute(
+            "ALTER TABLE backtest_runs "
+            "ADD COLUMN status TEXT NOT NULL DEFAULT 'running'"
+        )
+
+
 _INSERT_RUN_SQL = (
     "INSERT OR REPLACE INTO backtest_runs ("
     + ",".join(_BT_RUNS_COLUMNS)
@@ -173,16 +193,67 @@ class LedgerWriter:
             # Phase 5 migration: additive ALTER TABLE per DB pre-esistenti
             # (CREATE TABLE IF NOT EXISTS non aggiunge colonne a tabelle già create).
             _migrate_backtest_runs(conn)
+            # Phase 6 migration: aggiunge status column se DB era Phase 5 o precedente.
+            _migrate_status_column(conn)
             conn.execute(_DDL_BACKTEST_TRADES)
             conn.execute(_DDL_IDX_RUN)
             conn.execute(_DDL_IDX_TIME)
             conn.commit()
 
     def record_run(self, run_meta: dict[str, Any]) -> None:
-        """Insert or replace a backtest_runs row (idempotent on run_id)."""
-        row = tuple(run_meta.get(col) for col in _BT_RUNS_COLUMNS)
+        """Insert or replace a backtest_runs row (idempotent on run_id).
+
+        Se 'status' non è presente nel dict, il default DDL 'running' viene applicato.
+        """
+        # Assicura che status abbia un valore esplicito (fallback al default DDL).
+        meta = dict(run_meta)
+        meta.setdefault("status", "running")
+        row = tuple(meta.get(col) for col in _BT_RUNS_COLUMNS)
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(_INSERT_RUN_SQL, row)
+            conn.commit()
+
+    def start_run(self, run_id: str, **meta: Any) -> None:
+        """Registra un nuovo run con status='running' (MCP-01 D-A1).
+
+        Convenienza rispetto a record_run: imposta status='running' esplicitamente
+        e non richiede di conoscere tutti i campi (quelli opzionali vengono None).
+        """
+        base: dict[str, Any] = {
+            "run_id": run_id,
+            "status": "running",
+        }
+        base.update(meta)
+        self.record_run(base)
+
+    def finalize_run(self, run_id: str, status: str = "done", **metrics: Any) -> None:
+        """Aggiorna backtest_runs con metriche finali e status (done/failed/cancelled).
+
+        Usato da:
+        - BacktestEngine al termine del run (status='done' o 'failed')
+        - cancel_backtest handler (status='cancelled')
+
+        Args:
+            run_id:   Identificativo del run da aggiornare.
+            status:   Valore del ciclo di vita (default 'done'). Valori validi:
+                      'running' | 'done' | 'failed' | 'cancelled' (D-A3).
+            **metrics: Colonne metriche da aggiornare (sharpe, sortino, max_dd_pct, ecc.)
+                       + finished_at (TEXT ISO8601).
+        """
+        if not metrics and status == "done":
+            # Nessuna metrica passata — aggiorna solo finished_at e status
+            import datetime as _dt
+            metrics["finished_at"] = _dt.datetime.now(
+                _dt.timezone.utc
+            ).isoformat(timespec="seconds")
+
+        set_clauses = ", ".join(f"{col} = ?" for col in [*metrics.keys(), "status"])
+        values = [*metrics.values(), status, run_id]
+        sql = f"UPDATE backtest_runs SET {set_clauses} WHERE run_id = ?"  # noqa: S608
+        # NB: f-string sicura — nomi colonna da **metrics sono chiavi dict controllate
+        # dallo stesso modulo, non input utente. No SQLI vector (threat model T-6-01-01).
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(sql, values)
             conn.commit()
 
     def insert_trades(
