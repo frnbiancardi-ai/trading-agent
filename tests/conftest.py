@@ -19,27 +19,86 @@ if "MetaTrader5" not in sys.modules:
         import MetaTrader5  # noqa: F401
     except ModuleNotFoundError:
         _stub = ModuleType("MetaTrader5")
-        # Minimal surface used by mt5_client at import time:
-        for attr in (
-            "TIMEFRAME_M1", "TIMEFRAME_M5", "TIMEFRAME_M15", "TIMEFRAME_M30",
-            "TIMEFRAME_H1", "TIMEFRAME_H4", "TIMEFRAME_D1",
-            "ORDER_TYPE_BUY", "ORDER_TYPE_SELL",
-            "TRADE_ACTION_DEAL", "TRADE_ACTION_SLTP",
-            "ORDER_TIME_GTC", "ORDER_FILLING_FOK", "ORDER_FILLING_IOC",
-            "ORDER_FILLING_RETURN", "ORDER_FILLING_BOC",
-            "TRADE_RETCODE_DONE",
-            "SYMBOL_FILLING_FOK", "SYMBOL_FILLING_IOC",
-            "POSITION_TYPE_BUY", "POSITION_TYPE_SELL",
+        # Costanti MT5 con valori reali (Phase 6: TRADE_ACTION_SLTP=6 critico per modify_position).
+        # NB: impostare tutti a 0 come prima causava assert fallimenti in test Phase 6 (D-B1).
+        _MT5_CONSTANTS = {
+            # Timeframe constants
+            "TIMEFRAME_M1":  1,
+            "TIMEFRAME_M5":  5,
+            "TIMEFRAME_M15": 15,
+            "TIMEFRAME_M30": 30,
+            "TIMEFRAME_H1":  60,
+            "TIMEFRAME_H4":  240,
+            "TIMEFRAME_D1":  1440,
+            # Order types
+            "ORDER_TYPE_BUY":  0,
+            "ORDER_TYPE_SELL": 1,
+            # Position types
+            "POSITION_TYPE_BUY":  0,
+            "POSITION_TYPE_SELL": 1,
+            # Trade actions
+            "TRADE_ACTION_DEAL": 1,
+            "TRADE_ACTION_SLTP": 6,   # CRITICO: modifica SL/TP (D-B1, Phase 6)
+            # Order time
+            "ORDER_TIME_GTC": 0,
+            # Filling modes (TenTrade usa ORDER_FILLING_RETURN=2, evitare IOC/FOK)
+            "ORDER_FILLING_FOK":    0,
+            "ORDER_FILLING_IOC":    1,
+            "ORDER_FILLING_RETURN": 2,
+            "ORDER_FILLING_BOC":    6,
+            # Symbol filling flags (bitmask broker)
+            "SYMBOL_FILLING_FOK": 1,
+            "SYMBOL_FILLING_IOC": 2,
+            # Return codes
+            "TRADE_RETCODE_DONE": 10009,
+        }
+        for attr, val in _MT5_CONSTANTS.items():
+            setattr(_stub, attr, val)
+
+        # Funzioni callable stub — i test Phase 6 fanno MagicMock per-case su queste.
+        # Default: no-op sicuri che non sollevano AttributeError a import time.
+
+        def _positions_get(*args, **kwargs):
+            """Stub: ritorna tuple vuota; test Phase 6 override via MagicMock."""
+            return ()
+
+        def _order_send(request):
+            """Stub: simula ordine accettato (TRADE_RETCODE_DONE). Test override per-case."""
+            class _Result:
+                retcode = 10009  # TRADE_RETCODE_DONE
+                order = 1
+                comment = ""
+            return _Result()
+
+        def _symbol_info_tick(symbol):
+            """Stub: tick EURUSD fittizio. Test override dove serve prezzo specifico."""
+            class _Tick:
+                bid = 1.10000
+                ask = 1.10010
+                time = 0
+            return _Tick()
+
+        def _last_error():
+            """Stub: nessun errore."""
+            return (0, "no error")
+
+        for fn_name, fn in (
+            ("initialize", lambda *a, **kw: None),
+            ("shutdown", lambda *a, **kw: None),
+            ("login", lambda *a, **kw: None),
+            ("last_error", _last_error),
+            ("account_info", lambda *a, **kw: None),
+            ("symbol_info", lambda *a, **kw: None),
+            ("symbol_info_tick", _symbol_info_tick),
+            ("copy_rates_from_pos", lambda *a, **kw: None),
+            ("positions_get", _positions_get),
+            ("history_deals_get", lambda *a, **kw: None),
+            ("order_send", _order_send),
+            ("order_check", lambda *a, **kw: None),
+            ("order_calc_margin", lambda *a, **kw: None),
         ):
-            setattr(_stub, attr, 0)
-        # Functions called at import time on some builds — make them no-ops.
-        for fn in (
-            "initialize", "shutdown", "login", "last_error",
-            "account_info", "symbol_info", "symbol_info_tick",
-            "copy_rates_from_pos", "positions_get", "history_deals_get",
-            "order_send", "order_check", "order_calc_margin",
-        ):
-            setattr(_stub, fn, lambda *a, **kw: None)
+            setattr(_stub, fn_name, fn)
+
         sys.modules["MetaTrader5"] = _stub
 
 
