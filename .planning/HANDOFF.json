@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-10T21:51:13.849Z",
+  "context": "phase",
+  "phase": "07",
+  "phase_name": "ml-classifier",
+  "phase_dir": ".planning/phases/07-ml-classifier",
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
+  "status": "paused_pre_planning",
+  "workflow_invoked": "/gsd-plan-phase 7",
+  "workflow_exited_at_step": "post-research, before planner spawn (step 8)",
+  "completed_tasks": [
+    {
+      "id": "phase7-context",
+      "name": "07-CONTEXT.md gathered via /gsd-discuss-phase 7",
+      "status": "done",
+      "commit": "2e313d3"
+    },
+    {
+      "id": "phase7-research",
+      "name": "07-RESEARCH.md produced by gsd-phase-researcher",
+      "status": "done",
+      "commit": "2938374"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": "phase7-spike-wave0",
+      "name": "Spike Wave 0 dataset remediation (decide between Option A/B/C)",
+      "status": "not_started",
+      "blocking": true
+    },
+    {
+      "id": "phase7-pattern-mapper",
+      "name": "Spawn gsd-pattern-mapper → 07-PATTERNS.md",
+      "status": "not_started"
+    },
+    {
+      "id": "phase7-planner",
+      "name": "Spawn gsd-planner → PLAN.md files (Wave 0..N)",
+      "status": "not_started"
+    },
+    {
+      "id": "phase7-plan-checker",
+      "name": "Spawn gsd-plan-checker; revision loop max 3",
+      "status": "not_started"
+    },
+    {
+      "id": "phase7-coverage-gates",
+      "name": "Requirements + decision coverage gates, STATE/ROADMAP update, commit",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Phase 5 baseline_decisions parquet has 1,076 rows × 6 legacy indicators (sma_20, sma_50, ema_50, rsi_14, atr_14, last_close); missing 24+ ExtendedIndicators + profile + regime + run_id + proper UTC timestamps required by ML-01 / CONTEXT.md D-02. Cannot train classifier with full feature set as designed.",
+      "type": "technical",
+      "workaround": "Wave 0 dataset remediation. Three options surfaced by researcher: A=re-run 10y baseline (~3h18m, modify dataset_writer.py to capture full snapshot), B=backfill script (recompute compute_all_extended at entry_time-1 bar on existing rows, no leakage), C=reduced feature set (12 cols, weakest classifier). User chose to spike before deciding."
+    },
+    {
+      "description": "sklearn 1.8.0 removed CalibratedClassifierCV(cv='prefit'). CONTEXT.md skeleton code at lines 316-319 uses prefit pattern → InvalidParameterError at runtime. Must use manual LogisticRegression (Platt) / IsotonicRegression on raw predict_proba.",
+      "type": "technical",
+      "workaround": "Researcher provided manual calibration pattern in 07-RESEARCH.md Pattern 2. Planner must adopt this; CONTEXT.md skeleton needs revising during planning."
+    },
+    {
+      "description": "Fold size reality: 1,076 rows / 10 folds → fold-1 val ≈ 20 rows. Isotonic on val<50 unreliable.",
+      "type": "technical",
+      "workaround": "Use Platt only for early folds (val<50); apply Brier-winner picking from fold ≥3 onward. Decision deferred to spike outcome — if Option A re-run yields 10k+ rows, this is moot."
+    }
+  ],
+  "human_actions_pending": [
+    {
+      "action": "Run /gsd-spike on Wave 0 dataset remediation",
+      "context": "User selected 'Pause planning — spike Wave 0 first' rather than letting planner pick A/B/C. Spike should validate whichever path empirically before committing to plans.",
+      "blocking": true
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Pause /gsd-plan-phase 7 after research, before planner spawn",
+      "rationale": "Researcher surfaced critical dataset gap as Wave 0 blocker. User chose to spike rather than have planner pick remediation strategy. Avoids committing plan structure to a path that may not work.",
+      "phase": "07"
+    },
+    {
+      "decision": "Inference latency target: p95 < 10ms (NOT p99)",
+      "rationale": "Researcher benchmarked WSL2 Docker p50=4ms / p95=9ms / p99=13ms. p99 jitter from OS scheduling. Locking p99<10ms would force smaller model (lower n_estimators or num_leaves) → lower accuracy ceiling. p95 over 1000-sample benchmark accepted.",
+      "phase": "07"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": "Run: /gsd-spike \"Wave 0 dataset remediation for Phase 7 — test Option B backfill (recompute compute_all_extended at entry_time-1 bar on existing 1,076 rows) for no-leakage soundness before committing to Option A baseline re-run (~3h18m)\". Once spike concludes with a chosen path, run: /gsd-plan-phase 7 --skip-research (RESEARCH.md is current).",
+  "context_notes": "Phase 7 is the ML classifier phase of the v2-ml-backtest milestone. CONTEXT.md (locked decisions D-01..D-20 + 7 Claude discretion areas) and RESEARCH.md (1002 lines, 6 patterns, 7 pitfalls, validation architecture) are both committed and current. The planner has everything it needs to write plans EXCEPT a settled Wave 0 strategy. The researcher's three options are documented in 07-RESEARCH.md §Critical Finding: Dataset Schema Gap. The latency decision is locked in memory (project_phase7_pause.md). Do not re-spawn the researcher when planning resumes unless the user explicitly passes --research."
+}
