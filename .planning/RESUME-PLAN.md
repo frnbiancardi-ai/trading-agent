@@ -148,7 +148,7 @@ Il planner deve produrre `05-09-PLAN.md` con scope:
 
 **Stima durata:** ~1-3 ore (planning conversazionale + creazione script wrapper + scrittura test).
 
-**Status:** [ ] not started · [ ] in progress · [ ] complete
+**Status:** [ ] not started · [ ] in progress · [x] complete (2026-05-11, commit `ea89763` — plan 2143 righe, 7 decisions D-09-A..G, 12 truths, 10 threats STRIDE, 6 task seriali, 12 test nuovi totali; plan-checker workflow 3 iter convergente → APPROVED)
 
 ---
 
