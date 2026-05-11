@@ -74,9 +74,9 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 
 ### MCP Tools (new)
 
-- [ ] **MCP-01**: `run_backtest(symbol, timeframe, date_range, profile)` — replay strategy on historical CSV
-- [ ] **MCP-02**: `get_backtest_metrics(run_id)` — Sharpe, MaxDD, hit rate, expectancy, equity curve points
-- [ ] **MCP-03**: `walk_forward_validate(symbol, timeframe, n_folds)` — rolling train/test report
+- [x] **MCP-01**: `run_backtest(symbol, timeframe, date_range, profile)` — replay strategy on historical CSV ✓ 2026-05-11 (Plan 06-03 Wave 2; async via JobQueue ProcessPool D-A1)
+- [x] **MCP-02**: `get_backtest_metrics(run_id)` — Sharpe, MaxDD, hit rate, expectancy, equity curve points ✓ 2026-05-11 (Plan 06-03 Wave 2; polymorphic D-A3)
+- [x] **MCP-03**: `walk_forward_validate(symbol, timeframe, n_folds)` — rolling train/test report ✓ 2026-05-11 (Plan 06-03 Wave 2; N folds in serie singolo worker, Phase 1 D-06 cap=10)
 - [ ] **MCP-04**: `train_ml_filter(data_source)` — retrain classifier from backtest+live trade history
 - [ ] **MCP-05**: `predict_trade_quality(proposal_payload)` — ML inference on a proposal, returns score + calibrated_prob
 - [ ] **MCP-06**: `get_ml_calibration()` — reliability diagram + Brier score + ECE for current model
@@ -206,9 +206,9 @@ Updated during roadmap creation.
 | ML-08 | Phase 9 | Pending |
 | ML-09 | Phase 9 | Pending |
 | ML-10 | Phase 7 | Pending |
-| MCP-01 | Phase 6 | Pending |
-| MCP-02 | Phase 6 | Pending |
-| MCP-03 | Phase 6 | Pending |
+| MCP-01 | Phase 6 | ✓ Complete (Plan 06-03) |
+| MCP-02 | Phase 6 | ✓ Complete (Plan 06-03) |
+| MCP-03 | Phase 6 | ✓ Complete (Plan 06-03) |
 | MCP-04 | Phase 8 | Pending |
 | MCP-05 | Phase 8 | Pending |
 | MCP-06 | Phase 8 | Pending |
