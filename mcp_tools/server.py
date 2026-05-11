@@ -51,6 +51,16 @@ from mcp_tools.handlers.proposal import (
     handle_evaluate_trade_proposal as _proposal_evaluate,
     handle_submit_order_if_approved as _proposal_submit,
 )
+from mcp_tools.handlers.backtest import (
+    CANCEL_BACKTEST_TOOL,
+    GET_BACKTEST_METRICS_TOOL,
+    RUN_BACKTEST_TOOL,
+    WALK_FORWARD_VALIDATE_TOOL,
+    handle_cancel_backtest,
+    handle_get_backtest_metrics,
+    handle_run_backtest,
+    handle_walk_forward_validate,
+)
 
 # Singleton globali — inizializzati al boot del server (e non al solo import del modulo,
 # così i test possono importare mcp_tools.server senza far partire MT5).
@@ -262,6 +272,11 @@ async def list_tools() -> list[Tool]:
                 "required": ["position_id"],
             },
         ),
+        # Phase 6 Wave 2 — backtest control plane (MCP-01/02/03 + cancel D-A4)
+        RUN_BACKTEST_TOOL,
+        GET_BACKTEST_METRICS_TOOL,
+        WALK_FORWARD_VALIDATE_TOOL,
+        CANCEL_BACKTEST_TOOL,
     ]
 
 
@@ -325,6 +340,35 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 "execution_mode": cfg.EXECUTION_MODE,
                 "dry_run": False,
             })
+
+        # Phase 6 Wave 2 — backtest control plane (MCP-01/02/03 + cancel D-A4)
+        if name in (
+            "run_backtest", "get_backtest_metrics",
+            "walk_forward_validate", "cancel_backtest",
+        ):
+            if job_queue is None:
+                return _text(envelope(
+                    "internal_error",
+                    "JobQueue non inizializzata: chiamare _bootstrap_state() prima",
+                    tool=name,
+                ))
+            from logger import _trades_db_path
+            db_path = str(_trades_db_path(cfg))
+            costs_yaml_path = "data/configs/costs.yaml"
+            if name == "run_backtest":
+                return _text(handle_run_backtest(
+                    arguments, job_queue, cfg, db_path, costs_yaml_path,
+                ))
+            if name == "get_backtest_metrics":
+                return _text(handle_get_backtest_metrics(
+                    arguments, job_queue, cfg,
+                ))
+            if name == "walk_forward_validate":
+                return _text(handle_walk_forward_validate(
+                    arguments, job_queue, cfg, db_path, costs_yaml_path,
+                ))
+            # cancel_backtest
+            return _text(handle_cancel_backtest(arguments, job_queue, cfg))
 
         return _text({"error": f"unknown tool: {name}"})
 
