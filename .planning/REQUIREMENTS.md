@@ -89,8 +89,8 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [ ] **MCP-13**: `get_economic_calendar(window_minutes)` — upcoming high-impact events with blackout flag
 - [ ] **MCP-14**: `get_pattern_catalog(symbol, timeframe)` — full candlestick pattern scan on recent bars
 - [ ] **MCP-15**: `replay_decision(decision_id)` — re-run historical decision with current code (regression test)
-- [ ] **MCP-16**: `modify_position(position_id, new_sl?, new_tp?, partial_close_lots?, move_sl_to_breakeven?, trail_stop_atr_mult?)` — active position management
-- [ ] **MCP-17**: `get_position_state(position_id)` — current P&L, distance to SL/TP, holding time, max favorable excursion
+- [x] **MCP-16**: `modify_position(position_id, new_sl?, new_tp?, partial_close_lots?, move_sl_to_breakeven?, trail_stop_atr_mult?)` — active position management <!-- complete 2026-05-11: 06-04 D-B1 atomic combo + DRY_RUN gate canonico EXECUTION_MODE=shadow + D-B3 stops_level pre-validation con suggested_sl no-auto-clamp + 5 conflict rules + trail_stop_atr_mult registra row position_trails via trail_daemon D-B2 (in-process daemon, ATR-based candidate, Pitfall 2 clamp-to-boundary + post-clamp favorable re-check, scheduler hook non-fatal). 8 stub xfail → 8 PASS -->
+- [x] **MCP-17**: `get_position_state(position_id)` — current P&L, distance to SL/TP, holding time, max favorable excursion <!-- complete 2026-05-11: 06-04 read-only payload con pnl_pips/pnl_money/distance_to_sl_pips/distance_to_tp_pips/holding_minutes (None — PositionInfo Wave 1 non espone pos.time, Wave 9 future)/mfe_pips (proxy max(0, pnl_pips); Wave 9 future persistente). 1 stub xfail → PASS -->
 - [ ] **MCP-18**: `suggest_position_action(position_id)` — ML/rule-based hold/move-SL/partial/full-close suggestion
 
 ### MCP Tools (refactor existing)
@@ -221,8 +221,8 @@ Updated during roadmap creation.
 | MCP-13 | Phase 10 | Pending |
 | MCP-14 | Phase 6 | Pending |
 | MCP-15 | Phase 6 | Pending |
-| MCP-16 | Phase 6 | Pending |
-| MCP-17 | Phase 6 | Pending |
+| MCP-16 | Phase 6 | ✓ Complete 2026-05-11 (Plan 06-04) |
+| MCP-17 | Phase 6 | ✓ Complete 2026-05-11 (Plan 06-04) |
 | MCP-18 | Phase 9 | Pending |
 | MCP-R1 | Phase 6 | ✓ Complete 2026-05-11 (Plan 06-02) |
 | MCP-R2 | Phase 6 | ✓ Complete 2026-05-11 (Plan 06-02) |
@@ -242,4 +242,4 @@ Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-07*
-*Last updated: 2026-05-08 — Phase 4 ✅ COMPLETE: tutti 9 STRAT-* requirements ✓ Complete (option-a applied su 04-08, regression replay 11/11 PASS post re-baseline)*
+*Last updated: 2026-05-11 — Plan 06-04 COMPLETE: MCP-16 + MCP-17 ✓ Complete (Wave 3 position management + trail daemon). Phase 6 4/4 plans = COMPLETE per i requirement Wave 0-3; MCP-09/11/12/14/15 restano pending in attesa di Wave 4 06-05 (scheduling post-Phase 7 ML).*
