@@ -22,7 +22,6 @@ Tutti i log devono finire su stderr o file (mai stdout) per non rompere il proto
 Il logger configurato in `logger.py` scrive solo su file (RotatingFileHandler) — sicuro.
 """
 import asyncio
-import dataclasses
 import json
 from typing import Any
 
@@ -61,6 +60,15 @@ from mcp_tools.handlers.backtest import (
     handle_run_backtest,
     handle_walk_forward_validate,
 )
+# Phase 6 Wave 3 (Plan 06-04) — MCP-16 + MCP-17 + trail daemon
+from mcp_tools.handlers.position import (
+    GET_POSITION_STATE_TOOL,
+    MODIFY_POSITION_TOOL,
+    handle_close_position,
+    handle_get_position_state,
+    handle_modify_position,
+)
+from mcp_tools.trail_daemon import ensure_table as trail_ensure_table
 
 # Singleton globali — inizializzati al boot del server (e non al solo import del modulo,
 # così i test possono importare mcp_tools.server senza far partire MT5).
@@ -107,6 +115,8 @@ def _bootstrap_state() -> None:
     # Garantisce schema backtest_runs/backtest_trades (idempotente)
     from backtest.ledger import LedgerWriter
     LedgerWriter(db_path)
+    # Phase 6 Wave 3 D-B2: position_trails DDL (idempotente, sopravvive restart)
+    trail_ensure_table(db_path)
     # JobQueue (lazy import per non rallentare module-load durante test)
     from mcp_tools.job_queue import JobQueue
     job_queue = JobQueue(
@@ -277,6 +287,9 @@ async def list_tools() -> list[Tool]:
         GET_BACKTEST_METRICS_TOOL,
         WALK_FORWARD_VALIDATE_TOOL,
         CANCEL_BACKTEST_TOOL,
+        # Phase 6 Wave 3 — position management (MCP-16, MCP-17)
+        MODIFY_POSITION_TOOL,
+        GET_POSITION_STATE_TOOL,
     ]
 
 
@@ -322,24 +335,15 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         if name == "propose_trade":
             return _text(_proposal_propose(arguments, log, cfg))
 
+        # Phase 6 Wave 3 — position management (MCP-16, MCP-17 + close move)
+        if name == "modify_position":
+            return _text(handle_modify_position(arguments, mt5, cfg, log))
+
+        if name == "get_position_state":
+            return _text(handle_get_position_state(arguments, mt5, cfg))
+
         if name == "close_position":
-            position_id = int(arguments["position_id"])
-            if cfg.DRY_RUN:
-                log.info("MCP close_position DRY_RUN ticket=%d (nessun ordine reale)", position_id)
-                return _text({
-                    "success": True,
-                    "order_id": None,
-                    "error_message": None,
-                    "execution_mode": cfg.EXECUTION_MODE,
-                    "dry_run": True,
-                    "note": "DRY_RUN: nessun ordine inviato a MT5",
-                })
-            result = mt5.close_position(position_id)
-            return _text({
-                **dataclasses.asdict(result),
-                "execution_mode": cfg.EXECUTION_MODE,
-                "dry_run": False,
-            })
+            return _text(handle_close_position(arguments, mt5, cfg, log))
 
         # Phase 6 Wave 2 — backtest control plane (MCP-01/02/03 + cancel D-A4)
         if name in (

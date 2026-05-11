@@ -78,3 +78,32 @@ GET_MARKET_SNAPSHOT_SCHEMA = {
     },
     "required": ["symbol"],
 }
+
+
+# ── Phase 6 Wave 3 — MCP-16 modify_position D-B1 atomic combo ─────────────────
+MODIFY_POSITION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "position_id":          {"type": "integer", "minimum": 1},
+        "new_sl":               {"type": "number"},
+        "new_tp":               {"type": "number"},
+        "partial_close_lots":   {"type": "number", "minimum": 0.01},
+        "move_sl_to_breakeven": {"type": "boolean", "default": False},
+        "trail_stop_atr_mult":  {"type": "number", "minimum": 0.5, "maximum": 5.0},
+    },
+    "required": ["position_id"],
+    "description": (
+        "Almeno un campo tra new_sl/new_tp/partial_close_lots/"
+        "move_sl_to_breakeven/trail_stop_atr_mult deve essere settato."
+    ),
+}
+
+
+# ── Phase 6 Wave 3 — MCP-17 get_position_state (read-only) ───────────────────
+GET_POSITION_STATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "position_id": {"type": "integer", "minimum": 1},
+    },
+    "required": ["position_id"],
+}
