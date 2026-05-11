@@ -59,6 +59,10 @@ log = init_logger(cfg)
 mt5 = Mt5Client(cfg)
 _mt5_ready: bool = False
 
+# D-A1 / D-A4: registry async dei backtest. Inizializzato da _bootstrap_state(),
+# NON al solo import del modulo (per non aprire ProcessPoolExecutor nei test).
+job_queue: "Any | None" = None  # JobQueue tipato lazy per evitare import top-level
+
 
 def _bootstrap_mt5() -> bool:
     """Inizializza MT5. Chiamato dal main, NON dall'import del modulo."""
@@ -77,9 +81,31 @@ def _bootstrap_mt5() -> bool:
 
 
 def _bootstrap_state() -> None:
-    """Phase 6 Wave 1: placeholder. Wave 2 aggiunge JobQueue init; Wave 3 aggiunge trail_table.ensure."""
-    # IMPLEMENTATO in Wave 2 (06-03-PLAN) e Wave 3 (06-04-PLAN)
-    pass
+    """D-F4 ordering: MT5 (già fatto in _bootstrap_mt5) → DB tables → JobQueue → stdio.
+
+    Wave 2 (06-03): inizializza JobQueue su cfg.MCP_MAX_CONCURRENT_RUNS.
+    Wave 3 (06-04) aggiungerà trail_daemon.ensure_table(db_path) prima del JobQueue.
+    """
+    global job_queue
+    from logger import _trades_db_path
+    db_path = str(_trades_db_path(cfg))
+    # PRAGMA WAL una sola volta (Phase 5 D-16); poi LedgerWriter ensure_schema +
+    # JobQueue _ensure_error_column applicano le migration idempotenti.
+    import sqlite3
+    with sqlite3.connect(db_path) as c:
+        c.execute("PRAGMA journal_mode=WAL")
+    # Garantisce schema backtest_runs/backtest_trades (idempotente)
+    from backtest.ledger import LedgerWriter
+    LedgerWriter(db_path)
+    # JobQueue (lazy import per non rallentare module-load durante test)
+    from mcp_tools.job_queue import JobQueue
+    job_queue = JobQueue(
+        max_workers=cfg.MCP_MAX_CONCURRENT_RUNS, db_path=db_path,
+    )
+    log.info(
+        "MCP bootstrap state ready: db=%s max_workers=%d",
+        db_path, cfg.MCP_MAX_CONCURRENT_RUNS,
+    )
 
 
 server: Server = Server("trading-agent")

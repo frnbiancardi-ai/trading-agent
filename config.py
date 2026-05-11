@@ -97,8 +97,10 @@ class Config:
     # Execution
     EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "shadow")
 
-    # Phase 6 MCP (D-C1, D-D1)
+    # Phase 6 MCP (D-C1, D-D1, D-A4)
     MCP_DEFAULT_BARS: int = int(os.getenv("MCP_DEFAULT_BARS", "200"))
+    # D-A4 cap=1: massimo backtest concorrenti gestiti dal JobQueue (Wave 2).
+    MCP_MAX_CONCURRENT_RUNS: int = int(os.getenv("MCP_MAX_CONCURRENT_RUNS", "1"))
 
     # Scheduler / Daily orchestrator (fase 13)
     OPERATING_TIMEZONE: str = os.getenv("OPERATING_TIMEZONE", "Europe/Rome")
