@@ -286,7 +286,7 @@ git push origin feature/update-pythono-pure-strategy
 
 **Failure recovery:** se un plan fallisce, GSD si ferma con un `.continue-here.md`. Riprendi con `/gsd-resume-work` o `/gsd-execute-plan 6 <num>`.
 
-**Status:** [ ] not started · [ ] in progress · [ ] complete
+**Status:** [ ] not started · [ ] in progress · [x] complete (2026-05-11, 19 commit atomici dei 3 plan Wave 1-3: 06-02 (7 commit) + 06-03 (6 commit) + 06-04 (6 commit); suite globale 458 passed + 12 skipped + 10 xfailed + 1 pre-existing perf Phase 1 deferred; Wave 4 Plan 06-05 deferred a post-Phase 7 ML come da decisione architetturale; 3 deviation totali documentate; STATE.md + ROADMAP + REQUIREMENTS aggiornati)
 
 ---
 
