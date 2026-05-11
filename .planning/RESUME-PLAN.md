@@ -219,7 +219,7 @@ git push origin feature/update-pythono-pure-strategy
 
 **Stima durata:** ~1-5 minuti.
 
-**Status:** [ ] not started · [ ] in progress · [ ] complete
+**Status:** [ ] not started · [ ] in progress · [x] complete (2026-05-11, push 22 commit `a4fb6a9..9547797` su origin; remote tip == `9547797`; lavoro distribuito sbloccato per PC secondario)
 
 ---
 
