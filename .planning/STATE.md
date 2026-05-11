@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-05-10T21:30:29.250Z"
+milestone: v2-ml-backtest
+milestone_name: v2-ml-backtest
+status: in_progress
+last_updated: "2026-05-11T00:00:00.000Z"
 progress:
   total_phases: 11
-  completed_phases: 5
-  total_plans: 42
+  completed_phases: 4
+  total_plans: 43
   completed_plans: 38
-  percent: 90
+  percent: 36
 ---
 
 # Project State
@@ -21,7 +21,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 **Core value:** Every trade pre-filtered by a calibrated ML classifier whose probabilities match realized hit rate, trained on the agent's own decisions, improving with every cycle.
 
 **Current milestone:** v2-ml-backtest
-**Current focus:** Phase 06 — mcp-tools-part-1
+**Current focus:** Phase 05 REOPENED — Plan 05-09 dataset writer extension + baseline re-run (blocca Phase 7 ML)
+
+**Active workflow:** vedi `.planning/RESUME-PLAN.md` (rev 4) — 13 step distribuiti PC primario + PC secondario.
 
 ---
 
@@ -33,19 +35,23 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 2 | Indicators Library | ✓ complete | 9/9 | 100% |
 | 3 | Patterns Catalog | ✓ complete | 4/4 | 100% |
 | 4 | Strategy Refactor | ✓ complete | 8/8 | 100% |
-| 5 | Baseline Backtest | ✓ complete | 9/9 | 100% |
-| 6 | MCP Tools (part 1) | ○ pending | 0/0 | 0% |
-| 7 | ML Classifier | ○ pending | 0/0 | 0% |
+| 5 | Baseline Backtest | 🟡 reopened | 8/9 | 89% (plan 05-09 pending — D-02 schema gap closure) |
+| 6 | MCP Tools (part 1) | 🟡 in progress | 1/4 | 25% (06-01 SUMMARY ✓; 06-02/03/04 PLAN scritti, mai eseguiti) |
+| 7 | ML Classifier | 🟠 paused pre-planning | 0/N | 0% (CONTEXT.md ✓, RESEARCH.md ✓; planner mai spawned; blocked by 05-09) |
 | 8 | MCP Tools (part 2) | ○ pending | 0/0 | 0% |
 | 9 | Failure Analysis + Drift | ○ pending | 0/0 | 0% |
 | 10 | Intermarket + News | ○ pending | 0/0 | 0% |
 | 11 | Paper Deploy Gate | ○ pending | 0/0 | 0% |
 
-**Overall progress:** 5/11 phases complete (45%)
+**Overall progress:** 4/11 phases complete (36%), 2 in progress (Phase 5 reopened, Phase 6 partial), 1 paused (Phase 7)
 
 ---
 
 ## Active Work
+
+**Phase 5 — REOPENED 2026-05-11** per Plan 05-09: dataset writer extension + baseline re-run. Trigger: Phase 7 ML research (commit `2938374`) ha rivelato che il parquet baseline (1.076 rows × 17 cols flat) manca 24+ extended indicators (Bollinger, ADX, MACD, Stochastic, Donchian, Keltner, VWAP, Fibonacci, Hurst, Closing Score, NR4/7, multi-TF alignment, volatility regime) + 4 metadati (profile, regime, run_id, decision_ts_utc UTC) richiesti da ML-01 / 07-CONTEXT.md D-02. Decisione user: chiude il gap come Plan 05-09 di Phase 5 (NON come Wave 0 di Phase 7) perché `dataset_writer.py` è file Phase 5 e separation of concerns lo impone. Plan 05-09 produrrà anche script wrapper `scripts/run_baseline_05_09.py` (con `--smoke` flag) eseguibile stand-alone su PC secondario (workflow distribuito per vincolo hardware: PC primario non regge backtest 23.5y + altre task in parallelo). Re-run notturno ~3h18m wall-clock sul PC secondario (AMD Ryzen 7 5800H + 16 GB + RTX 3060 — backtest CPU-only, GPU non aiuta per engine event-driven sequenziale; GPU riservata per Phase 7 ML training). Dopo Plan 05-09 ✓ → STATE Phase 5 complete 9/9 + Phase 7 sblocca per planning. Resume guide: `.planning/RESUME-PLAN.md` (13 step distribuiti). Next: STEP 1 = `/gsd-plan-phase 5`.
+
+---
 
 Phase 4 — Strategy Refactor: ✅ COMPLETE 2026-05-08 (8/8 plans, 100%). 04-08-PLAN CLOSED 2026-05-08 post user decision option-a (ACCEPT calibration + re-baseline fixture). 5 task commits cumulativi (5db3049 test regression replay 127 LOC + 21abb91 fix Rule 1 spread_baseline_pips + dd3e45d docs partial summary + RECONCILIATION + 575b484 test re-baseline 8/10 fire + a7a252a refactor archive strategy_legacy). Re-eseguito tests/capture_regression_baseline.py contro strategy.IntradayStrategy shim → 8/10 setup fire (2 NONE, 6 FORMING, 2 READY conf 0.70/0.55) sostituisce baseline legacy 10/10 NONE. Test replay 11/11 PASS in 111s (integration). strategy_legacy.py ARCHIVIATO in .planning/archive/ (NON deletato come prescriveva plan, deviazione documentata: preserva fallback per Phase 5 backtest validation se invalida calibrazione → revert option-b/c/d). Annotation README su fixture + provenance README su archive. STRAT-09 ✓ Complete con nota Phase 5 validation requirement. SC-5 verified post architectural delta accept. Phase 4 SC-1..5 tutti ✅. 1 deviazione plan (archive vs delete) + 1 Rule 1 (spread defensive cast). Pre-existing 04-07 backtest perf overshoot 63.5s vs 60s NON fixed in 04-08 (out-of-scope, deferred a Phase 5 plan-08 preflight gate). Phase 4 SUMMARY: `.planning/phases/04-strategy-refactor/04-08-SUMMARY.md`. Next: Phase 5 — Baseline Backtest (9 plans già scritti, checker PASS, sblocca eseguibile ora con `/gsd-execute-phase 5`).
 
@@ -91,4 +97,4 @@ See `.planning/PROJECT.md` Key Decisions table.
 - Skills: `forex-trader-pro`, `forex-algo-dev`, `forex-strategy-builder`.
 
 ---
-*Last updated: 2026-05-08 — Phase 5 ✓ CLOSED (9/9 plans, 100%; smoke E2E 10y 27/27 run, 1076 trade > 1000 hard gate SC#3, 27 PNG equity, parquet finalizzato; 5 deviation incluso Rule 4 user-accepted wall-clock 3h18m vs 30min; engine perf-opt defer plan 01-09; Phase 7 ML dataset ready; next: Phase 6 MCP Tools part 1)*
+*Last updated: 2026-05-11 — Phase 5 REOPENED per Plan 05-09 (dataset writer extension + baseline re-run, chiude D-02 schema gap inherited from plan 05-08, sblocca Phase 7 ML); workflow distribuito attivo (RESUME-PLAN.md rev 4): STEP 1 = riapri Phase 5 + plan-phase ora in corso, STEP 2 = push, STEP 3 = PC secondario backtest notturno, STEP 4-12 = Phase 6 execute + discuss/plan fasi 8/9/10/11 in parallelo, STEP 13 = Phase 7 sync + planning + execute. Previous: 2026-05-08 — Phase 5 ✓ CLOSED (9/9 plans, 100%; smoke E2E 10y 27/27 run, 1076 trade > 1000 hard gate SC#3, 27 PNG equity, parquet finalizzato; 5 deviation incluso Rule 4 user-accepted wall-clock 3h18m vs 30min; engine perf-opt defer plan 01-09; Phase 7 ML dataset ready)*
