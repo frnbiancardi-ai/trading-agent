@@ -152,6 +152,46 @@ Il planner deve produrre `05-09-PLAN.md` con scope:
 
 ---
 
+### STEP 1.5 — Execute Plan 05-09 Task 1-6 (sul PC PRIMARIO, sessione Claude)
+
+**Cosa fa:** esegue i 6 task del Plan 05-09 sul PC primario per produrre tutti i deliverable di codice (dataset_writer extended + slice_worker integration + baseline.yaml bump + script wrapper + test). Sessione Claude Code single-thread, ~3-5h wall-clock con orchestration GSD (atomic commits, deviation handling, plan-checker integration).
+
+**Comando:**
+```
+/gsd-execute-plan 5 9
+```
+(oppure `/gsd-execute-phase 5` — orchestrator riconosce che solo plan 05-09 è pending)
+
+**Pre-check:**
+- [ ] STEP 1 completato (Plan 05-09 APPROVED)
+- [ ] Working tree pulito (`git status`)
+- [ ] Backup parquet pre-esistente: `cp -r data/training/baseline_decisions data/training/baseline_decisions.pre-05-09`
+- [ ] Suite pytest baseline corrente verde (controlla regressioni di partenza)
+
+**Task del plan da eseguire (ordine seriale):**
+1. Task 1: estende `dataset_writer.py` (schema v2 con `_SCHEMA_V2_REQUIRED_KEYS` extraction programmatica) + 5 test
+2. Task 2: integra `slice_worker.py` con regime_cfg per-symbol + 3 timestamp distinti + enrichment post-engine (NON tocca top-level compute_all_extended, FIX D iter 3 invariante)
+3. Task 3: modifica `data/configs/baseline.yaml` (bump `dataset_schema_version: 2`, hash invalidation force re-run)
+4. Task 4: crea `scripts/run_baseline_05_09.py` (--smoke 3 mesi | default full 27/27 | --only-runs via `_force_clear_run` reuse | --force | path absolute via ROOT)
+5. Task 5: 4 test no-leakage invariant (`tests/test_baseline_no_leakage_extended.py`) + 3 test runner (smoke + only-runs + regime per-symbol)
+6. Task 6: recovery docs + suite verde finale (NO execution del full 27/27 — quello è STEP 3 sul PC secondario)
+
+**Criteri di completamento:**
+- [ ] 6 task atomici committati (uno per ogni task del plan)
+- [ ] 12 test nuovi tutti verdi
+- [ ] Suite pytest baseline esistente (~30 test Phase 5) tutti verdi (backward-compat preservato)
+- [ ] `scripts/run_baseline_05_09.py --smoke` testato localmente (~120-180s wall-clock) — produce parquet smoke con schema v2 valido
+- [ ] `05-09-SUMMARY.md` parziale scritto (sezione "Plan-write tasks completed"; full SUMMARY post-backtest sul PC secondario)
+- [ ] STATE.md aggiornato (STEP 1.5 → complete)
+
+**Stima durata:** ~3-5h sessione Claude Code attiva (no backtest reale; solo plan-write code).
+
+**Failure recovery:** se un task fallisce, GSD si ferma con `.continue-here.md`. Riprendi con `/gsd-resume-work`.
+
+**Status:** [ ] not started · [ ] in progress · [ ] complete
+
+---
+
 ### STEP 2 — Commit + Push: pubblica Plan 05-09 sul remoto
 
 **Cosa fa:** push del branch `feature/update-pythono-pure-strategy` al remoto GitHub, così il PC secondario può `git pull` e iniziare il setup.
