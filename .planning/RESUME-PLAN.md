@@ -188,7 +188,7 @@ Il planner deve produrre `05-09-PLAN.md` con scope:
 
 **Failure recovery:** se un task fallisce, GSD si ferma con `.continue-here.md`. Riprendi con `/gsd-resume-work`.
 
-**Status:** [ ] not started · [ ] in progress · [ ] complete
+**Status:** [ ] not started · [ ] in progress · [x] complete (2026-05-11, 6 commit atomici `5630bcc → 9e477cc` — +1138 LOC totali, 12 nuovi test verdi, suite globale 400 passed + 11 skip + 55 xfail; invariante FIX D iter 3 verificato; 1 deviation Rule 1 documentata; SUMMARY parziale plan-write committed, sezione backtest-execution lasciata pending PC secondario)
 
 ---
 
