@@ -95,9 +95,9 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 
 ### MCP Tools (refactor existing)
 
-- [ ] **MCP-R1**: `get_market_snapshot` — extend to 200 bars + opt indicators flag (backward compatible default)
-- [ ] **MCP-R2**: `scan_symbol_candidates` — add `regime` and `correlation_warnings` fields
-- [ ] **MCP-R3**: `propose_trade` — add `setup_type` (A/B/C/D) and `confluence_score` fields
+- [x] **MCP-R1**: `get_market_snapshot` — extend to 200 bars + opt indicators flag (backward compatible default) ✓ 2026-05-11 (Plan 06-02 commit 2d96bbb: default 200 via cfg.MCP_DEFAULT_BARS, override args.bars 50-500, indicators_extended Phase 2 additive, as_of_ts D-D1)
+- [x] **MCP-R2**: `scan_symbol_candidates` — add `regime` and `correlation_warnings` fields ✓ 2026-05-11 (Plan 06-02 commit 2d96bbb: regime da compute_all_extended.regime_state Phase 2 INDIC-14, correlation_warnings=[] in Wave 1, popolato Wave 4)
+- [x] **MCP-R3**: `propose_trade` — add `setup_type` (A/B/C/D) and `confluence_score` fields ✓ 2026-05-11 (Plan 06-02 commit 2d96bbb: passthrough da args.context, freeform=null, Phase 4 derivation deferred)
 - [ ] **MCP-R4**: `evaluate_trade_proposal` — integrate ML quality filter, add `ml_score` + `calibrated_prob` to response
 
 ### Integration / Deploy
@@ -224,9 +224,9 @@ Updated during roadmap creation.
 | MCP-16 | Phase 6 | Pending |
 | MCP-17 | Phase 6 | Pending |
 | MCP-18 | Phase 9 | Pending |
-| MCP-R1 | Phase 6 | Pending |
-| MCP-R2 | Phase 6 | Pending |
-| MCP-R3 | Phase 6 | Pending |
+| MCP-R1 | Phase 6 | ✓ Complete 2026-05-11 (Plan 06-02) |
+| MCP-R2 | Phase 6 | ✓ Complete 2026-05-11 (Plan 06-02) |
+| MCP-R3 | Phase 6 | ✓ Complete 2026-05-11 (Plan 06-02) |
 | MCP-R4 | Phase 8 | Pending |
 | INT-01 | Phase 5 | ✓ Complete 2026-05-08 |
 | INT-02 | Phase 8 | Pending |
