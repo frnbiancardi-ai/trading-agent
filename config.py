@@ -101,6 +101,10 @@ class Config:
     MCP_DEFAULT_BARS: int = int(os.getenv("MCP_DEFAULT_BARS", "200"))
     # D-A4 cap=1: massimo backtest concorrenti gestiti dal JobQueue (Wave 2).
     MCP_MAX_CONCURRENT_RUNS: int = int(os.getenv("MCP_MAX_CONCURRENT_RUNS", "1"))
+    # D-B2 trail daemon (Wave 3): timeframe usato dal daemon per ATR del trail
+    # + flag che vieta tightening dello SL non-favorable (BUY: candidate<=last_sl).
+    TRAIL_TICK_TIMEFRAME: str = os.getenv("TRAIL_TICK_TIMEFRAME", "M15")
+    TRAIL_FAVORABLE_ONLY: bool = _get_bool("TRAIL_FAVORABLE_ONLY", True)
 
     # Scheduler / Daily orchestrator (fase 13)
     OPERATING_TIMEZONE: str = os.getenv("OPERATING_TIMEZONE", "Europe/Rome")
