@@ -98,14 +98,38 @@ def _stub_indicators_module(monkeypatch) -> dict:
     """
     spy = {"calls": 0, "last_input": None}
 
-    def fake_compute(bars):
+    def fake_compute(bars, *, regime_cfg=None, **kwargs):
+        # Backward-compat stub Plan 05-09: il vero compute_all_extended ora
+        # accetta `regime_cfg=None` (e potenzialmente altri kwargs futuri).
+        # Il modulo dataset_writer chiama questa funzione a import-time via
+        # `_build_required_keys_v2()`. Stub deve accettare la signature
+        # estesa per non rompere i 4 test pre-Plan 05-09 che usano
+        # `_patch_worker_io` (= import indiretto di dataset_writer).
+        # Lo stub ignora regime_cfg (test pre-esistenti non lo usano).
         spy["calls"] += 1
         spy["last_input"] = bars
+        spy["last_regime_cfg"] = regime_cfg
         return {"sma_20": 1.10, "atr_14": 0.001, "rsi_14": 55.0}
 
     mod = types.ModuleType("indicators")
     mod.compute_all_extended = fake_compute
     monkeypatch.setitem(sys.modules, "indicators", mod)
+
+    # Backward-compat stub Plan 05-09: il vero codice ora fa anche
+    # `from indicators.volatility import load_regime_config` (slice_worker
+    # post FIX 1 iter 1). Lo stub deve esporre un submodule `volatility`
+    # con load_regime_config(symbol, yaml_path) -> dict.
+    vol_mod = types.ModuleType("indicators.volatility")
+
+    def fake_load_regime_config(symbol, yaml_path=None):
+        # Test pre-esistenti non usano regime_cfg, ritorna config minimale
+        # vuota (matcha la firma `dict` che lo stub utilizza).
+        return {}
+
+    vol_mod.load_regime_config = fake_load_regime_config
+    monkeypatch.setitem(sys.modules, "indicators.volatility", vol_mod)
+    # `indicators.volatility` accessibile anche via attribute lookup (es. `import indicators; indicators.volatility.load_regime_config`).
+    mod.volatility = vol_mod
     return spy
 
 
@@ -217,6 +241,14 @@ def test_indicator_cache_reused_across_profiles(monkeypatch, tmp_path):
     _patch_worker_io(monkeypatch, tmp_path)
     db = tmp_path / "trades.db"
     _seed_backtest_runs_table(db)
+
+    # Reset counter post-import: `_build_required_keys_v2()` di dataset_writer
+    # chiama compute_all_extended UNA volta a import-time per costruire la
+    # whitelist v2 (FIX 3 plan-checker iter 1 Plan 05-09). Quella chiamata
+    # NON e' parte del flow D-15 (cache reuse runtime). Reset per misurare
+    # solo le chiamate da run_slice_3profiles.
+    spy["calls"] = 0
+    spy["last_input"] = None
 
     from backtest.baseline.slice_worker import run_slice_3profiles
 
