@@ -40,6 +40,17 @@ from mcp_tools.handlers.account import (
     handle_get_risk_profile,
     handle_get_trade_history,
 )
+from mcp_tools.handlers.market import (
+    handle_get_market_snapshot as _market_snapshot,
+    handle_scan_symbol_candidates as _market_scan,
+    handle_get_symbol_indicators as _market_symbol_indicators,
+    handle_get_symbol_universe as _market_symbol_universe,
+)
+from mcp_tools.handlers.proposal import (
+    handle_propose_trade as _proposal_propose,
+    handle_evaluate_trade_proposal as _proposal_evaluate,
+    handle_submit_order_if_approved as _proposal_submit,
+)
 
 # Singleton globali — inizializzati al boot del server (e non al solo import del modulo,
 # così i test possono importare mcp_tools.server senza far partire MT5).
@@ -89,92 +100,9 @@ from mcp_tools.schemas import (
 )
 
 
-# ── Handler legacy ancora inline (verranno spostati in Wave 1 handlers) ──────
-
-def _build_proposal(args: dict):
-    """Costruisce TradeProposal dagli args del tool. Usato da evaluate e submit."""
-    from models import TradeProposal
-    return TradeProposal(
-        symbol=args["symbol"],
-        direction=args["direction"],
-        entry_price=args["entry_price"],
-        stop_loss_price=args["stop_loss_price"],
-        take_profit_price=args["take_profit_price"],
-        timeframe=cfg.TIMEFRAME,
-        comment="mcp",
-        confidence=args["confidence"],
-        rationale=args["rationale"],
-    )
-
-
-def handle_get_symbol_universe(filter_asset_class: str | None = None) -> dict:
-    """Restituisce l'universo dei simboli candidati dalla configurazione."""
-    symbols = list(getattr(cfg, "SYMBOLS", []) or [])
-    return {
-        "symbols": symbols,
-        "count": len(symbols),
-        "source": "config.SYMBOLS",
-        "filter_asset_class": filter_asset_class,
-    }
-
-
-def handle_scan_symbol_candidates(symbols: list[str], timeframe: str | None = None) -> dict:
-    """Cheap scan multi-symbol. Output compatto: nessun OHLC completo."""
-    from claude_agent import cheap_scan_symbol
-    tf = timeframe or cfg.TIMEFRAME
-    candidates = [
-        dataclasses.asdict(cheap_scan_symbol(mt5, tf, sym))
-        for sym in symbols
-    ]
-    return {
-        "timeframe": tf,
-        "count": len(candidates),
-        "candidates": candidates,
-    }
-
-
-def handle_get_symbol_indicators(symbol: str, timeframe: str | None = None) -> dict:
-    """Indicatori approfonditi per un singolo simbolo. SMA(20), EMA(50), RSI(14), ATR(14)."""
-    from indicators import compute_all
-    tf = timeframe or cfg.TIMEFRAME
-    ohlc = mt5.get_ohlc(symbol, tf, 100)
-    if not ohlc:
-        return {"error": "no ohlc data", "symbol": symbol, "timeframe": tf}
-    indicators = compute_all(ohlc)
-    return {
-        "symbol": symbol,
-        "timeframe": tf,
-        "bars_used": len(ohlc),
-        "last_close": ohlc[-1]["close"],
-        "indicators": indicators,
-    }
-
-
-def handle_propose_trade(args: dict) -> dict:
-    """Formalizza una proposta finale dell'agente. NON esegue ordini, NON decide size."""
-    from models import TradeProposal
-    timeframe = args.get("timeframe") or cfg.TIMEFRAME
-    proposal = TradeProposal(
-        symbol=args["symbol"],
-        direction=args["direction"],
-        entry_price=float(args["entry_price"]),
-        stop_loss_price=float(args["stop_loss_price"]),
-        take_profit_price=float(args["take_profit_price"]),
-        timeframe=timeframe,
-        comment="mcp_propose_trade",
-        confidence=float(args["confidence"]),
-        rationale=args["rationale"],
-    )
-    log.info(
-        "MCP propose_trade formalized: symbol=%s direction=%s confidence=%.2f",
-        proposal.symbol, proposal.direction, proposal.confidence,
-    )
-    return {
-        "status": "proposed",
-        "executed": False,
-        "proposal": dataclasses.asdict(proposal),
-        "next_step": "call evaluate_trade_proposal or submit_order_if_approved to act on it",
-    }
+# NOTA Phase 6 D-E1: handler di dominio spostati nei moduli mcp_tools/handlers/.
+# Vedi mcp_tools/handlers/market.py (R1/R2) e mcp_tools/handlers/proposal.py (R3).
+# Le funzioni `_market_*` e `_proposal_*` sono importate sopra.
 
 
 # ── Tool registrations ────────────────────────────────────────────────────────
@@ -320,25 +248,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return _text(handle_get_account_state(mt5))
 
         if name == "get_market_snapshot":
-            from mcp_tools.handlers.market import handle_get_market_snapshot as _snap
-            return _text(_snap(arguments, mt5, cfg))
+            return _text(_market_snapshot(arguments, mt5, cfg))
 
         if name == "evaluate_trade_proposal":
-            from risk_engine import evaluate_trade
-            proposal = _build_proposal(arguments)
-            account = mt5.get_account_state()
-            decision = evaluate_trade(proposal, account, mt5, cfg)
-            return _text(dataclasses.asdict(decision))
+            return _text(_proposal_evaluate(arguments, mt5, cfg))
 
         if name == "submit_order_if_approved":
-            from execution import run_once
-            proposal = _build_proposal(arguments)
-            decision = run_once(proposal.symbol, proposal, cfg, mt5, log)
-            return _text({
-                "decision": dataclasses.asdict(decision) if decision is not None else None,
-                "execution_mode": cfg.EXECUTION_MODE,
-                "note": "send_order eseguito solo se approved AND EXECUTION_MODE != shadow",
-            })
+            return _text(_proposal_submit(arguments, mt5, cfg))
 
         if name == "get_risk_profile":
             return _text(handle_get_risk_profile(cfg))
@@ -348,24 +264,22 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return _text(handle_get_trade_history(cfg, n))
 
         if name == "get_symbol_universe":
-            return _text(handle_get_symbol_universe(
+            return _text(_market_symbol_universe(
+                cfg,
                 filter_asset_class=arguments.get("filter_asset_class"),
             ))
 
         if name == "scan_symbol_candidates":
-            return _text(handle_scan_symbol_candidates(
-                symbols=arguments.get("symbols") or [],
-                timeframe=arguments.get("timeframe"),
-            ))
+            return _text(_market_scan(arguments, mt5, cfg))
 
         if name == "get_symbol_indicators":
-            return _text(handle_get_symbol_indicators(
-                symbol=arguments["symbol"],
+            return _text(_market_symbol_indicators(
+                arguments["symbol"], mt5, cfg,
                 timeframe=arguments.get("timeframe"),
             ))
 
         if name == "propose_trade":
-            return _text(handle_propose_trade(arguments))
+            return _text(_proposal_propose(arguments, log, cfg))
 
         if name == "close_position":
             position_id = int(arguments["position_id"])

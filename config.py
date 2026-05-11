@@ -97,6 +97,9 @@ class Config:
     # Execution
     EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "shadow")
 
+    # Phase 6 MCP (D-C1, D-D1)
+    MCP_DEFAULT_BARS: int = int(os.getenv("MCP_DEFAULT_BARS", "200"))
+
     # Scheduler / Daily orchestrator (fase 13)
     OPERATING_TIMEZONE: str = os.getenv("OPERATING_TIMEZONE", "Europe/Rome")
     OPERATING_START_HOUR: int = int(os.getenv("OPERATING_START_HOUR", "8"))

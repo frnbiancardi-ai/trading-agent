@@ -22,13 +22,8 @@ from mcp_tools.server import (  # noqa: F401
     _bootstrap_state,
     _serve,
     _text,
-    _build_proposal,
     _PROPOSAL_SCHEMA,
     _PROPOSE_TRADE_SCHEMA,
-    handle_get_symbol_universe,
-    handle_scan_symbol_candidates,
-    handle_get_symbol_indicators,
-    handle_propose_trade,
     list_tools,
     call_tool,
 )
@@ -37,9 +32,65 @@ from mcp_tools.handlers.account import (  # noqa: F401
     handle_get_risk_profile,
     handle_get_trade_history,
 )
+from mcp_tools.handlers.market import (
+    handle_get_market_snapshot as _market_snapshot,  # noqa: F401
+    handle_scan_symbol_candidates as _market_scan,
+    handle_get_symbol_indicators as _market_symbol_indicators,
+    handle_get_symbol_universe as _market_symbol_universe,
+)
+from mcp_tools.handlers.proposal import (
+    handle_propose_trade as _proposal_propose,
+    handle_evaluate_trade_proposal as _proposal_evaluate,  # noqa: F401
+    handle_submit_order_if_approved as _proposal_submit,  # noqa: F401
+)
 
 import asyncio
+import dataclasses
 import sys
+
+
+# ── Wrapper retrocompat per test legacy ───────────────────────────────────────
+# I test (tests/test_mcp_tools_v2.py) chiamano queste funzioni con la vecchia
+# signature posizionale. I nuovi handler in mcp_tools/handlers/{market,proposal}.py
+# hanno signature standardizzata (args: dict, mt5_client, cfg). I wrapper
+# qui sotto traducono la vecchia API alla nuova così i test pre-Phase 6 girano
+# senza modifiche.
+
+def handle_get_symbol_universe(filter_asset_class: str | None = None) -> dict:
+    """Shim legacy: deriva cfg dal modulo, delega al nuovo handler market."""
+    return _market_symbol_universe(cfg, filter_asset_class=filter_asset_class)
+
+
+def handle_scan_symbol_candidates(symbols: list[str], timeframe: str | None = None) -> dict:
+    """Shim legacy: costruisce args dict, delega al nuovo handler market."""
+    args = {"symbols": list(symbols or []), "timeframe": timeframe}
+    return _market_scan(args, mt5, cfg)
+
+
+def handle_get_symbol_indicators(symbol: str, timeframe: str | None = None) -> dict:
+    """Shim legacy: delega al nuovo handler market con kwargs."""
+    return _market_symbol_indicators(symbol, mt5, cfg, timeframe=timeframe)
+
+
+def handle_propose_trade(args: dict) -> dict:
+    """Shim legacy: aggiunge log/cfg dal modulo, delega al nuovo handler proposal."""
+    return _proposal_propose(args, log, cfg)
+
+
+def _build_proposal(args: dict):
+    """Shim legacy: costruisce TradeProposal (usato dai test legacy)."""
+    from models import TradeProposal
+    return TradeProposal(
+        symbol=args["symbol"],
+        direction=args["direction"],
+        entry_price=args["entry_price"],
+        stop_loss_price=args["stop_loss_price"],
+        take_profit_price=args["take_profit_price"],
+        timeframe=cfg.TIMEFRAME,
+        comment="mcp",
+        confidence=args["confidence"],
+        rationale=args["rationale"],
+    )
 
 
 # ── PEP 562: propaga monkeypatch a mcp_tools.server ──────────────────────────
