@@ -559,3 +559,231 @@ def test_run_baseline_handles_worker_failure(monkeypatch, tmp_path):
     assert len(failed) == 3, f"atteso 3 FAILED (1 slice × 3 profile), got {len(failed)}"
     assert len(ok) == 24, f"atteso 24 OK (8 slice × 3 profile), got {len(ok)}"
     assert all(r["symbol"] == "EURUSD" and r["timeframe"] == "M15" for r in failed)
+
+
+# ── Plan 05-09 — wrapper + regime_cfg + only-runs (FIX 1/2/6 + FIX A/B/E iter 3) ──
+
+
+def test_regime_cfg_resolved_per_symbol() -> None:
+    """FIX 1 Plan 05-09 iter 1: load_regime_config invocato con symbol.
+
+    SINGOLA definizione (FIX E iter 3 — Task 2 NON definisce un test
+    omonimo; questo e' l'unico).
+
+    Verifica che la signature reale (symbol, yaml_path) sia rispettata
+    dal nuovo codice slice_worker.
+    """
+    import inspect
+    from indicators.volatility import load_regime_config
+
+    sig = inspect.signature(load_regime_config)
+    params = list(sig.parameters.keys())
+    assert params == ["symbol", "yaml_path"], (
+        f"load_regime_config signature inattesa: {params}"
+    )
+
+    # Verifica che la firma e' invocabile con i 2 args attesi
+    # (test di compatibilita' staticamente verificato).
+    cfg = load_regime_config("EURUSD", "data/configs/regime.yaml")
+    assert isinstance(cfg, dict)
+    assert "window" in cfg
+
+
+def test_smoke_05_09_wrapper_runs(tmp_path) -> None:
+    """Plan 05-09 D-09-D + FIX 2 + FIX B iter 3: scripts/run_baseline_05_09.py --smoke completa in <240s.
+
+    Smoke con range allargato (3 mesi) + csv_path via _csv_path_for() +
+    tolerant validation:
+      - exit 0 anche se 0 trade (raro caso edge — smoke-tolerant FIX 2B)
+      - exit 0 con schema check completo se >=1 trade (caso atteso
+        per 3 mesi window MODERATE/AGGRESSIVE)
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    ROOT = Path(__file__).resolve().parent.parent
+    script = ROOT / "scripts/run_baseline_05_09.py"
+    assert script.exists(), f"script mancante: {script}"
+
+    # Skip se CSV non disponibile (CI environment).
+    # FIX B iter 3: path canonical via convenzione _csv_path_for
+    # (data/historical/{SYMBOL}/{TF}.csv).
+    csv_path = ROOT / "data" / "historical" / "EURUSD" / "M15.csv"
+    if not csv_path.exists():
+        pytest.skip(f"CSV non disponibile: {csv_path}")
+
+    # Deviation Rule 1 (auto-fix, env gate): CLAUDE.md vincola lo stack a
+    # Python 3.12 64-bit Windows + MetaTrader5. Su Linux/codespace MT5 manca
+    # e l'import indiretto di backtest.engine -> risk_engine -> mt5_client
+    # fa fallire l'import all'avvio dello smoke wrapper. NB: tests/conftest.py
+    # stubba MetaTrader5 in sys.modules per i test in-process; il subprocess
+    # Python invece non vede lo stub. Probiamo l'import via subprocess "dry"
+    # PRIMA di lanciare lo smoke, e skip se manca (l'esecuzione effettiva
+    # avviene sul PC secondario Windows in STEP 3 RESUME-PLAN.md).
+    probe = subprocess.run(
+        [sys.executable, "-c", "import MetaTrader5"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    if probe.returncode != 0:
+        pytest.skip(
+            "MetaTrader5 non installato nel Python di sistema (env Linux/codespace) — "
+            "smoke gira sul PC secondario Windows con MT5 demo TenTrade"
+        )
+
+    result = subprocess.run(
+        [sys.executable, str(script), "--smoke"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=240,  # smoke target <180s; margine 60s OS overhead
+    )
+    assert result.returncode == 0, (
+        f"smoke exit={result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+    )
+    assert "SMOKE OK" in result.stdout, (
+        f"manca marker 'SMOKE OK' in stdout:\n{result.stdout}"
+    )
+
+
+def test_only_runs_pre_delete_and_relaunch(tmp_path, monkeypatch) -> None:
+    """FIX 6 + FIX A iter 3: --only-runs implementato via riuso _force_clear_run.
+
+    Test scenario:
+      1. Crea tmp SQLite con schema REALE Phase 5: `backtest_runs` +
+         `backtest_trades` (matcha _DDL_BACKTEST_TRADES di
+         backtest/ledger.py:56-78). NO `trades_log` (quello e' live
+         trader, schema senza run_id — verificato in FIX A iter 3).
+      2. Seed: 1 riga in `backtest_runs(run_id='abc', status='done')` +
+         1 riga in `backtest_trades(run_id='abc', ...)`.
+      3. Invoca _run_full(args=Namespace(only_runs='abc', force=False, ...))
+         con run_baseline monkeypatched (no-op che ritorna []).
+      4. Verifica:
+         - PRE-run: entrambe le tabelle hanno 1 riga per run_id='abc'
+         - POST-pre-delete (eseguito da _only_runs_pre_delete che
+           riusa slice_worker._force_clear_run): ENTRAMBE 0 righe
+         - run_baseline chiamato esattamente 1 volta con force=False
+    """
+    import sqlite3
+    import sys
+    import types
+    from pathlib import Path
+
+    ROOT = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(ROOT))
+
+    # Setup tmp db con schema REALE (FIX A iter 3 — NO trades_log fittizio)
+    tmp_db = tmp_path / "trades.db"
+    with sqlite3.connect(tmp_db) as conn:
+        # Schema reale Phase 5 (subset minimo per il test, matcha DDL).
+        # backtest/ledger.py:19-79 e' la fonte canonica.
+        conn.execute(
+            "CREATE TABLE backtest_runs ("
+            "run_id TEXT PRIMARY KEY, "
+            "symbol TEXT NOT NULL DEFAULT 'EURUSD', "
+            "timeframe TEXT NOT NULL DEFAULT 'M15', "
+            "date_start TEXT NOT NULL DEFAULT '2020-01-01', "
+            "date_end TEXT NOT NULL DEFAULT '2020-12-31', "
+            "started_at TEXT NOT NULL DEFAULT 'now', "
+            "status TEXT NOT NULL DEFAULT 'running'"
+            ")"
+        )
+        conn.execute(
+            "CREATE TABLE backtest_trades ("
+            "trade_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "run_id TEXT NOT NULL, "
+            "entry_time TEXT NOT NULL DEFAULT '2020-01-01', "
+            "exit_time TEXT NOT NULL DEFAULT '2020-01-02', "
+            "symbol TEXT NOT NULL DEFAULT 'EURUSD', "
+            "timeframe TEXT NOT NULL DEFAULT 'M15', "
+            "direction TEXT NOT NULL DEFAULT 'BUY', "
+            "entry_price REAL NOT NULL DEFAULT 1.0, "
+            "exit_price REAL NOT NULL DEFAULT 1.0, "
+            "lot_size REAL NOT NULL DEFAULT 0.01"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO backtest_runs (run_id, status) VALUES ('abc', 'done')"
+        )
+        conn.execute(
+            "INSERT INTO backtest_trades (run_id) VALUES ('abc')"
+        )
+        conn.commit()
+
+    # Sanity check pre-run: entrambe le tabelle hanno la riga
+    with sqlite3.connect(tmp_db) as conn:
+        n_runs = conn.execute(
+            "SELECT COUNT(*) FROM backtest_runs WHERE run_id='abc'"
+        ).fetchone()[0]
+        n_trades = conn.execute(
+            "SELECT COUNT(*) FROM backtest_trades WHERE run_id='abc'"
+        ).fetchone()[0]
+        assert n_runs == 1 and n_trades == 1, (
+            f"seed fallito: runs={n_runs}, trades={n_trades}"
+        )
+
+    # Monkeypatch run_baseline (no-op tracker)
+    run_baseline_calls: list[bool] = []
+
+    def _fake_run_baseline(force=False):
+        run_baseline_calls.append(force)
+        return []
+
+    # Fake ROOT con tmp_db come logs/trades.db
+    tmp_root = tmp_path / "fake_root"
+    (tmp_root / "logs").mkdir(parents=True)
+    (tmp_root / "data" / "configs").mkdir(parents=True)
+    (tmp_root / "data" / "training" / "baseline_decisions").mkdir(parents=True)
+    # Copy tmp_db -> tmp_root/logs/trades.db (preserva schema reale)
+    (tmp_root / "logs" / "trades.db").write_bytes(tmp_db.read_bytes())
+
+    fake_runner = types.SimpleNamespace(
+        run_baseline=_fake_run_baseline,
+        load_baseline_config=lambda *a, **k: types.SimpleNamespace(
+            training_data_dir=str(tmp_root / "data/training"),
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules, "backtest.baseline.runner", fake_runner
+    )
+
+    # Import _run_full + stub validazione parquet
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "rb05", ROOT / "scripts/run_baseline_05_09.py"
+    )
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+
+    monkeypatch.setattr(m, "_validate_parquet_schema", lambda *a, **k: (True, "stub OK"))
+
+    args = types.SimpleNamespace(
+        only_runs="abc",
+        force=False,
+        max_wall_clock=14400,
+        no_time_gate=False,
+    )
+    exit_code = m._run_full(args, tmp_root)
+
+    # Verifica post-run: entrambe le tabelle ripulite (FIX A iter 3)
+    with sqlite3.connect(tmp_root / "logs/trades.db") as conn:
+        n_runs_after = conn.execute(
+            "SELECT COUNT(*) FROM backtest_runs WHERE run_id='abc'"
+        ).fetchone()[0]
+        n_trades_after = conn.execute(
+            "SELECT COUNT(*) FROM backtest_trades WHERE run_id='abc'"
+        ).fetchone()[0]
+    assert n_runs_after == 0, (
+        f"FIX A iter 3 violato: riga backtest_runs 'abc' NON eliminata "
+        f"(rimaste {n_runs_after})"
+    )
+    assert n_trades_after == 0, (
+        f"FIX A iter 3 violato: riga backtest_trades 'abc' NON eliminata "
+        f"(rimaste {n_trades_after}) — _force_clear_run pattern violato"
+    )
+    assert run_baseline_calls == [False], (
+        f"run_baseline call inattesi: {run_baseline_calls}"
+    )
+    assert exit_code == 0
