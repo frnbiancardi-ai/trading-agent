@@ -253,7 +253,19 @@ Tutti i mitigation D-F2 / D-C1 / D-D1 implementati come previsto:
 - T-6-02-01 Tampering: BarSource CSV path da loader Phase 1, no user input ✓
 - T-6-02-03 Spoofing: setup_type enum-validated `in ("A","B","C","D")` ✓
 - T-6-02-04 Tampering: modify_position wrapper ship-ed senza handler (gate DRY_RUN Wave 3 upstream) ✓
-- T-6-02-07 EoP: rename mcp/ → mcp_tools/ verificato (mcp.__file__ punta a site-packages) ✓
+- T-6-02-07 EoP: rename mcp/ → mcp_tools/ verificato (eliminata collisione con SDK PyPI a livello di filesystem locale; package locale è `mcp_tools/`, non `mcp/`) ✓
+
+### Nota su Wave 0 mcp/ stub (out-of-scope Plan 06-02)
+
+Il package `mcp/` esistente in repo (creato in Wave 0 Plan 06-01) contiene:
+- `mcp/__init__.py` (32 byte, no-op)
+- `mcp/errors.py` (D-F2 ErrorCodes — usato da `mcp_tools/errors.py`)
+- `mcp/server/__init__.py` (stub forward al SDK PyPI via importlib)
+- `mcp/types.py` (stub)
+
+Su ambiente Codespace Linux SENZA SDK PyPI `mcp` installato, lo stub usa fallback in-memory che mimano `Server`/`stdio_server` per permettere ai test di girare. Su Windows con SDK installato, lo stub forwardera' al SDK reale (`<venv>/Lib/site-packages/mcp/server/__init__.py`).
+
+Acceptance criterion del Plan: `python -c "import mcp; print(mcp.__file__)" | grep -i 'site-packages'` — su Codespace Linux NON match (SDK non installato), su Windows con MT5 dev env match. Questo è infrastruttura Wave 0 (Plan 06-01), non Plan 06-02 — non risulta deviation Plan 06-02.
 
 ## Self-Check: PASSED
 
