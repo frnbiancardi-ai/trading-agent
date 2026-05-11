@@ -550,6 +550,19 @@ class IntradayLoopScheduler:
                 err_msg = str(exc)
                 return self._finish(hb_id, now, outcome, err_type, err_msg, "account_state_fail")
 
+            # Phase 6 D-B2: trail daemon tick (non-fatal — non blocca ciclo).
+            # ensure_table idempotente per first-time Phase 6 install / test
+            # con tmp DB. trail_tick legge solo righe attive: zero rows → no-op.
+            try:
+                from mcp_tools.trail_daemon import ensure_table as _trail_ensure_table
+                from mcp_tools.trail_daemon import trail_tick
+                from logger import _trades_db_path
+                _db = str(_trades_db_path(cfg))
+                _trail_ensure_table(_db)
+                trail_tick(self.mt5, _db, cfg)
+            except Exception:
+                self.log.exception("trail_tick fallito (non blocca ciclo)")
+
             self._manage_open_positions(account_state, now)
 
             if cfg.PAUSE_TRADING:
