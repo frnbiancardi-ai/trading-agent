@@ -23,7 +23,7 @@ target_audience: utente progetto (Francesco) — operazione manuale, non automat
 | Item | Min | Note |
 |------|-----|------|
 | **Sistema operativo** | Windows 10+ / Ubuntu 22.04+ / macOS 13+ | Vedi path A/B/C sotto |
-| **Python** | 3.12.x | NO 3.13 (alcune deps non compatibili) |
+| **Python** | **ESATTAMENTE 3.12.x** | ⚠️ **NO 3.13, NO 3.14, NO altre versioni.** Su 3.13+ `pydantic-core` non ha wheel precompiled e pip prova a compilare da source con Rust + MSVC `link.exe` → fallisce su Windows senza Visual Studio Build Tools. Su 3.12 wheel precompiled = install in 30s. Su Windows usa `py -3.12 -m venv .venv` per forzare la versione corretta. Verifica `python --version` mostra 3.12.x dopo `activate`. Incidente 2026-05-12: Python 3.14 ha bloccato install requirements.txt. |
 | **RAM** | 8 GB | Worker pool fino a 9 processi paralleli |
 | **CPU** | 4+ core | Ottimale 8+ (worker = min(9, cpu_count)) |
 | **Disco libero** | 2 GB | Repo ~300 MB + .venv ~500 MB + output ~50 MB + buffer |
@@ -135,15 +135,27 @@ python -c "import config; print('OK config load')"
 
 ## PATH B — Python nativo su Windows
 
-### B.1 — Verifica Python 3.12
+### B.1 — Verifica Python 3.12 (CRITICO — NO 3.13/3.14)
 
 In PowerShell:
 ```powershell
-python --version    # Deve essere 3.12.x
-where.exe python
+# Lista TUTTE le versioni Python installate
+py -0
+# Deve includere `-V:3.12` o `-V:3.12-64`. Se manca, vedi sotto.
+
+# Verifica versione di default
+python --version
 ```
 
-Se manca: scarica da https://www.python.org/downloads/release/python-3128/ (o release 3.12.x più recente). Durante installazione: **spunta "Add Python to PATH"**.
+Se 3.12 manca o non è di default:
+
+1. Scarica **Python 3.12.x** (NON 3.13, NON 3.14) da https://www.python.org/downloads/release/python-31210/ (o release 3.12.x più recente).
+2. Durante installazione spunta:
+   - ✅ "Add Python to PATH"
+   - ✅ Mantieni attivo il `py` launcher (default)
+3. **NON** disinstallare versioni Python preesistenti — basta avere 3.12 anche solo affianco. Userai `py -3.12` per forzare l'uso.
+
+> ⚠️ Se hai già provato l'install requirements.txt con Python ≥ 3.13 e visto errori tipo `Failed building wheel for pydantic-core` / `linker link.exe not found` / `Rust not found` → è esattamente questo problema. La soluzione NON è installare Rust / Visual Studio Build Tools (~5 GB di download). È usare Python 3.12, che ha wheel precompiled per tutte le deps del repo.
 
 ### B.2 — Clona il repo
 
@@ -167,10 +179,16 @@ dir data\configs\baseline.yaml
 
 ### B.3 — Crea venv e installa deps
 
+> **USA `py -3.12`, NON `python`**, per evitare di prendere una versione Python diversa di default.
+
 ```powershell
-python -m venv .venv
+# Forza Python 3.12 per la venv (anche se altre versioni sono installate)
+py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 # Se PowerShell blocca lo script: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+
+# Verifica DENTRO la venv: deve essere 3.12.x
+python --version
 
 python -m pip install --upgrade pip setuptools wheel
 
@@ -592,6 +610,40 @@ Apri issue / annota nel `.continue-here.md` del PC secondario e contatta il PC p
 
 **Soluzione:** `git pull` e verifica branch corretto: `git status` deve dire `feature/update-pythono-pure-strategy`.
 
+### 5.9 — `Failed building wheel for pydantic-core` / `linker link.exe not found` / `Rust not found`
+
+**Sintomo:** `pip install -r requirements.txt` fallisce con catena di errori:
+```
+Building wheel for pydantic-core (pyproject.toml) ... error
+error: linker `link.exe` not found
+note: please ensure that Visual Studio 2017 or later... were installed with the Visual C++ option
+Python reports SOABI: cp31X-win_amd64   ← X >= 13
+```
+
+**Causa:** stai usando **Python 3.13 o 3.14** (vedi cp31X nel log). Pydantic-core (e altre deps Rust-based) non hanno wheel precompiled per quelle versioni → pip tenta di compilare da source → serve Rust toolchain + MSVC linker, che non sono installati. **Soluzione corretta NON è installare Rust/VS Build Tools** (~5 GB), è usare Python 3.12.
+
+**Soluzione:**
+1. Installa Python 3.12.x da https://www.python.org/downloads/release/python-31210/ (latest 3.12.x). Tieni la versione attuale, basta affiancare.
+2. Cancella la venv corrotta:
+   ```powershell
+   Remove-Item -Recurse -Force .venv
+   ```
+3. Ricrea con `py -3.12`:
+   ```powershell
+   py -3.12 -m venv .venv
+   .venv\Scripts\Activate.ps1
+   python --version    # deve dire 3.12.x
+   ```
+4. Reinstalla deps (ora con wheel precompiled, velocissimo):
+   ```powershell
+   python -m pip install --upgrade pip setuptools wheel
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
+   pip install "tqdm>=4.66"
+   ```
+
+**Prevenzione:** §B.1 ora elenca esplicitamente "NO 3.13, NO 3.14" e mostra `py -0` per listare versioni Python installate prima di partire.
+
 ### 5.8 — Backtest completa 27/27 ma row count molto basso (<1050)
 
 **Sintomo:** wall-clock plausibile (~3h), `RESULTS=27/27 ok`, ma `SCHEMA KO: row count <N> < hard gate 1050`. Spesso accompagnato da distribuzione profili invertita (CONSERVATIVE > MODERATE > AGGRESSIVE invece del normale AGGRESSIVE > MODERATE > CONSERVATIVE).
@@ -645,6 +697,7 @@ Al risveglio:
 
 ## Changelog
 
+- 2026-05-12 (rev 4) — secondo incidente stessa giornata: Python 3.14 installato sul secondario invece di 3.12 → `pydantic-core` non ha wheel precompiled → pip tenta compile da source con Rust+MSVC link.exe → fail. Mitigations: (a) §0.1 tabella prereq con "ESATTAMENTE 3.12.x" + spiegazione tecnica; (b) §B.1 rewritten: `py -0` per listare versioni, link diretto a Python 3.12.10, warning preventivo su pydantic-core/Rust; (c) §B.3 usa `py -3.12 -m venv` invece di `python -m venv` per forzare versione; (d) §5.9 nuovo troubleshooting con sintomo+soluzione dedicata.
 - 2026-05-12 (rev 3) — incident response post 419-rows: (a) **CRITICO** sostituito flusso `.env` manuale con `cp .env.backtest.example .env` (template committato in repo); (b) §2.0 obbligatorio: SHA256 + grep `profile_filters` di `config/strategy.yaml` PRIMA di tutto, intercetta drift in 5s; (c) warning in §A.2/B.2/C.3: **SOLO `git clone`, MAI download ZIP** (root cause incident); (d) §5.8 nuovo: troubleshooting completo per row-count basso + profili invertiti con diagnosi 30s + procedura di re-clone; (e) banner introduttivo con root cause incident per visibilità.
 - 2026-05-11 (rev 2) — aggiunta sezione §3.0 Hardware notes specifiche per PC secondario (AMD Ryzen 7 5800H + 16 GB + RTX 3060). Stima wall-clock 2h45m-3h00m. Conferma `max_workers: 9` ottimale (non aumentare oltre). Nota RAM margine ristretto: chiudere applicazioni pesanti. GPU non usata per backtest (vincolo architetturale), riservata per Phase 7 ML training.
 - 2026-05-11 — creato in supporto a RESUME-PLAN.md STEP 7. Coverage 3 path setup (Linux/macOS, Windows, Docker), pre-flight identico al PC primario, troubleshooting per i bug latenti noti (MetaTrader5 cross-platform, tqdm missing).
