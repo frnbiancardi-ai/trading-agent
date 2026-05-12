@@ -6,6 +6,8 @@ linked_from: .planning/RESUME-PLAN.md (STEP 7)
 target_audience: utente progetto (Francesco) — operazione manuale, non automatica
 ---
 
+> **IMPORTANTE — root cause incidente 2026-05-12:** sul secondario era stato fatto un *download ZIP* del branch invece di un `git clone`. Risultato: `config/strategy.yaml` e altri file di config con drift silenzioso → `profile_filters` letti in modo invertito → backtest ha prodotto 419 rows (CONSERVATIVE 205 > MODERATE 151 > AGGRESSIVE 63) invece dei 1076 attesi (AGGRESSIVE 540 > MODERATE 448 > CONSERVATIVE 88), spreco ~3h wall-clock. **Da ora in poi: SOLO `git clone`, MAI download ZIP.** Il §2 pre-flight ora include una verifica SHA256 esplicita su `config/strategy.yaml` che intercetta questa classe di problema in <5 secondi.
+
 # Setup PC Secondario — Esecuzione Backtest Plan 05-09
 
 > **Scopo:** distribuire il carico tra due PC. Il PC primario (questo) orchestra GSD (Phase 6 execute + discuss-phase 8/9/10/11 + plan Phase 5). Il PC secondario esegue solo lo script Python del Plan 05-09 (~3h18m wall-clock).
@@ -35,7 +37,7 @@ target_audience: utente progetto (Francesco) — operazione manuale, non automat
 - [ ] Script wrapper creato: `scripts/run_baseline_05_09.py` (deve essere committato nel Plan 05-09)
 - [ ] Pytest del writer esteso committato: `tests/test_baseline_dataset_writer.py` (validation schema)
 - [ ] Commit pushato su `feature/update-pythono-pure-strategy`: `git push origin feature/update-pythono-pure-strategy`
-- [ ] (Opzionale) `.env` minimo per backtest preparato e trasferito al PC secondario via mezzo sicuro (USB / password manager / cloud privato — **NON via git**, è in `.gitignore`)
+- [ ] **`.env.backtest.example` committato** (template minimal solo-backtest, valori allineati al `.env` primario). Sul secondario sarà `cp .env.backtest.example .env`. Vantaggi: zero trasferimento manuale, riproducibile via git, valori commitati = audit trail.
 
 ---
 
@@ -68,6 +70,8 @@ Se manca o è versione sbagliata:
 - **Altri**: scarica da https://www.python.org/downloads/
 
 ### A.2 — Clona il repo
+
+> **CRITICO: usa `git clone`, NON il download ZIP da GitHub.** Il download ZIP non garantisce coerenza di tutti i file di config (incidente 2026-05-12: drift silenzioso su `config/strategy.yaml` ha prodotto backtest con risultato invertito sui profili rischio). Con `git clone` ogni file ha l'hash blob verificato da git.
 
 ```bash
 cd ~                                                              # o dove preferisci
@@ -112,20 +116,18 @@ python -c "from backtest.baseline.runner import load_baseline_config; print('OK 
 
 ### A.4 — Configura .env minimo
 
-Per il backtest **non servono** MT5 credenziali né Claude API. Bastano i parametri di profilo rischio e strategia. Crea un `.env` minimo:
+Per il backtest **non servono** MT5 credenziali né Claude API. Bastano i parametri di profilo rischio e strategia. Il repo include `.env.backtest.example` già pronto, con valori identici al `.env` del PC primario (audit trail via git, niente trasferimento manuale):
 
 ```bash
-# Da PC primario, copia .env originale via mezzo sicuro (USB/SSH/cloud privato)
-# OPPURE crea minimo da .env.example:
-cp .env.example .env
-# Edita per togliere chiavi che non userai (MT5_*, CLAUDE_*)
-# Il backtest legge solo i parametri profilo/strategia dal .env tramite config.py
+cp .env.backtest.example .env
 ```
 
 **Verifica:**
 ```bash
 python -c "import config; print('OK config load')"
 ```
+
+> Se in futuro qualcuno aggiunge env vars al backtest, aggiornare `.env.backtest.example` nel repo invece di chiedere all'utente di trasferire chiavi manualmente.
 
 → Vai alla sezione **2 — Pre-flight + Run** sotto.
 
@@ -144,6 +146,8 @@ where.exe python
 Se manca: scarica da https://www.python.org/downloads/release/python-3128/ (o release 3.12.x più recente). Durante installazione: **spunta "Add Python to PATH"**.
 
 ### B.2 — Clona il repo
+
+> **CRITICO: usa `git clone`, NON il download ZIP da GitHub.** Il download ZIP non garantisce coerenza di tutti i file di config (incidente 2026-05-12: drift silenzioso su `config/strategy.yaml` ha prodotto backtest con risultato invertito sui profili rischio). Con `git clone` ogni file ha l'hash blob verificato da git.
 
 ```powershell
 cd C:\
@@ -187,17 +191,18 @@ python -c "from backtest.baseline.runner import load_baseline_config; print('OK 
 
 ### B.4 — Configura .env
 
+Il repo include `.env.backtest.example` già pronto, con valori identici al `.env` del PC primario:
+
 ```powershell
-# Copia .env originale via mezzo sicuro (USB/SSH/password manager) dal PC primario
-# OPPURE:
-copy .env.example .env
-notepad .env    # rimuovi/svuota MT5_* e CLAUDE_* se vuoi pulizia
+copy .env.backtest.example .env
 ```
 
 **Verifica:**
 ```powershell
 python -c "import config; print('OK config load')"
 ```
+
+> Se in futuro qualcuno aggiunge env vars al backtest, aggiornare `.env.backtest.example` nel repo invece di chiedere all'utente di trasferire chiavi manualmente.
 
 → Vai alla sezione **2 — Pre-flight + Run** sotto.
 
@@ -222,6 +227,8 @@ docker ps    # deve rispondere senza errori
 - Extension: cerca "Dev Containers" (id `ms-vscode-remote.remote-containers`)
 
 ### C.3 — Clona e apri in container
+
+> **CRITICO: usa `git clone`, NON il download ZIP da GitHub.** Il download ZIP non garantisce coerenza di tutti i file di config (incidente 2026-05-12: drift silenzioso su `config/strategy.yaml` ha prodotto backtest con risultato invertito sui profili rischio). Con `git clone` ogni file ha l'hash blob verificato da git.
 
 ```bash
 git clone https://github.com/<tuo-user>/trading-agent.git
@@ -250,9 +257,10 @@ pip install -r requirements-dev.txt
 
 ### C.5 — .env nel container
 
+Il repo include `.env.backtest.example` già pronto:
+
 ```bash
-# Copia .env dall'host (è gitignorato) o crea minimo:
-cp .env.example .env
+cp .env.backtest.example .env
 ```
 
 → Vai alla sezione **2 — Pre-flight + Run** sotto.
@@ -261,7 +269,41 @@ cp .env.example .env
 
 ## 2. Pre-flight check (OBBLIGATORIO prima del full run)
 
-> **Tempo totale:** ~1-2 minuti. **Non saltare**: scopre il 95% dei bug schema/writer prima di sprecare 3h18m.
+> **Tempo totale:** ~1-2 minuti. **Non saltare**: scopre il 95% dei bug schema/writer/config prima di sprecare 3h18m.
+
+### 2.0 — Integrity check `config/strategy.yaml` (5 secondi)
+
+> Aggiunto post-incidente 2026-05-12 (file YAML drift sul secondario → backtest invertito sui profili rischio). PRIMA di tutto il resto, verifica che `config/strategy.yaml` sia esattamente quello commitato:
+
+**Linux/macOS/Docker:**
+```bash
+sha256sum config/strategy.yaml
+```
+
+**Windows PowerShell:**
+```powershell
+Get-FileHash config\strategy.yaml -Algorithm SHA256
+```
+
+**Atteso (al commit 2026-05-12 — aggiorna questo valore se il file cambia in futuro):**
+```
+1570bcd8732642d293854aef4487659fccd1e653ea4e6df691bf98aece5b90dc  config/strategy.yaml
+```
+
+Verifica anche che `profile_filters` sia nell'ordine canonico (CONSERVATIVE tight → AGGRESSIVE loose):
+```bash
+grep -A 3 "^profile_filters:" config/strategy.yaml
+# Atteso:
+# profile_filters:
+#   CONSERVATIVE: {min_grade: "A",  min_rr: 2.5, min_confidence: 0.65}
+#   MODERATE:     {min_grade: "B",  min_rr: 1.8, min_confidence: 0.50}
+#   AGGRESSIVE:   {min_grade: "C",  min_rr: 1.3, min_confidence: 0.40}
+```
+
+- [ ] SHA combacia
+- [ ] `profile_filters` ha CONSERVATIVE con min_rr 2.5 (gate tighter) e AGGRESSIVE con min_rr 1.3 (gate looser) — se invertito, **STOP** e ricloniare il repo da zero
+- [ ] `git status config/strategy.yaml` → nessuna modifica locale
+- [ ] `echo "STRATEGY_CONFIG_PATH=$STRATEGY_CONFIG_PATH"` (Linux) / `echo "STRATEGY_CONFIG_PATH=$env:STRATEGY_CONFIG_PATH"` (PowerShell) → **vuoto** (override env var rompe la riproducibilità)
 
 ### 2.1 — Test pytest sul writer esteso
 
@@ -550,6 +592,37 @@ Apri issue / annota nel `.continue-here.md` del PC secondario e contatta il PC p
 
 **Soluzione:** `git pull` e verifica branch corretto: `git status` deve dire `feature/update-pythono-pure-strategy`.
 
+### 5.8 — Backtest completa 27/27 ma row count molto basso (<1050)
+
+**Sintomo:** wall-clock plausibile (~3h), `RESULTS=27/27 ok`, ma `SCHEMA KO: row count <N> < hard gate 1050`. Spesso accompagnato da distribuzione profili invertita (CONSERVATIVE > MODERATE > AGGRESSIVE invece del normale AGGRESSIVE > MODERATE > CONSERVATIVE).
+
+**Causa identificata 2026-05-12:** `config/strategy.yaml` con drift dal commitato → `profile_filters[CONSERVATIVE].min_rr` ≠ 2.5 (o swap totale con AGGRESSIVE). Tipicamente succede se il repo è stato ottenuto via **download ZIP** invece di `git clone` (lo ZIP non garantisce coerenza di tutti i file binary/text fra versioni).
+
+**Diagnosi 30 secondi:**
+```bash
+# (A) SHA del file on-disk — deve combaciare con quello documentato in §2.0
+sha256sum config/strategy.yaml          # Linux/Mac
+Get-FileHash config\strategy.yaml -Algorithm SHA256    # Windows
+
+# (B) SHA registrato nel ledger durante il run (verità su cosa è stato letto)
+python -c "import sqlite3; c=sqlite3.connect('logs/trades.db'); print(c.execute(\"SELECT DISTINCT strategy_yaml_sha256 FROM backtest_runs WHERE run_id LIKE 'baseline_%'\").fetchall())"
+
+# (C) distribuzione profili nel parquet (sintomo)
+python -c "import pyarrow.parquet as pq; df = pq.read_table('data/training/baseline_decisions/part-0.parquet').to_pandas(); print(df.groupby('profile').size())"
+```
+
+Se (A) o (B) ≠ SHA atteso → file drift. Se (C) ha CONSERVATIVE > AGGRESSIVE → conferma.
+
+**Soluzione:**
+1. **NON** modificare manualmente `config/strategy.yaml` (sarebbe un fix locale che diverge dal repo)
+2. `cd ..` e ri-clona il repo: `rm -rf trading-agent && git clone <url>` (Linux/Mac) o equivalente Windows. **NO ZIP**.
+3. Rifai §A.3 / B.3 / C.4 (venv + deps)
+4. Riapplica §A.4 / B.4 / C.5 (`cp .env.backtest.example .env`)
+5. Esegui §2 pre-flight, in particolare §2.0 (SHA check)
+6. Solo dopo che §2.0 passa, rilancia §3 full run
+
+**Prevenzione:** §2.0 è ora `OBBLIGATORIO` prima di ogni full run. Costa 5 sec, evita 3h di spreco.
+
 ---
 
 ## 6. Promemoria e checklist finale
@@ -572,5 +645,6 @@ Al risveglio:
 
 ## Changelog
 
+- 2026-05-12 (rev 3) — incident response post 419-rows: (a) **CRITICO** sostituito flusso `.env` manuale con `cp .env.backtest.example .env` (template committato in repo); (b) §2.0 obbligatorio: SHA256 + grep `profile_filters` di `config/strategy.yaml` PRIMA di tutto, intercetta drift in 5s; (c) warning in §A.2/B.2/C.3: **SOLO `git clone`, MAI download ZIP** (root cause incident); (d) §5.8 nuovo: troubleshooting completo per row-count basso + profili invertiti con diagnosi 30s + procedura di re-clone; (e) banner introduttivo con root cause incident per visibilità.
 - 2026-05-11 (rev 2) — aggiunta sezione §3.0 Hardware notes specifiche per PC secondario (AMD Ryzen 7 5800H + 16 GB + RTX 3060). Stima wall-clock 2h45m-3h00m. Conferma `max_workers: 9` ottimale (non aumentare oltre). Nota RAM margine ristretto: chiudere applicazioni pesanti. GPU non usata per backtest (vincolo architetturale), riservata per Phase 7 ML training.
 - 2026-05-11 — creato in supporto a RESUME-PLAN.md STEP 7. Coverage 3 path setup (Linux/macOS, Windows, Docker), pre-flight identico al PC primario, troubleshooting per i bug latenti noti (MetaTrader5 cross-platform, tqdm missing).
