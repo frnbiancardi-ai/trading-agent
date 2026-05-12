@@ -250,7 +250,7 @@ Plans:
 Plans:
 
 **Wave 0** *(parallel-with-Phase-7-execute, no hard dependency)*
-- [ ] 08-01-PLAN.md — Wave 0 scaffolding: 3 Tool schemas MCP-04/05/06 + stub handler NotImplementedError + 3 ErrorCodes additivi (VALIDATION_FAILED/NOT_FOUND/INTERNAL_ERROR) + 3 env var config (ML_MODEL_PATH/MCP_TRAINING_DATA_PATH/MCP_ML_THRESHOLD_MARGIN_PCT) + bootstrap singleton + xfail strict gate test
+- [x] 08-01-PLAN.md — Wave 0 scaffolding: 3 Tool schemas MCP-04/05/06 + stub handler NotImplementedError + 3 ErrorCodes additivi (VALIDATION_FAILED/NOT_FOUND/INTERNAL_ERROR) + 3 env var config (ML_MODEL_PATH/MCP_TRAINING_DATA_PATH/MCP_ML_THRESHOLD_MARGIN_PCT) + bootstrap singleton + xfail strict gate test
 
 **Wave 1** *(blocked on Wave 0 + phase-7-complete; 08-02 and 08-05 run in parallel — zero file overlap)*
 - [ ] 08-02-PLAN.md — handle_predict_trade_quality GREEN (MCP-05) — 3 branche (disabled, success, exception) + riuso build_feature_vector Phase 7 + threshold lookup per profile + 7 test (incl. B4 parity test_predict_branch_A_eq_branch_B_features_match per regime/regime_state disambig)

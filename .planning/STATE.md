@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2-ml-backtest
 milestone_name: v2-ml-backtest
 status: in_progress
-last_updated: "2026-05-12T15:35:00.000Z"
+last_updated: "2026-05-12T18:21:00.961Z"
 progress:
   total_phases: 11
   completed_phases: 6
-  total_plans: 56
-  completed_plans: 43
-  percent: 55
+  total_plans: 63
+  completed_plans: 44
+  percent: 70
 ---
 
 # Project State
@@ -21,7 +21,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 **Core value:** Every trade pre-filtered by a calibrated ML classifier whose probabilities match realized hit rate, trained on the agent's own decisions, improving with every cycle.
 
 **Current milestone:** v2-ml-backtest
-**Current focus:** Phase 7 + Phase 8 plans-written ✓. Path duale ora pronto: (a) `/gsd-execute-phase 7` per kickoff Wave 0 ML execute (sblocca Wave 1-5 Phase 8), (b) `/gsd-execute-phase 8 --plan 08-01` per Wave 0 scaffolding parallel-with-Phase-7-execute (zero dipendenza hard). Phase 7 execute è prerequisito hard per Phase 8 Wave 1-5 (real MLFilter singleton + bundle.pkl + metadata.json).
+**Current focus:** Phase 8 Wave 0 ✓ COMPLETE (Plan 08-01 MCP ML scaffolding shipped 2026-05-12). Phase 7 + Phase 8 Wave 1-5 + Phase 9 plans-written. Prossimo: `/gsd-execute-phase 7` per kickoff ML training pipeline (sblocca Phase 8 Wave 1-5 + INT-02 ml-on report).
 
 **Active workflow:** vedi `.planning/RESUME-PLAN.md` (rev 4) — STEP 1-5 ✓ complete, STEP 6 `/gsd-plan-phase 8` ✓ COMPLETE 2026-05-12 (7 PLAN + PATTERNS, plan-check 2 iter PASS), STEP 7-12 (Phase 9-11 discuss+plan) ancora pending in parallelo. STEP 13 Phase 7 plan-write ✓.
 
@@ -38,12 +38,12 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 5 | Baseline Backtest | ✓ complete | 9/9 | 100% (plan 05-09 plan-write + plan-execute ✓ 2026-05-12, parquet schema-v2 1076 × 59 cols PASS) |
 | 6 | MCP Tools (part 1) | ✓ complete | 4/4 | 100% (06-01..04 SUMMARY ✓ 2026-05-11; Wave 4 06-05 deferred post-Phase 7) |
 | 7 | ML Classifier | 🟢 plans-written | 0/6 | 0% (CONTEXT.md ✓, RESEARCH.md ✓ Open Questions RESOLVED, PATTERNS.md ✓, VALIDATION.md ✓, 6 PLAN.md ✓ plan-check 3 iter PASS; ready for /gsd-execute-phase 7) |
-| 8 | MCP Tools (part 2) | 🟢 plans-written | 0/7 | 0% (CONTEXT.md ✓ + PATTERNS.md ✓ + 7 PLAN.md ✓ 2026-05-12 via /gsd-plan-phase 8 plan-check 2 iter PASS — iter 1 5 BLOCKER risolti revision: B1 RiskDecision sig, B2 runner.py output_dir refactor (project memory training integrity), B3 test count math, B4 regime/regime_state disambiguation, B5 metadata sha256 audit injection. Wave 0 (08-01) parallel-with-Phase-7-execute; Wave 1-5 (08-02..07) hard-depend phase-7-complete) |
-| 9 | Failure Analysis + Drift | ○ pending | 0/0 | 0% |
+| 8 | MCP Tools (part 2) | 🟡 in-progress | 1/7 | 14% (Wave 0 Plan 08-01 ✓ 2026-05-12 — MCP ML scaffolding 3 Tool schemas + stub handlers + ErrorCodes + env vars + xfail strict gate; Wave 1-5 hard-depend phase-7-complete) |
+| 9 | Failure Analysis + Drift | 🟢 plans-written | 0/7 | 0% (CONTEXT + RESEARCH + PATTERNS + VALIDATION + 7 PLAN.md ✓ 2026-05-12 via /gsd-plan-phase 9 commit `b1fad98`; ML-07/08/09 + MCP-07/08/18 + INT-03 coperti, 16 D-09-* decisioni) |
 | 10 | Intermarket + News | ○ pending | 0/0 | 0% |
 | 11 | Paper Deploy Gate | ○ pending | 0/0 | 0% |
 
-**Overall progress:** 6/11 phases complete (55%), 0 in progress, 2 ready-to-execute (Phase 7 + Phase 8 plans-written)
+**Overall progress:** 6/11 phases complete · 1/7 plans in Phase 8 (Wave 0) · 44/63 plans overall (70%). Path: Phase 7 ML training (6 plans ready) → Phase 8 Wave 1-5 (6 plans ready) → Phase 9 (7 plans ready) → Phase 10-11.
 
 ---
 
