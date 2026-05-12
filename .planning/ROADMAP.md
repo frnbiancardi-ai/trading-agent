@@ -194,7 +194,9 @@ Plans:
 
 ### Phase 7: ML Classifier
 
-**Goal:** Train a LightGBM binary trade-quality classifier on the Phase 5 baseline decision dataset with walk-forward splits and proper Platt/isotonic calibration; persist versioned models.
+**Status:** 🟢 plans-written 2026-05-12 (CONTEXT.md ✓ + RESEARCH.md ✓ + PATTERNS.md ✓ + VALIDATION.md ✓ + 6 PLAN.md ✓ post plan-check 3 iter PASS). Ready for `/gsd-execute-phase 7`.
+
+**Goal:** Train a LightGBM binary trade-quality classifier on the Phase 5 baseline decision dataset (parquet schema-v2 1076 × 59 cols, committed `0410bf2`) with walk-forward splits and proper Platt/isotonic calibration; persist versioned models.
 
 **Requirements:** ML-01, ML-02, ML-03, ML-04, ML-05, ML-06, ML-10
 
@@ -202,10 +204,20 @@ Plans:
 1. Feature extractor produces a deterministic feature vector from a decision context (verified by snapshot test).
 2. Walk-forward training script runs end-to-end on the baseline dataset, produces 10 fold models, no `train_test_split(shuffle=True)` anywhere.
 3. Calibration (Platt + isotonic) applied; reliability diagram + Brier score + ECE reported per fold.
-4. Inference API: `predict(features) → (raw_score, calibrated_prob)` with <10ms latency on single sample.
+4. Inference API: `predict(features) → (raw_score, calibrated_prob)` with **p95 < 10ms** on 1000-sample benchmark (locked HANDOFF, NOT p99).
 5. Classifier integrated into proposal pipeline: trades with `calibrated_prob < threshold` rejected; verified end-to-end on a held-out month.
 
 **Hint UI:** no
+
+**Plans:** 6 plans (Wave 0-5) — plan-check 3 iter PASS 2026-05-12
+
+Plans:
+- [ ] 07-01-PLAN.md — Wave 0 scaffolding: `ml/` package + `feature_extraction.py` (D-09-G derivation 8 fields da decision_context_json + pnl_pips + timestamps) + AST purity gate active da day-1 + ml.yaml (deterministic LightGBM 4.x flag + dataset section) + 200-row smoke fixture
+- [ ] 07-02-PLAN.md — Wave 1 walk_forward: expanding 10 fold + per-TF embargo (timeout_bars[tf] uniform max=120) + train/val 80/20 temporal + no-shuffle AST guard
+- [ ] 07-03-PLAN.md — Wave 2 calibration + train: manual Platt+Isotonic (sklearn 1.8 senza CalibratedClassifierCV cv='prefit') + LightGBM fold loop con scale_pos_weight per fold + FoldArtifacts NamedTuple cross-plan contract + Brier-winner picking fold≥3 + Platt-only val<50 + categorical "regime" canonical (rename regime_state→regime at pipeline entry)
+- [ ] 07-04-PLAN.md — Wave 3 threshold: profit-curve sweep per-profile + mediana aggregator + AST guard val-not-test
+- [ ] 07-05-PLAN.md — Wave 4 inference + artifact: MLFilter singleton predict + joblib bundle + sidecar metadata.json + p95<10ms benchmark split fixture/real (integration mark) + final retrain 100% post-fold-loop
+- [ ] 07-06-PLAN.md — Wave 5 integration + phase gate: ProposalDraft extension (3 ML fields) + single-callsite ml-attach in evaluate_proposal_for_bar (AST guard adapters) + risk_engine ML gate (threshold from metadata.json) + ENABLE_ML_FILTER=false default zero-impact rollout + held-out month E2E fold-9 + human-verify checkpoint
 
 ---
 
@@ -281,4 +293,4 @@ Plans:
 - **Skills:** consult `forex-trader-pro` for setup/confluence/risk specifics; `forex-algo-dev` for ML pipeline + data quality + backtesting + failure modes; `forex-strategy-builder` for book-grounded patterns.
 
 ---
-*Last updated: 2026-05-12 — Phase 5 ✓ COMPLETE 9/9 plans (Plan 05-09 plan-execute completato PC secondario, D-02 gap CHIUSO, parquet schema-v2 1076 × 59, Phase 7 ML sbloccata); Previous: 2026-05-11 — Phase 5 REOPENED per Plan 05-09 (dataset writer extension + baseline re-run, chiude D-02 schema gap inherited from plan 05-08, sblocca Phase 7 ML); Phase 4 ✅ COMPLETE 2026-05-08*
+*Last updated: 2026-05-12 — Phase 7 plan-write COMPLETE via /gsd-plan-phase 7 (6 PLAN + VALIDATION + PATTERNS + RESEARCH-RESOLVED post 3-iter plan-check loop). ML-01..06 + ML-10 + ROADMAP SC#1..5 coverage table chiusa. Ready for /gsd-execute-phase 7. Previous: 2026-05-12 — Phase 5 ✓ COMPLETE 9/9 plans (Plan 05-09 plan-execute completato PC secondario, D-02 gap CHIUSO, parquet schema-v2 1076 × 59); Phase 4 ✅ COMPLETE 2026-05-08*

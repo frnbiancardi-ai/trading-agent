@@ -564,7 +564,7 @@ Il planner deve produrre plans 07-01..N coprendo:
 
 **Stima durata:** planning ~2-3 ore conversazionali; execution ~4-8 ore (dipende dai plan).
 
-**Status:** [ ] not started · [ ] in progress · [ ] complete
+**Status:** [ ] not started · [x] in progress (2026-05-12 plan-write done, plan-execute pending) — plan-write COMPLETE: PATTERNS.md (commit `75eebdc` 1157 LOC 20 file mapped 17 analogs + 3 NEW patterns) + 6 PLAN.md (07-01..07-06 ~7141 LOC) + 07-VALIDATION.md + 07-RESEARCH.md Open Questions RESOLVED, post plan-check 3 iter PASS (iter 1 REVISIONS_NEEDED 5 HIGH → iter 2 RESOLVED + 6 MED → iter 3 final cleanup). Requirements coverage ML-01..06 + ML-10 + ROADMAP SC#1..5 confermata. 13 critical gotchas baked into AST guards. Wave structure: 07-01 feature_extraction + AST purity gate + 200-row smoke + D-09-G derivation 8 fields; 07-02 walk_forward expanding 10 fold + per-TF embargo + no-shuffle guard; 07-03 manual Platt+Isotonic + LightGBM train + FoldArtifacts contract + categorical "regime" canonical; 07-04 threshold profit-curve + mediana + AST val-not-test guard; 07-05 MLFilter singleton + joblib bundle + p95<10ms benchmark fixture+real; 07-06 ProposalDraft 3 ML fields + single-callsite ml-attach + risk_engine ML gate + held-out E2E fold-9 + ENABLE_ML_FILTER=false default. Plan-execute prossimo: `/gsd-execute-phase 7` per kickoff Wave 0.
 
 ---
 
