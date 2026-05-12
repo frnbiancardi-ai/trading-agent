@@ -290,7 +290,7 @@ git push origin feature/update-pythono-pure-strategy
 
 ---
 
-### STEP 5 — Phase 8: discuss-phase
+### STEP 5 — Phase 8: discuss-phase ✓ complete 2026-05-12
 
 **Cosa fa:** raccoglie CONTEXT.md per Phase 8 (MCP Tools part 2 — ML training/inference/calibration tools, ML-aware risk evaluation).
 
@@ -313,7 +313,7 @@ git push origin feature/update-pythono-pure-strategy
 
 **Stima durata:** ~30-60 min conversazionali.
 
-**Status:** [ ] not started · [ ] in progress · [ ] complete
+**Status:** [ ] not started · [ ] in progress · [x] complete (2026-05-12, default mode 4 aree esplorate, 14 decisioni D-08-A1..D5 catturate in 08-CONTEXT.md, 08-DISCUSSION-LOG.md log audit, coerenza priority dati GIUSTI / no sufficienza estesa cross-tool. Project memory saved `project_training_data_integrity_priority.md`. Commit `<phase-8-context>`)
 
 ---
 
