@@ -829,22 +829,25 @@ def plot_reliability_diagram(
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Dataset remediation approach (Option A vs B vs C)**
    - What we know: Actual dataset missing 38 of D-02 fields. All three options have valid tradeoffs.
    - What's unclear: Time budget for Option A re-run (last run was 3h18m; Phase 5 perf deferred). Option B complexity (backfill script may itself introduce subtle leakage if not careful about bar-close discipline).
    - Recommendation: **Planner should make this a Wave 0 explicit decision.** Default to Option A (re-run with full schema) unless time budget is prohibitive, then Option B.
+   - **RESOLVED:** Option A baseline re-run, executed via Plan 05-09 sul PC secondario 2026-05-12, vedi STATE.md Active Work entry top.
 
 2. **Early fold calibration stability (fold 1 val = 20 rows)**
    - What we know: Isotonic regression on 20 samples is unreliable. Platt (logistic regression) is more stable at small N.
    - What's unclear: Whether fold 1-2 calibration quality matters for the final model (it uses all folds for medianization).
    - Recommendation: Use Platt for folds where `len(val_idx) < 50`; use min-Brier winner for larger folds. Add this logic to `training.py`.
+   - **RESOLVED:** Manual Platt + Isotonic with Brier-winner picking from fold ≥3, Platt-only when val<50, per D-07-03-B implemented in `ml/calibration.py` (Plan 07-03 line 600-601 + `pick_brier_winner`).
 
 3. **Inference latency budget spec: p95 vs p99 vs mean**
    - What we know: In this WSL2 environment: p50=4ms, p95=9ms, p99=13ms. The 10ms budget in SC#4 is tight at p99 in Linux container.
    - What's unclear: What percentile the user/CONTEXT.md intends for the <10ms spec.
    - Recommendation: Define the pytest benchmark as `p95 < 10ms`, with a note that p99 tail includes OS scheduling jitter. Add `num_threads=1` to LightGBM config for more deterministic inference latency.
+   - **RESOLVED:** p95 < 10ms (NOT p99) locked in HANDOFF.json decisions; implemented as 1000-sample benchmark in `tests/test_ml_inference.py::test_inference_latency_p95_under_10ms_real` (Plan 07-05 line 879).
 
 ---
 
@@ -913,7 +916,7 @@ def plot_reliability_diagram(
 
 - [ ] `tests/test_ml_filter.py` — ML-01, ML-05, ML-10 unit tests
 - [ ] `tests/test_training.py` — ML-02, ML-03, ML-04 unit tests
-- [ ] `tests/fixtures/ml/sample_decision_dataset.parquet` — deterministic 100-row mini dataset (seed=42, 3 symbols, 3 TF, 3 profiles, ~28% TP rate)
+- [ ] `tests/fixtures/ml/sample_decision_dataset.parquet` — deterministic 200-row mini dataset (seed=42, 3 symbols, 3 TF, 3 profiles, ~28% TP rate; post-iter-2 _N_ROWS bump)
 - [ ] `models/` directory — created by `mkdir models` in Wave 0
 - [ ] `data/configs/ml_training.yaml` — training orchestration config
 
