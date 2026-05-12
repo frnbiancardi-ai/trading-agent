@@ -8,6 +8,7 @@ I codici sono consumati da:
 - mcp/handlers/position.py (stops_level_violation, partial_exceeds_volume, position_not_found, broker_rejected, conflict_*)
 - mcp/handlers/market.py (historical_data_unavailable, as_of_ts_*)
 - mcp/server.py (mt5_not_ready)
+- mcp/handlers/ml.py (validation_failed, not_found, internal_error)
 
 Convenzione: snake_case per codici flat, prefisso `conflict:` per conflitti
 inter-arg di modify_position (D-B1).
@@ -41,6 +42,11 @@ class ErrorCodes:
 
     # replay_decision (D-D2)
     DECISION_NOT_FOUND = "decision_not_found"
+
+    # Phase 8 ML (D-08-B3, D-08-C, D-08-A1) — generic error codes
+    VALIDATION_FAILED = "validation_failed"
+    NOT_FOUND = "not_found"
+    INTERNAL_ERROR = "internal_error"
 
 
 def envelope(error_code: str, message: str, **context) -> dict:
