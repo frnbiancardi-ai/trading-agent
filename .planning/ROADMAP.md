@@ -223,6 +223,8 @@ Plans:
 
 ### Phase 8: MCP Tools (part 2)
 
+**Status:** 🟢 plans-written 2026-05-12 (CONTEXT.md ✓ + PATTERNS.md ✓ + 7 PLAN.md ✓). Ready for `/gsd-execute-phase 8` post Phase 7 execute.
+
 **Goal:** Expose ML training, inference, and calibration introspection through MCP; integrate ML score into `evaluate_trade_proposal` response; produce the post-ML backtest report.
 
 **Requirements:** MCP-04, MCP-05, MCP-06, MCP-R4, INT-02
@@ -234,6 +236,37 @@ Plans:
 4. ML-on backtest demonstrates non-trivial improvement vs baseline OR documented analysis of why not (negative result is acceptable signal, not failure).
 
 **Hint UI:** no
+
+**Plans:** 7 plans (Wave 0-5)
+
+**Cross-cutting constraints** (must_haves.truths che ricorrono in ≥2 plan):
+- *Italiano per docstring/log/rationale, English per code/identifier* (CLAUDE.md) — TUTTI i plan 08-01..08-07
+- *EXECUTION_MODE=shadow rispetto + .env via config.py zero magic numbers* (CLAUDE.md) — TUTTI i plan
+- *Phase 7 pre-flight Bash gate (`test -f ml/inference.py && test -f models/classifier_v1_latest.pkl`)* — 08-02, 08-03, 08-04, 08-05, 08-06 (Wave 1-4)
+- *ErrorCodes envelope (`mcp_tools/errors.py`)* — 08-01, 08-02, 08-03, 08-04
+- *MLFilter singleton process-local bootstrap (Phase 7 Plan 07-05 carry-forward)* — 08-01, 08-02, 08-05
+- *Training data integrity priority (project memory)* — 08-04 (sha256 audit D-08-B3), 08-06 (output_dir separato D-08-D1)
+
+Plans:
+
+**Wave 0** *(parallel-with-Phase-7-execute, no hard dependency)*
+- [ ] 08-01-PLAN.md — Wave 0 scaffolding: 3 Tool schemas MCP-04/05/06 + stub handler NotImplementedError + 3 ErrorCodes additivi (VALIDATION_FAILED/NOT_FOUND/INTERNAL_ERROR) + 3 env var config (ML_MODEL_PATH/MCP_TRAINING_DATA_PATH/MCP_ML_THRESHOLD_MARGIN_PCT) + bootstrap singleton + xfail strict gate test
+
+**Wave 1** *(blocked on Wave 0 + phase-7-complete; 08-02 and 08-05 run in parallel — zero file overlap)*
+- [ ] 08-02-PLAN.md — handle_predict_trade_quality GREEN (MCP-05) — 3 branche (disabled, success, exception) + riuso build_feature_vector Phase 7 + threshold lookup per profile + 7 test (incl. B4 parity test_predict_branch_A_eq_branch_B_features_match per regime/regime_state disambig)
+- [ ] 08-05-PLAN.md — evaluate_trade_proposal extension (MCP-R4) — 4 additive fields (ml_score, calibrated_prob, ml_threshold, ml_filter_active) + backward-compat absolute (B1 RiskDecision adjusted_stop_loss/adjusted_take_profit signature) + try/except swallow Plan 07-06 pattern + 6 test
+
+**Wave 2** *(blocked on Wave 1 completion — overlap su mcp_tools/handlers/ml.py)*
+- [ ] 08-03-PLAN.md — handle_get_ml_calibration GREEN (MCP-06) — D-08-C1 default per-fold + D-08-C2 summary_only opt-out + 9 fields enumerati per fold (D-08-C3) + 5 test
+
+**Wave 3** *(blocked on Wave 2 completion — overlap su mcp_tools/handlers/ml.py)*
+- [ ] 08-04-PLAN.md — handle_train_ml_filter GREEN (MCP-04) — async JobQueue cap=1 shared D-08-A2 + worker top-level picklable + 3-layer security (enum D-08-B2 + schema-v2 + sha256 audit D-08-B3 con B5 post-train metadata injection atomic + path-traversal mitigation T-8-04-04) + 6 unit + 1 integration test
+
+**Wave 4** *(blocked on Wave 3 completion — bundle.pkl + metadata.json prodotti da Plan 08-04 hard dependency)*
+- [ ] 08-06-PLAN.md — INT-02 deliverable: Task 0 B2 refactor runner.py `output_dir` kwarg threaded down a slice_worker.py + dataset_writer.py (preserva training data integrity priority: `data/training/baseline_ml_on/` separato da `baseline_decisions/`) + scripts/run_ml_on_backtest.py wrapper (analog Plan 05-09) + backtest/baseline/ml_on_report_writer.py (6 sezioni D-08-D4 + verdict YAML D-08-D5) + Degraded Slices Analysis automatica + 11+ test + PC secondario checkpoint notturno ~14000s
+
+**Wave 5** *(blocked on Wave 4 completion + PC secondario report ml-on-{date}.md committed)*
+- [ ] 08-07-PLAN.md — Phase gate: 08-VERIFICATION.md (4 SC closure verbatim 22 unit + 1 integration via test count math block + 5 req + 14 D-08-XX decisioni coverage + security gates) + REQUIREMENTS.md update + ROADMAP.md update + STATE.md update + commit atomico
 
 ---
 
@@ -293,4 +326,4 @@ Plans:
 - **Skills:** consult `forex-trader-pro` for setup/confluence/risk specifics; `forex-algo-dev` for ML pipeline + data quality + backtesting + failure modes; `forex-strategy-builder` for book-grounded patterns.
 
 ---
-*Last updated: 2026-05-12 — Phase 7 plan-write COMPLETE via /gsd-plan-phase 7 (6 PLAN + VALIDATION + PATTERNS + RESEARCH-RESOLVED post 3-iter plan-check loop). ML-01..06 + ML-10 + ROADMAP SC#1..5 coverage table chiusa. Ready for /gsd-execute-phase 7. Previous: 2026-05-12 — Phase 5 ✓ COMPLETE 9/9 plans (Plan 05-09 plan-execute completato PC secondario, D-02 gap CHIUSO, parquet schema-v2 1076 × 59); Phase 4 ✅ COMPLETE 2026-05-08*
+*Last updated: 2026-05-12 — Phase 8 plan-write COMPLETE via /gsd-plan-phase 8 (PATTERNS.md 10 file/11 pattern A-K + 7 PLAN.md Wave 0-5 covering MCP-04/05/06 + MCP-R4 + INT-02 + SC#1..4 ROADMAP closure path + 14 D-08-XX decisioni verbatim mapping). Plan-check loop 2 iter: iter 1 ISSUES_FOUND 5 BLOCKER (B1 RiskDecision sig, B2 runner.py output_dir refactor, B3 test count math, B4 regime/regime_state disambig, B5 metadata sha256 audit injection) + 5 WARNING → revision iter 1 applied → iter 2 VERIFICATION_PASSED con 4 WARNING residui non-bloccanti deferred a execute. Plan structure: Wave 0 scaffolding (parallel Phase 7 execute), Wave 1 parallel handle_predict_trade_quality + evaluate_trade_proposal extension, Wave 2-3 seriali handle_get_ml_calibration + handle_train_ml_filter (overlap ml.py), Wave 4 INT-02 deliverable con B2 runner.py output_dir refactor (project memory training data integrity preservata: `data/training/baseline_ml_on/` separato da training input Phase 7) + PC secondario notturno, Wave 5 phase gate 22 unit + 1 integration. Security: ASVS L1 con 3-layer safety per train_ml_filter (enum + schema-v2 + sha256 audit con B5 post-train metadata injection atomic + path-traversal mitigation) + graceful try/except per predict failures (Plan 07-06 D-07-06-C pattern carry-forward). Phase 7 execute è hard dependency per Wave 1-5; Plan 08-01 scaffolding può procedere parallelo. Previous: 2026-05-12 — Phase 7 plan-write COMPLETE via /gsd-plan-phase 7 (6 PLAN + VALIDATION + PATTERNS + RESEARCH-RESOLVED post 3-iter plan-check loop). ML-01..06 + ML-10 + ROADMAP SC#1..5 coverage table chiusa. Ready for /gsd-execute-phase 7.*
