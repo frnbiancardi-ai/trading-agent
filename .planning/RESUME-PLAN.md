@@ -37,11 +37,11 @@ STEP 2: git push origin
                                                      Setup ambiente
                                                      (vedi SETUP-SECONDARY-PC.md)
 
-                                              STEP 3: Pre-flight check
-                                                      (pytest + smoke + schema)
-                                                      Launch full run notturno
-                                                      ~3h18m wall-clock
-                                                      (PC primario libero in parallelo)
+STEP 3: Pre-flight check
+        (pytest + smoke + schema)
+        Launch full run notturno
+        ~3h18m wall-clock
+        (PC primario libero in parallelo)
 
 (PC primario lavora in parallelo:)
 STEP 4: /gsd-execute-phase 6
@@ -255,7 +255,7 @@ git push origin feature/update-pythono-pure-strategy
 
 **Stima durata:** setup ~20-30 min (manuale, una tantum) + pre-flight ~1-2 min + full run ~3h18m wall-clock = ~4h totali sul PC secondario.
 
-**Status:** [ ] not started · [ ] in progress · [ ] complete
+**Status:** [ ] not started · [ ] in progress · [x] complete (2026-05-12, PC secondario Windows + MT5 demo TenTrade; wall-clock 14038s = 3h53m55s [+18% vs stima 3h18m, accettabile]; 27/27 ok, 0 fail/skip; parquet schema-v2 1076 × 59 cols SCHEMA validation PASS auto-asserted dal wrapper; report `.planning/research/baseline-2026-05-12.md` 186 righe; 27 PNG equity curves bit-identical re-run deterministico [git diff vuoto]; 2 commit primario post-pull `0410bf2 feat(phase-5): plan 05-09 STEP 3 execute` + `de13199 docs(phase-5): plan 05-09 SUMMARY — execution results`; D-02 gap inherited Plan 05-08 DEFINITIVAMENTE CHIUSO; Phase 7 ML Classifier sbloccata per `/gsd-plan-phase 7 --skip-research`; cleanup leak Windows post-pull rimossi `05-09.log` + `trades.db` + `"C:\trading-agent\logs\agent.log"`)
 
 ---
 

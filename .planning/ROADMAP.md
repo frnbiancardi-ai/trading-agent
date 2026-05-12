@@ -12,7 +12,7 @@
 | 2 | Indicators Library | Expand indicator coverage to support all 4 setups + ML features | INDIC-01..14 | 4 |
 | 3 | Patterns Catalog | Full candlestick pattern detection library (4/4 plans, strategy.py callsite refactor done — pending verify) | PATT-01..07 | 3 |
 | 4 | Strategy Refactor | Setup A/B/C/D detectors as pure functions, 5-factor confluence, shared by live + backtest (8/8 plans ✅) | STRAT-01..09 | 5 |
-| 5 | Baseline Backtest | Run strategy-only backtest on 23.5y × 3 pairs × 3 TFs, produce metrics + ML training data (reopened 2026-05-11 per Plan 05-09: dataset_writer extension + re-run to close D-02 schema gap) | BACK-07, INT-01 | 4 |
+| 5 | Baseline Backtest ✓ COMPLETE 2026-05-12 (9/9 plans) | Run strategy-only backtest on 23.5y × 3 pairs × 3 TFs, produce metrics + ML training data (Plan 05-09 closed D-02 schema gap; parquet schema-v2 1076 × 59 PASS) | BACK-07, INT-01 | 4 |
 | 6 | MCP Tools (part 1) ✓ COMPLETE 2026-05-11 (4/4 plans Wave 0-3; Wave 4 deferred) | Backtest, position-management, multi-TF, session, correlation, pattern-catalog tools | MCP-01..03, MCP-09, MCP-11..12, MCP-14..17, MCP-R1..R3 | 4 |
 | 7 | ML Classifier | LightGBM trade-quality classifier with walk-forward training and calibration | ML-01..06, ML-10 | 5 |
 | 8 | MCP Tools (part 2) | ML training/inference/calibration tools, ML-aware risk evaluation | MCP-04..06, MCP-R4, INT-02 | 4 |
@@ -163,7 +163,7 @@ Plans:
 - [x] 05-06b-PLAN.md — Wave 2 report_writer ✓ 2026-05-08 (3 commit; D-18 schema; INT-01 + WARNING 12)
 - [x] 05-07-PLAN.md — Wave 3 runner + CLI ✓ 2026-05-08 (4 commit; ProcessPoolExecutor + BaselineConfig + profiler; ThreadPool injection per testability)
 - [x] 05-08-PLAN.md — Wave 4 PHASE GATE smoke E2E ✓ 2026-05-08 (5 commit; 27/27 run, 1076 trade > 1000 hard gate SC#3; SC#1 wall-clock 11922s vs 1800s = Rule 4 deviation user-accepted, defer perf-opt plan 01-09; 5 deviation totali; Phase 7 ML dataset ready)
-- [ ] 05-09-PLAN.md — Wave 5 dataset writer extension + baseline re-run (aperto 2026-05-11): estende `backtest/baseline/dataset_writer.py` per scrivere 30+ feature da `compute_all_extended()` + 4 meta (`profile, regime, run_id, decision_ts_utc`) al bar di entrata; produce script wrapper `scripts/run_baseline_05_09.py` (con `--smoke` flag) per esecuzione stand-alone su PC secondario; chiude gap D-02 inherited da plan 05-08 (parquet attuale 1.076 rows × 17 cols → target 1.076 × 50+ cols); re-run notturno ~3h18m wall-clock; sblocca Phase 7 ML classifier training (vedi RESUME-PLAN.md STEP 1)
+- [x] 05-09-PLAN.md — Wave 5 dataset writer extension + baseline re-run ✓ 2026-05-12 (plan-write 6 commit `5630bcc...9e477cc` 2026-05-11 + plan-execute PC secondario 14038s wall-clock + 2 commit primario post-pull `0410bf2..de13199` 2026-05-12; parquet schema-v2 1076 × 59 cols SCHEMA validation PASS; 27/27 ok 0 fail/skip; D-02 gap CHIUSO; Phase 7 ML sbloccata per /gsd-plan-phase 7 --skip-research)
 
 ---
 
@@ -281,4 +281,4 @@ Plans:
 - **Skills:** consult `forex-trader-pro` for setup/confluence/risk specifics; `forex-algo-dev` for ML pipeline + data quality + backtesting + failure modes; `forex-strategy-builder` for book-grounded patterns.
 
 ---
-*Last updated: 2026-05-11 — Phase 5 REOPENED per Plan 05-09 (dataset writer extension + baseline re-run, chiude D-02 schema gap inherited from plan 05-08, sblocca Phase 7 ML); Phase 4 ✅ COMPLETE 2026-05-08 (8/8 plans 100%, plan 04-08 closed via option-a re-baseline + archive)*
+*Last updated: 2026-05-12 — Phase 5 ✓ COMPLETE 9/9 plans (Plan 05-09 plan-execute completato PC secondario, D-02 gap CHIUSO, parquet schema-v2 1076 × 59, Phase 7 ML sbloccata); Previous: 2026-05-11 — Phase 5 REOPENED per Plan 05-09 (dataset writer extension + baseline re-run, chiude D-02 schema gap inherited from plan 05-08, sblocca Phase 7 ML); Phase 4 ✅ COMPLETE 2026-05-08*
