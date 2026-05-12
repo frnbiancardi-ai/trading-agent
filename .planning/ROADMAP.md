@@ -272,6 +272,8 @@ Plans:
 
 ### Phase 9: Failure Analysis + Drift
 
+**Status:** 🟢 plans-written 2026-05-12 (CONTEXT.md ✓ + RESEARCH.md ✓ + PATTERNS.md ✓ + VALIDATION.md ✓ + 7 PLAN.md ✓). Ready for `/gsd-execute-phase 9` post Phase 7 + Phase 8 execute (cross-phase deps: ml/feature_extraction + ml/inference + mcp_tools/handlers/ml._train_ml_filter_worker).
+
 **Goal:** Add failure clustering, drift monitoring, automatic retrain trigger, and ML-driven `suggest_position_action` for active position management.
 
 **Requirements:** ML-07, ML-08, ML-09, MCP-07, MCP-08, MCP-18, INT-03
@@ -283,6 +285,31 @@ Plans:
 4. `suggest_position_action(position_id)` returns hold/move-SL/partial-close/full-close suggestion with rationale, integration-tested on demo positions.
 
 **Hint UI:** no
+
+**Plans:** 7 plans (Wave 0-6)
+
+Plans:
+
+**Wave 0** *(no hard cross-phase deps — scaffolding-only, can run anytime)*
+- [ ] 09-01-PLAN.md — Wave 0 scaffolding: requirements.txt `hdbscan>=0.8.40,<0.9.0` (P2 anti-sklearn-switch comment) + 26 env var Phase 9 in config.py + .env.example (DRIFT_*, RETRAIN_*, BE_R_THRESHOLD_*, MAX_HOLD_BARS_*, PARTIAL_CLOSE_FRACTION, TIME_STOP_R_THRESHOLD, DRIFT_ECE_N_BINS=10 P10 invariant, DRIFT_SYNTH_SEED=42, HDBSCAN_*) + 4 package barrels (cluster/, drift/, retrain/, position_action/) + 4 handler stub files mcp_tools/handlers/ + logger.py extension `_ensure_ml_calibrated_prob_column` idempotente + ml/inference.py `_invalidate_singleton()` P8 hook + 16 test stub xfail strict gate
+
+**Wave 1** *(blocked on Wave 0 + phase-7-execute per ml/feature_extraction)*
+- [ ] 09-02-PLAN.md — Area A failure clustering (ML-07 + MCP-07) — cluster/preprocessing.py (batch wrapper su Phase 7 build_feature_vector D-09-A4) + cluster/hdbscan_runner.py (P1 prediction_data=True + P2 anti-sklearn AST guard + P3 contrib min_samples + core_dist_n_jobs=1 determinism) + cluster/artifact.py (joblib + sidecar metadata.json + dataset_hash audit anchor) + mcp_tools/handlers/cluster.py + schema + server dispatch. SC#1 verified
+
+**Wave 2** *(blocked on Wave 0 — can run parallel to Wave 1)*
+- [ ] 09-03-PLAN.md — Area B drift monitor (ML-08 + MCP-08) — drift/reference.py (sha256 strict-fail P14) + drift/compute.py (KS+ECE+feature drift top-K P10/P12 guards) + drift/log_db.py (SQLite WAL P11 + drift_log schema D-09-B4) + drift/alarm.py (3-tier ANY-of-3 D-09-B3) + mcp_tools/handlers/drift.py (response shape verbatim CONTEXT.md). Rule 3 architectural deviation: `_load_current/reference_window` resta NotImplementedError until Wave 6
+
+**Wave 3** *(blocked on Wave 0 + Wave 2 drift alarm + phase-8-execute per _train_ml_filter_worker)*
+- [ ] 09-04-PLAN.md — Area C retrain trigger (ML-09) — retrain/dedup.py (idempotent D-09-C3 + reuse Phase 8 worker D-09-C1) + retrain/scheduler.py (APScheduler BackgroundScheduler P4 MemoryJobStore + P5 replace_existing + P13 misfire_grace_time=3600) + retrain/validation_gate.py (3-check D-09-C2 + validation_log.db audit) + retrain/promotion.py (P6 os.replace pair + P7 metadata FIRST .pkl SECOND + P8 singleton invalidate) + mcp_tools/handlers/retrain.py (thin wrapper). SC#3 verified
+
+**Wave 4** *(blocked on Wave 0; parallel-feasible with Wave 2/3 — no shared modules)*
+- [ ] 09-05-PLAN.md — Area D suggest_position_action (MCP-18) — position_action/rules.py (4 rule families D-09-D3 + profile-aware getattr cfg dinamico) + position_action/ml_recheck.py (OOD caveat P9 + cache lookup D-09-D4 + fallback recompute + ENABLE_ML_FILTER=false fallback) + position_action/orchestrator.py (hybrid combine + structured rationale D-09-D2 + summary_it P15 italiano regex) + mcp_tools/handlers/position_action.py (read-only consume Phase 6 handle_get_position_state). SC#4 verified
+
+**Wave 5** *(blocked on Wave 2 drift handler)*
+- [ ] 09-06-PLAN.md — INT-03 CLI dashboard — drift/report_writer.py (markdown 6-section Pattern K) + scripts/show_drift.py (argparse + exit codes 0/1/2/3/4 + WAL reader P11) + tests round-trip + determinism + exit codes. SC#2 partial CLI dashboard ready
+
+**Wave 6** *(blocked on Wave 1-5 completion — phase gate)*
+- [ ] 09-07-PLAN.md — Integration + E2E smoke + phase gate verification: implementa `_load_current_window` + `_load_reference_window` in mcp_tools/handlers/drift.py (resolves Wave 2 Rule 3 deviation) + 3 E2E test file (drift→retrain rejected + drift→retrain promoted + cluster/drift coexistence + MCP-18 ENABLE_ML_FILTER=false integration + retrain concurrent 3-trigger dedup) + 09-VERIFICATION.md (coverage matrix 7 req × 16 D-09-* × 4 SC × 15 P) + REQUIREMENTS.md update + ROADMAP.md update + STATE.md update + commit atomico phase-complete
 
 ---
 
@@ -326,4 +353,4 @@ Plans:
 - **Skills:** consult `forex-trader-pro` for setup/confluence/risk specifics; `forex-algo-dev` for ML pipeline + data quality + backtesting + failure modes; `forex-strategy-builder` for book-grounded patterns.
 
 ---
-*Last updated: 2026-05-12 — Phase 8 plan-write COMPLETE via /gsd-plan-phase 8 (PATTERNS.md 10 file/11 pattern A-K + 7 PLAN.md Wave 0-5 covering MCP-04/05/06 + MCP-R4 + INT-02 + SC#1..4 ROADMAP closure path + 14 D-08-XX decisioni verbatim mapping). Plan-check loop 2 iter: iter 1 ISSUES_FOUND 5 BLOCKER (B1 RiskDecision sig, B2 runner.py output_dir refactor, B3 test count math, B4 regime/regime_state disambig, B5 metadata sha256 audit injection) + 5 WARNING → revision iter 1 applied → iter 2 VERIFICATION_PASSED con 4 WARNING residui non-bloccanti deferred a execute. Plan structure: Wave 0 scaffolding (parallel Phase 7 execute), Wave 1 parallel handle_predict_trade_quality + evaluate_trade_proposal extension, Wave 2-3 seriali handle_get_ml_calibration + handle_train_ml_filter (overlap ml.py), Wave 4 INT-02 deliverable con B2 runner.py output_dir refactor (project memory training data integrity preservata: `data/training/baseline_ml_on/` separato da training input Phase 7) + PC secondario notturno, Wave 5 phase gate 22 unit + 1 integration. Security: ASVS L1 con 3-layer safety per train_ml_filter (enum + schema-v2 + sha256 audit con B5 post-train metadata injection atomic + path-traversal mitigation) + graceful try/except per predict failures (Plan 07-06 D-07-06-C pattern carry-forward). Phase 7 execute è hard dependency per Wave 1-5; Plan 08-01 scaffolding può procedere parallelo. Previous: 2026-05-12 — Phase 7 plan-write COMPLETE via /gsd-plan-phase 7 (6 PLAN + VALIDATION + PATTERNS + RESEARCH-RESOLVED post 3-iter plan-check loop). ML-01..06 + ML-10 + ROADMAP SC#1..5 coverage table chiusa. Ready for /gsd-execute-phase 7.*
+*Last updated: 2026-05-12 — Phase 9 plan-write COMPLETE via /gsd-plan-phase 9 (7 PLAN.md ~4889 LOC totali, ~290 KB). Wave structure: 09-01 Wave 0 scaffolding (hdbscan dep + 26 env var + 4 package + 4 handler stub + D-09-D4 logger.py schema migration + P8 ml/inference._invalidate_singleton hook + 16 test stub xfail) → 09-02 Wave 1 ML-07/MCP-07 cluster (D-09-A1..A4, P1/P2/P3 guards) → 09-03 Wave 2 ML-08/MCP-08 drift (D-09-B1..B4, P10/P11/P12/P14 guards) → 09-04 Wave 3 ML-09 retrain (D-09-C1..C4, P4/P5/P6/P7/P8/P13 guards, riusa Phase 8 _train_ml_filter_worker per D-09-C1 zero-duplication training data integrity priority) → 09-05 Wave 4 MCP-18 position_action (D-09-D1..D4, P9/P15 guards, OOD caveat + italiano markers regex + ENABLE_ML_FILTER=false fallback) → 09-06 Wave 5 INT-03 CLI dashboard (Pattern K markdown 6-section, P11 WAL reader) → 09-07 Wave 6 phase gate (3 E2E test file + VERIFICATION.md coverage matrix + REQUIREMENTS/ROADMAP/STATE update). All 7 requirement IDs covered, all 16 D-09-* decisions traceable, all 15 pitfalls P1-P15 guarded, all 4 SC#1..4 ROADMAP verified. Project memory training data integrity priority preserved: D-09-A1 baseline-only, D-09-C1 zero-duplication, D-09-C2 validation gate silently-worse-model protection, P6 atomic pair-rename, P14 sha256 strict-fail, drift_log.reference_hash audit chain. Phase 9 status: 🟢 plans-written, ready for /gsd-execute-phase 9 post Phase 7 + Phase 8 execute (hard cross-phase deps: ml/feature_extraction Phase 7 Plan 07-01 + ml/inference Phase 7 Plan 07-05 + mcp_tools/handlers/ml._train_ml_filter_worker Phase 8 Plan 08-04). Previous: 2026-05-12 — Phase 8 plan-write COMPLETE via /gsd-plan-phase 8.*
