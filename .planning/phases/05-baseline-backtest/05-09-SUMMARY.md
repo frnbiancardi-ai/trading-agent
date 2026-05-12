@@ -262,3 +262,51 @@ python scripts/run_baseline_05_09.py --force
 - Suite globale: 400 passed, 11 skipped, 55 xfailed (1 pre-existing failure engine perf out-of-scope D-09-F)
 
 Tutti i punti must_haves del plan rispettati. Scope `plan-write` COMPLETE. Scope `plan-execute` (full 27/27 backtest) delegato al PC secondario in STEP 3 RESUME-PLAN.md.
+
+---
+
+## Execution Results — PC secondario 2026-05-12
+
+**Scope plan-execute COMPLETE 2026-05-12** (~24h dopo plan-write). Full 27/27 backtest schema-v2 girato sul PC secondario (Windows + MetaTrader5 demo TenTrade), pushato indietro al remoto, integrato sul PC primario via `git pull` + commit `0410bf2`.
+
+| Metric | Valore atteso | Valore osservato | Note |
+|---|---|---|---|
+| Wall-clock totale | ~3h18m stima | **14038s (3h53m55s)** | +18% overshoot vs stima, dentro range accettabile (PC secondario meno performante di Ryzen 7 5800H baseline) |
+| Slice completate | 27/27 | **27/27 ok** | 0 skipped, 0 failed — clean run |
+| Parquet rows | ≥1076 | **1076** | Match esatto Plan 05-08 baseline (parity setup detection 5-factor) |
+| Parquet cols | ~55+ | **59** | Schema-v2 D-09-A: 17 base + 33 extended + 5 meta + qualche extra |
+| SCHEMA validation post-run | PASS | **PASS** | `OK schema-v2: 1076 rows, 59 cols` (auto-asserted dal wrapper) |
+| Drafts dataset | deferred | 0 shard | D-09-F scope chirurgico, Phase 9 failure analysis |
+| Run command | `scripts/run_baseline_05_09.py` | `python.exe .\scripts\run_baseline_05_09.py` (PowerShell) | Wrapper Plan 05-09 D-09-D usato come previsto |
+
+**Distribuzione trade per symbol/tf/profile** (vedi `.planning/research/baseline-2026-05-12.md` sezione "Slice Metrics" per dettaglio):
+
+- **USDJPY M15 AGGRESSIVE/MODERATE**: 415 + 309 = 724 trade (67% del totale) — regime carry trade ad alta persistenza
+- **USDJPY M15 CONSERVATIVE**: 6 trade (filtro grade A+ stringente)
+- **EURUSD/GBPUSD M30 spread**: 15-33 trade per slice — distribuzione coerente Plan 05-08
+- **H1 timeframe**: 4-10 trade per slice (basso volume, atteso)
+
+**Edge characterization** (input Phase 7 ML):
+
+- Hit-rate globale 27.7% (298 win / 778 loss, consistente con Plan 05-08 baseline)
+- Profit-factor < 1 su 24/27 slice — confermato negative-edge della strategia non filtrata
+- USDJPY M15 hit-rate 32-34% (migliore) vs H1 0-12% (peggiore) — Phase 7 dovrà imparare a filtrare slice "morte"
+- Sharpe negativi estremi su slice H1 con 4-10 trade (-2300 a -16000) sono artefatti statistici per n piccolo, non segnali reali
+
+**Artefatti versionati post-STEP 3:**
+
+- `data/training/baseline_decisions/part-0.parquet` — committed `0410bf2` (parquet binario, ~bytes da quantificare)
+- `.planning/research/baseline-2026-05-12.md` — committed `0410bf2` (report 186 righe)
+- `.planning/research/baseline-equity-curves/*.png` — già committate Plan 05-08 (27/27, bit-identical post re-run deterministico — git diff vuoto)
+
+**Deferred (immutato):**
+
+- 8 D-02 fields deferred-by-design (D-09-G): `setup_name`, `pattern_name`, `confluence_factors_json`, `bias`, `sl_pips`, `tp_pips`, `r_to_r`, `bars_to_outcome` — derivabili da `decision_context_json` + `pnl_pips` + 3 timestamps via feature_extraction Wave 0 Phase 7.
+- Engine perf-opt (12-month smoke <60s, attualmente 121s) — out-of-scope D-09-F, defer a futuro plan 01-09 vectorization.
+
+**Cleanup PC primario post-pull:**
+
+- Removed leak: `05-09.log` (PowerShell `Tee-Object` output UTF-16-BOM), `trades.db` (legacy runtime), `"C:\\trading-agent\\logs\\agent.log"` (Windows path escaped, leak filesystem)
+- Preserved untracked: `data/training/baseline_decisions.pre-05-09/` (backup pre-re-run, intenzionale), `data/training/_smoke_05_09/` + `.planning/research/_smoke_equity_curves/` (smoke artifacts validation pre-STEP 3)
+
+**Phase 5 status:** ✓ **COMPLETE 9/9 plans (100%)** — D-02 gap definitivamente chiuso, Phase 7 ML Classifier sbloccata per `/gsd-plan-phase 7 --skip-research` (RESUME-PLAN.md STEP 13).
