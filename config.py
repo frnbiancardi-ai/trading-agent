@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -105,6 +107,21 @@ class Config:
     # + flag che vieta tightening dello SL non-favorable (BUY: candidate<=last_sl).
     TRAIL_TICK_TIMEFRAME: str = os.getenv("TRAIL_TICK_TIMEFRAME", "M15")
     TRAIL_FAVORABLE_ONLY: bool = _get_bool("TRAIL_FAVORABLE_ONLY", True)
+
+    # Phase 8 MCP ML (D-08-A1/B1/D3)
+    # ML_MODEL_PATH: bundle joblib Phase 7 Plan 07-05 D-15 path convention.
+    # Symlink models/classifier_v1_latest.pkl -> classifier_v1_{date}.pkl per
+    # swap rolling senza restart MCP server (caricamento singleton a bootstrap).
+    ML_MODEL_PATH: Path = Path(os.getenv("ML_MODEL_PATH", "models/classifier_v1_latest.pkl"))
+    # MCP_TRAINING_DATA_PATH: parquet baseline (D-08-B1 hardcoded data source enum-only).
+    MCP_TRAINING_DATA_PATH: Path = Path(os.getenv(
+        "MCP_TRAINING_DATA_PATH", "data/training/baseline_decisions/part-0.parquet",
+    ))
+    # MCP_ML_THRESHOLD_MARGIN_PCT: margine entro cui un trade rejected dal ML
+    # gate e' considerato "marginale" nella Degraded Slices Analysis (D-08-D4).
+    MCP_ML_THRESHOLD_MARGIN_PCT: float = float(os.getenv(
+        "MCP_ML_THRESHOLD_MARGIN_PCT", "0.05",
+    ))
 
     # Scheduler / Daily orchestrator (fase 13)
     OPERATING_TIMEZONE: str = os.getenv("OPERATING_TIMEZONE", "Europe/Rome")
