@@ -23,6 +23,7 @@ Il logger configurato in `logger.py` scrive solo su file (RotatingFileHandler) �
 """
 import asyncio
 import json
+from pathlib import Path
 from typing import Any
 
 from mcp.server import Server
@@ -69,6 +70,15 @@ from mcp_tools.handlers.position import (
     handle_modify_position,
 )
 from mcp_tools.trail_daemon import ensure_table as trail_ensure_table
+# Phase 8 — ML control plane (MCP-04/05/06)
+from mcp_tools.handlers.ml import (
+    GET_ML_CALIBRATION_TOOL,
+    PREDICT_TRADE_QUALITY_TOOL,
+    TRAIN_ML_FILTER_TOOL,
+    handle_get_ml_calibration,
+    handle_predict_trade_quality,
+    handle_train_ml_filter,
+)
 
 # Singleton globali — inizializzati al boot del server (e non al solo import del modulo,
 # così i test possono importare mcp_tools.server senza far partire MT5).
@@ -80,6 +90,10 @@ _mt5_ready: bool = False
 # D-A1 / D-A4: registry async dei backtest. Inizializzato da _bootstrap_state(),
 # NON al solo import del modulo (per non aprire ProcessPoolExecutor nei test).
 job_queue: "Any | None" = None  # JobQueue tipato lazy per evitare import top-level
+
+# D-08 + Phase 7 D-13: MLFilter singleton, caricato a bootstrap se ENABLE_ML_FILTER=true
+# e bundle file presente. None altrimenti (zero-impact rollout D-07-06-11).
+ml_filter_singleton: "Any | None" = None
 
 
 def _bootstrap_mt5() -> bool:
@@ -122,6 +136,23 @@ def _bootstrap_state() -> None:
     job_queue = JobQueue(
         max_workers=cfg.MCP_MAX_CONCURRENT_RUNS, db_path=db_path,
     )
+    # Phase 8: MLFilter singleton load (best-effort, fallisce graceful)
+    global ml_filter_singleton
+    enable_ml = getattr(cfg, "ENABLE_ML_FILTER", False)
+    bundle_path = getattr(cfg, "ML_MODEL_PATH", None)
+    if enable_ml and bundle_path and Path(bundle_path).exists():
+        try:
+            from ml.inference import MLFilter
+            ml_filter_singleton = MLFilter.load(bundle_path)
+            log.info("MLFilter singleton caricato: %s", bundle_path)
+        except Exception as exc:
+            log.error("MLFilter load fallita (graceful): %s", exc)
+            ml_filter_singleton = None
+    else:
+        log.info(
+            "MLFilter singleton skip (ENABLE_ML_FILTER=%s bundle_exists=%s)",
+            enable_ml, bool(bundle_path and Path(bundle_path).exists()),
+        )
     log.info(
         "MCP bootstrap state ready: db=%s max_workers=%d",
         db_path, cfg.MCP_MAX_CONCURRENT_RUNS,
@@ -290,6 +321,10 @@ async def list_tools() -> list[Tool]:
         # Phase 6 Wave 3 — position management (MCP-16, MCP-17)
         MODIFY_POSITION_TOOL,
         GET_POSITION_STATE_TOOL,
+        # Phase 8 Wave 0 — ML control plane (MCP-04/05/06)
+        TRAIN_ML_FILTER_TOOL,
+        PREDICT_TRADE_QUALITY_TOOL,
+        GET_ML_CALIBRATION_TOOL,
     ]
 
 
@@ -373,6 +408,23 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ))
             # cancel_backtest
             return _text(handle_cancel_backtest(arguments, job_queue, cfg))
+
+        # Phase 8 — ML control plane (MCP-04/05/06)
+        if name in ("train_ml_filter", "predict_trade_quality", "get_ml_calibration"):
+            if name == "train_ml_filter":
+                if job_queue is None:
+                    return _text(envelope(
+                        ErrorCodes.INTERNAL_ERROR,
+                        "JobQueue non inizializzata: chiamare _bootstrap_state() prima",
+                        tool=name,
+                    ))
+                return _text(handle_train_ml_filter(arguments, job_queue, cfg))
+            if name == "predict_trade_quality":
+                return _text(handle_predict_trade_quality(
+                    arguments, ml_filter_singleton, mt5, cfg,
+                ))
+            # get_ml_calibration
+            return _text(handle_get_ml_calibration(arguments, cfg))
 
         return _text({"error": f"unknown tool: {name}"})
 
