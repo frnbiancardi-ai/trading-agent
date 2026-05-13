@@ -259,3 +259,38 @@ def test_get_ohlc_symbol_mismatch_returns_empty():
     broker.advance(_bar(time=1_700_000_000, o=1.0950, h=1.0960, l=1.0940, c=1.0950))
     assert broker.get_ohlc("GBPUSD", "H1", 5) == []
     assert broker.get_ohlc("EURUSD", "M15", 5) == []
+
+
+def test_starting_balance_of_day_resets_on_utc_day_rollover():
+    """Plan 05-10 FIX KILLSWITCH-PERMANENTE.
+
+    Pre-fix: get_account_state ritornava sempre initial_balance hard-coded
+    -> risk_engine kill-switch giornaliero rimaneva attivo a vita
+    appena la perdita cumulata superava MAX_DAILY_DRAWDOWN_PERCENT,
+    troncando i baseline a ~3 settimane invece dei 10y/23y attesi.
+    """
+    broker = _broker()
+    # bar a 00:00 UTC del 2024-01-01 (unix 1704067200)
+    day1_open = 1_704_067_200
+    broker.advance(_bar(time=day1_open, o=1.10, h=1.10, l=1.10, c=1.10))
+    state0 = broker.get_account_state()
+    assert state0.starting_balance_of_day == pytest.approx(10_000.0)
+
+    # Simula una perdita riducendo direttamente il balance interno
+    # (replica un trade chiuso a -300 USD nello stesso giorno).
+    broker._balance = 9_700.0
+    state_mid = broker.get_account_state()
+    # Stesso giorno => starting_balance_of_day NON cambia
+    assert state_mid.starting_balance_of_day == pytest.approx(10_000.0)
+
+    # Avanza al giorno successivo (2024-01-02 00:00 UTC = day1 + 86400)
+    day2_open = day1_open + 86_400
+    broker.advance(_bar(time=day2_open, o=1.10, h=1.10, l=1.10, c=1.10))
+    state_day2 = broker.get_account_state()
+    # Nuovo giorno => starting_balance_of_day = balance corrente (9700)
+    # cosi' il kill-switch giornaliero riparte su una base fresca.
+    assert state_day2.starting_balance_of_day == pytest.approx(9_700.0)
+    # Un altro bar nello stesso giorno (es. 12:00 UTC) NON deve resettare.
+    broker.advance(_bar(time=day2_open + 43_200, o=1.10, h=1.10, l=1.10, c=1.10))
+    state_day2b = broker.get_account_state()
+    assert state_day2b.starting_balance_of_day == pytest.approx(9_700.0)

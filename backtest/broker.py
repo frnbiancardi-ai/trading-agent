@@ -60,11 +60,32 @@ class BacktestBroker:
         self._closed_trades: list[dict] = []
         self._next_id: int = 1
         self._bar_index: int = 0  # 0 = no bars seen; first advance() makes it 1
+        # Plan 05-10 FIX KILLSWITCH-PERMANENTE: traccia il giorno UTC corrente +
+        # il balance di apertura giornata. risk_engine.evaluate_trade rifiuta
+        # se balance <= starting_balance_of_day * (1 - MAX_DAILY_DRAWDOWN_PERCENT/100);
+        # se starting_balance_of_day non viene resettato all'inizio di ogni giorno
+        # il kill-switch resta inchiodato per il resto del backtest e nessun
+        # trade successivo passa (bug che limitava i baseline a ~3 settimane su
+        # finestra 10y/23y, vedi 05-10-PLAN VAL-3/VAL-4).
+        self._current_utc_day: int | None = None
+        self._starting_balance_of_day: float = float(initial_balance)
 
     # ── Engine-only API (NOT on BrokerProtocol) ────────────────────────────────
 
     def advance(self, bar: Bar) -> list[dict]:
-        """Push next bar, monitor SL/TP on existing positions, return rows closed this bar."""
+        """Push next bar, monitor SL/TP on existing positions, return rows closed this bar.
+
+        Plan 05-10 FIX KILLSWITCH-PERMANENTE: al primo bar di ogni nuovo giorno
+        UTC, snapshot del balance corrente in `_starting_balance_of_day`. Replica
+        il comportamento live in cui la giornata di trading si apre con un
+        balance fresh e il kill-switch giornaliero riparte da quello — vedi
+        risk_engine.evaluate_trade kill switch (riga 55-63).
+        """
+        # bar.time è unix UTC seconds; il quoziente per 86400 dà il giorno UTC.
+        bar_day = int(bar.time) // 86400
+        if self._current_utc_day is None or bar_day != self._current_utc_day:
+            self._current_utc_day = bar_day
+            self._starting_balance_of_day = self._balance
         self._window.append({
             "time": bar.time,
             "open": bar.open,
@@ -189,7 +210,10 @@ class BacktestBroker:
             free_margin=self._balance,
             open_positions=open_positions,
             today_realized_pnl=0.0,
-            starting_balance_of_day=self._initial_balance,
+            # Plan 05-10 FIX KILLSWITCH-PERMANENTE: era _initial_balance hard-coded
+            # → ora snapshot bar-rollover (vedi advance()) in modo che il kill
+            # switch giornaliero di risk_engine si resetti a fine giornata.
+            starting_balance_of_day=self._starting_balance_of_day,
         )
 
     # ── Phase 5 helpers (additive — D-05 timeout, slice_worker integration) ───
