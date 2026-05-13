@@ -67,7 +67,12 @@ class Config:
 
     # Risk
     RISK_PER_TRADE_PERCENT: float = float(os.getenv("RISK_PER_TRADE_PERCENT", "0.5"))
-    MAX_DAILY_DRAWDOWN_PERCENT: float = float(os.getenv("MAX_DAILY_DRAWDOWN_PERCENT", "2.0"))
+    # Default 20.0: il kill-switch giornaliero deve permettere ~5-10 trade perdenti
+    # prima di fermare la giornata. Su account ~€100 con RISK_PER_TRADE_PERCENT=2%
+    # (=€2/trade), 20% = €20 = 10 perdite — soglia operativa dichiarata dall'utente.
+    # Valore condiviso live + backtest + training ML (un solo regime di drawdown
+    # per evitare distribution shift fra train e inference).
+    MAX_DAILY_DRAWDOWN_PERCENT: float = float(os.getenv("MAX_DAILY_DRAWDOWN_PERCENT", "20.0"))
     MIN_SL_PIPS: int = int(os.getenv("MIN_SL_PIPS", "8"))
     MAX_SL_PIPS: int = int(os.getenv("MAX_SL_PIPS", "80"))
     RISK_MODE: str = os.getenv("RISK_MODE", "CONSERVATIVE")
