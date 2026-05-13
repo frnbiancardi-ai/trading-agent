@@ -315,16 +315,28 @@ Plans:
 
 ### Phase 10: Intermarket + News
 
-**Goal:** Wire intermarket context (DXY, US10Y, gold, oil) and economic-calendar blackout into the proposal pipeline as confluence inputs and risk filters.
+**Goal:** Wire intermarket context (DXY, US10Y, gold, oil) and economic-calendar advisory into the proposal pipeline as confluence inputs and operator-driven pre-decision check (no auto-reject per D-10-C0).
 
 **Requirements:** MCP-10, MCP-13
+
+**Plans:** 6 plans (Wave 2 split 10-04 → 10-04a + 10-04b per revision-loop Warning #3)
 
 **Success criteria:**
 1. `get_intermarket_context()` returns USD strength bias, risk-on/off bias, JPY safe-haven flag — verified against known historical regimes.
 2. `get_economic_calendar(window_minutes)` returns upcoming events with high-impact flag and blackout window; integrates with at least one provider (e.g., ForexFactory RSS, FRED, or ECB feed).
-3. Proposal pipeline applies blackout: trades within ±15 min of high-impact events are rejected with explicit reason.
+3. ~~Proposal pipeline applies blackout: trades within ±15 min of high-impact events are rejected with explicit reason.~~ **DEVIATED via D-10-C0** (2026-05-13): drop backtest blackout totalmente. Phase 5 parquet schema-v2 1076x59 IMMUTATO. MCP-13 live-only advisory NO auto-reject in strategy/risk_engine. Motivazione utente: lo storico include news/holiday naturalmente — strategy+ML apprendono dalla distribuzione reale P&L. Trade-off accettato: asimmetria backtest/live. Compensato da: forex-trader-pro skill consultation MCP-13 manuale (D-10-D3). Backlog deferred: Backtest blackout retroactive + Risk_engine news soft-warning live + Skill auto-inject MCP-13 -> Phase 11+.
+
+**Decision references:** D-10-A0..A4 (intermarket data + sha256 anchor + manual refresh), D-10-B1..B6 (FF RSS calendar + cache TTL 60min + ET->UTC zoneinfo + holiday/Tentative handling), D-10-C0 (SCOPE OVERRIDE drop blackout), D-10-D1..D3 (signature extend + ENABLE_INTERMARKET zero-impact rollout + skill doc patch).
 
 **Hint UI:** no
+
+Plans:
+- [ ] 10-01-PLAN.md — Wave 0 scaffolding: 5 test stub (33 xfail Nyquist) + 3 fixtures (ff_rss_smoke + ff_rss_dst_cross + macro_dxy_smoke) + 4 macro CSV committed (DXY reuse 1Dyapt2.csv + US10Y/XAUUSD/WTI manual download checkpoint) + metadata.json sha256 anchor + D-10-C0 immutability gate (4 test GREEN da Wave 0) + .gitignore data/cache/
+- [ ] 10-02-PLAN.md — Wave 1 MCP-10 core: intermarket/ package (loader.py MacroLoader + sha256 + STRICT-< close_at no future leakage; score.py build_intermarket_score factory pure-fn direction-aware sign flip clamp [-1,+1]; types.py IntermarketContext dataclass; _PAIR_WEIGHTS hardcoded EURUSD/GBPUSD/USDJPY Murphy intermarket)
+- [ ] 10-03-PLAN.md — Wave 1 MCP-13 core: calendar_rss/ package (client.py CalendarRSSClient RSS+cache TTL 60min disk JSON + ET->UTC zoneinfo DST-aware imaginary detection + holiday handling + Tentative skip + pair-aware filter; CalendarEvent dataclass; Pitfall 3/4/6/7 mitigations)
+- [ ] 10-04a-PLAN.md — Wave 2 strategy/config layer (parallel a 10-04b): config.py _attach_intermarket_macro 6 env (ENABLE_INTERMARKET=false default D-10-D2) + .env.example block + strategy/confluence.py signature extend direction (Path A) + Pitfall 5 patch _log.debug + Warning #4 retry simplification + Warning #5 threshold doc + strategy/context.py field annotation + strategy/_shim.py:83 init-time wire + 4 setups callsite
+- [ ] 10-04b-PLAN.md — Wave 2 MCP layer (parallel a 10-04a): mcp_tools/handlers/macro.py (Tools + handlers envelope Phase 6/8) + mcp_tools/server.py singleton bootstrap graceful + mcp/errors.py 2 new ErrorCodes + Blocker #2 re-export verify (mcp_tools/errors.py wildcard propagation hasattr assert)
+- [ ] 10-05-PLAN.md — Wave 3 ops+docs: scripts/refresh_macro_csv.py CLI (Pitfall 1 mitigation + Warning #6 ASC ordering enforced + FF probe Pitfall 4) + ROADMAP SC#3 DEVIATED + REQUIREMENTS MCP-10/13 annotation + forex-trader-pro SKILL.md "Pre-decision news check" section (D-10-D3 NO auto-inject) + STATE.md COMPLETE 6/6
 
 ---
 
