@@ -58,6 +58,13 @@ Requirements for the v2-ml-backtest milestone (the project's "v1 of this milesto
 - [x] **STRAT-08**: Strategy module side-effect-free (no broker calls, no DB writes, no print/log) — testable in milliseconds <!-- complete 2026-05-08: 04-04 AST gate 232 LOC 5 test no-skip; 04-08 regression mantenuta -->
 - [x] **STRAT-09**: Same strategy module called by live loop AND backtest engine (no fork) <!-- complete 2026-05-08: 04-07 evaluate_proposal_for_bar single shared call site + IntradayStrategy shim + adapters live/backtest stesso shape D-05; 04-08 regression replay 11/11 PASS post option-a re-baseline; baseline regression fixture re-set after refactor architectural delta — Phase 5 backtest deve validare calibrazione 5-factor con metriche aggregate (PF/drawdown/hit-rate/expectancy) prima paper deploy Phase 11 -->
 
+### Strategy Rebuild (added 2026-05-18 after Plan 05-10 negative finding)
+
+- [ ] **STRAT-REBUILD-01**: Strategy core has NO edge in any tested subset of Plan 05-10 dataset (117 combinations: 1-way / 2-way / 3-way / 4-way over regime × profile × symbol × timeframe). Win rate 20-28% global, 73-83% chiusure in SL, all subsets median PnL negativo. Plan 05-09 baseline (1076 trades) era artefatto del KS bug `f21abda`, non baseline veritiero. Phase 7 ML BLOCCATA finché manca un dataset con edge positivo. <!-- triggered 2026-05-18 by scripts/diag_decay_05_10.py + diag_decay_subset.py on 209k baseline_decisions parquet -->
+- [ ] **STRAT-REBUILD-02**: Replace or augment current READY detector (4 setup A/B/C/D ATR-based) with 2-3 textbook setups extracted from forex-strategy-builder knowledge base (Murphy intermarket, Probo forex operativo, StrategieOperative). Candidate setups da valutare: breakout su compression confermato da volume, reversal su S/R con pin bar + closing score, trend pullback su EMA-200 con confluenza Fibo.
+- [ ] **STRAT-REBUILD-03**: Gate per sbloccare Phase 7: almeno un nuovo detector deve produrre expectancy > +2 USD/trade post-costi reali (spread+slippage+commissioni) AND median PnL ≥ 0 su un subset n ≥ 1000 trade. Benchmark di re-test: re-run su Plan 05-10 dataset (parquet 209k esistente sul PC secondario).
+- [ ] **STRAT-REBUILD-04**: Project memory training data integrity priority preservata: il nuovo detector usa lo stesso flow `evaluate_proposal_for_bar` + stesso shape D-05 live/backtest, no fork. Eventuale legacy detector va archiviato in `.planning/archive/`, mai eliminato.
+
 
 ### ML Layer
 
@@ -196,7 +203,11 @@ Updated during roadmap creation.
 | STRAT-07 | Phase 4 | Complete (04-03 + 04-08 regression replay 11/11 PASS post option-a re-baseline) |
 | STRAT-08 | Phase 4 | Complete (04-04 Wave 1: AST gate 232 LOC, 5 test no-skip, copre import+logging+print/open su 7 moduli puri; adapters/ esclusi by design; negative-test verificato; commit 0260126) |
 | STRAT-09 | Phase 4 | Complete (04-07 + 04-08 option-a applied 2026-05-08; regression baseline re-set after refactor architectural delta — Phase 5 backtest must validate calibration before paper deploy; strategy_legacy.py archiviato in .planning/archive/ per fallback option-b/c/d) |
-| ML-01 | Phase 7 | Pending |
+| STRAT-REBUILD-01 | (new phase) | Pending — triggered 2026-05-18 by Plan 05-10 negative finding |
+| STRAT-REBUILD-02 | (new phase) | Pending — strategy rebuild via forex-strategy-builder skill |
+| STRAT-REBUILD-03 | (new phase) | Pending — gate per sbloccare Phase 7 ML training |
+| STRAT-REBUILD-04 | (new phase) | Pending — preserva architectural invariant single evaluate_proposal_for_bar |
+| ML-01 | Phase 7 | BLOCKED — awaiting STRAT-REBUILD-03 gate-pass (was: Pending) |
 | ML-02 | Phase 7 | Pending |
 | ML-03 | Phase 7 | Pending |
 | ML-04 | Phase 7 | Pending |
@@ -236,10 +247,10 @@ Updated during roadmap creation.
 | DEPLOY-03 | Phase 11 | Pending |
 
 **Coverage:**
-- v1 requirements: 73 total
-- Mapped to phases: 73
-- Unmapped: 0 ✓
+- v1 requirements: 77 total (+4 STRAT-REBUILD added 2026-05-18 post Plan 05-10 negative finding)
+- Mapped to phases: 73 + 4 unmapped pending new phase
+- Unmapped: 4 STRAT-REBUILD-01..04 (require new "Strategy Rebuild" phase between 5 and 7)
 
 ---
 *Requirements defined: 2026-05-07*
-*Last updated: 2026-05-11 — Plan 06-04 COMPLETE: MCP-16 + MCP-17 ✓ Complete (Wave 3 position management + trail daemon). Phase 6 4/4 plans = COMPLETE per i requirement Wave 0-3; MCP-09/11/12/14/15 restano pending in attesa di Wave 4 06-05 (scheduling post-Phase 7 ML).*
+*Last updated: 2026-05-18 — Plan 05-10 NEGATIVE FINDING: KS bug `f21abda` riparato ha rivelato che la strategia base è strutturalmente negative-expectancy (win rate 24%, 75% SL, edge negativo in 117 subset testati). Plan 05-09 baseline (1076 trades) era artefatto KS bug, non baseline veritiero. Phase 7 ML BLOCCATA. 4 nuove requirement STRAT-REBUILD-01..04 aperte per nuova phase "Strategy Rebuild" via forex-strategy-builder skill (libri Murphy/Probo/StrategieOperative). Gate per sbloccare Phase 7: expectancy >+2 USD/trade post-costi su subset n≥1000 + median PnL ≥0. Previous: 2026-05-11 — Plan 06-04 COMPLETE: MCP-16 + MCP-17 ✓ Complete (Wave 3 position management + trail daemon). Phase 6 4/4 plans = COMPLETE per i requirement Wave 0-3; MCP-09/11/12/14/15 restano pending in attesa di Wave 4 06-05 (scheduling post-Phase 7 ML).*
