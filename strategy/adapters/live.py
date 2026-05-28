@@ -18,6 +18,7 @@ nel SUMMARY.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
@@ -149,6 +150,50 @@ def build_ctx_live(
         indicators = _build_extended_indicators(bars)
     else:
         indicators = SimpleNamespace()
+
+    # CRIT-1 (audit 2026-05-28): popola volatility_regime nella confluence.
+    # Prima era hard-coded a None in _build_extended_indicators → fattore 4
+    # (volatility_regime) SEMPRE False → grade ceiling B in backtest, A+
+    # irraggiungibile ovunque. Il classificatore (indicators.volatility_regime)
+    # è puro e anti-leakage (rolling rank trailing, Pitfall 4); qui ci limitiamo
+    # a passargli i bar e a iniettarne la serie `state`.
+    #
+    # Perché un re-fetch dedicato: il classificatore richiede una finestra
+    # trailing PIENA di ATR validi (regime_window valori), ma ATR ha ~14 bar di
+    # warm-up None. Con INTRADAY_LOOKBACK_BARS == regime_window (200 == 200) il
+    # bar corrente non ha mai una finestra piena → state[-1] resterebbe None.
+    # Rifetchiamo una finestra più ampia SOLO per il regime: così le altre serie
+    # indicatori restano IDENTICHE (nessun reseed EMA/RSI → nessun cambiamento
+    # collaterale sugli altri 4 fattori). Il detector legge volatility_regime[-1],
+    # che è allineato al bar corrente comune a entrambe le finestre.
+    if bars:
+        from indicators.volatility import load_regime_config, volatility_regime
+
+        try:
+            regime_cfg = load_regime_config(
+                symbol,
+                Path(getattr(cfg, "REGIME_CONFIG_PATH", "data/configs/regime.yaml")),
+            )
+        except (FileNotFoundError, KeyError):
+            regime_cfg = None  # fallback: defaults interni di volatility_regime
+        regime_window = int(regime_cfg.get("window", 200)) if regime_cfg else 200
+        # +64: copre il warm-up ATR (14) + margine. Limitato implicitamente dalla
+        # storia disponibile lato broker (deque maxlen=500 in backtest).
+        regime_lookback = max(int(cfg.INTRADAY_LOOKBACK_BARS), regime_window + 64)
+        try:
+            regime_bars = (
+                mt5_client.get_ohlc(symbol, cfg.INTRADAY_TIMEFRAME, regime_lookback)
+                or bars
+            )
+        except Exception:
+            regime_bars = bars
+        try:
+            regime_state = volatility_regime(regime_bars, regime_cfg).state
+        except Exception:
+            regime_state = None
+        if regime_state is not None:
+            # SimpleNamespace: override dell'attributo (la serie [-1] è il bar corrente).
+            indicators.volatility_regime = regime_state
 
     # Support/Resistance
     sr: dict = {}

@@ -186,6 +186,13 @@ class Config:
     MAX_RSI_OVERBOUGHT: int = int(os.getenv("MAX_RSI_OVERBOUGHT", "75"))
     MIN_RSI_OVERSOLD: int = int(os.getenv("MIN_RSI_OVERSOLD", "25"))
     MIN_CONFIDENCE_TO_PROPOSE: float = float(os.getenv("MIN_CONFIDENCE_TO_PROPOSE", "0.60"))
+    # CRIT-2 (audit 2026-05-28): spread baseline per il fattore spread_session della
+    # confluence. In backtest il BacktestBroker non espone bid/ask, quindi
+    # _check_spread_session (confluence.py) usa il fallback ctx.spread_baseline_pips.
+    # Prima questo attributo non esisteva → spread_baseline_pips=None → fattore
+    # spread_session SEMPRE False in backtest. 1.0 pip è un baseline conservativo
+    # multi-pair (costs.yaml: EURUSD 0.5 / GBPUSD 0.7 / USDJPY 0.6).
+    SPREAD_BASELINE_PIPS: float = float(os.getenv("SPREAD_BASELINE_PIPS", "1.0"))
 
     # Pattern recognition
     ENABLE_CANDLESTICK_PATTERNS: bool = _get_bool("ENABLE_CANDLESTICK_PATTERNS", True)
