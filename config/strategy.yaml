@@ -1,0 +1,51 @@
+# config/strategy.yaml — schema 5-factor confluence + adjusters + profile_filters (Phase 4 D-08)
+# Loader: strategy/confluence.py::load_strategy_config() — pattern da backtest/costs.py:42-59
+# Override env: STRATEGY_CONFIG_PATH
+
+factors:
+  trend_alignment:
+    use_ema50_slope: true
+    counter_trend_allowed_grades: ["A+", "A"]
+  setup_pattern:
+    half_formed_rejected: true
+  momentum:
+    rsi_neutral_band: [40, 60]
+    divergence_required_for_reversal: true
+  volatility_regime:
+    breakout_required: ["expanded", "normal"]
+    compression_required: ["compressed"]
+    reversal_required: ["normal", "expanded"]
+    pullback_required: ["normal"]
+  spread_session:
+    max_spread_atr_ratio: 0.20
+    optional_session_bonus: 0.05
+
+grade_map:
+  "A+": 5
+  "A":  4
+  "B":  3
+  "C":  2
+  "reject": 1
+
+base_confidence:
+  "A+": 0.85
+  "A":  0.70
+  "B":  0.55
+  "C":  0.40
+
+adjusters:
+  intermarket_confirmation: 0.05
+  recent_winning_trade_same_pair: 0.05
+  spread_tighter_than_baseline: 0.05
+  macro_event_within_60min: -0.05
+  last_2_trades_lost_same_pair: -0.05
+  proposing_against_medium_term_trend: -0.05
+
+bounds:
+  min_confidence: 0.10
+  max_confidence: 0.95
+
+profile_filters:
+  CONSERVATIVE: {min_grade: "A",  min_rr: 2.5, min_confidence: 0.65}
+  MODERATE:     {min_grade: "B",  min_rr: 1.8, min_confidence: 0.50}
+  AGGRESSIVE:   {min_grade: "C",  min_rr: 1.3, min_confidence: 0.40}

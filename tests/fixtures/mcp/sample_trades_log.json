@@ -1,0 +1,19 @@
+[
+  {
+    "id": 42,
+    "decision_id": "live_42",
+    "timestamp": "2026-04-15T08:15:00Z",
+    "symbol": "EURUSD",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "entry_price": 1.10100,
+    "stop_loss_price": 1.09800,
+    "take_profit_price": 1.10700,
+    "confidence": 0.65,
+    "rationale": "fixture sample for replay_decision lookup test",
+    "regime": "normal",
+    "profile": "MODERATE",
+    "bar_ts_utc": "2026-04-15T08:15:00Z",
+    "warmup_bars": 200
+  }
+]

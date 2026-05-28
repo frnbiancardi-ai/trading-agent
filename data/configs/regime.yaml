@@ -1,0 +1,22 @@
+# data/configs/regime.yaml
+# INDIC-14 volatility regime classifier thresholds (D-15).
+# atr_percentile rolling-rank window e cut-off compressed/expanded.
+
+default:
+  window: 200
+  compressed_below: 30
+  expanded_above: 70
+
+symbols:
+  EURUSD:
+    window: 200
+    compressed_below: 25
+    expanded_above: 75
+  GBPUSD:
+    window: 200
+    compressed_below: 30
+    expanded_above: 70
+  USDJPY:
+    window: 200
+    compressed_below: 30
+    expanded_above: 70

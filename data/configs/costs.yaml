@@ -1,0 +1,18 @@
+# data/configs/costs.yaml
+# Per-symbol transaction cost parameters for backtesting (D-05).
+# All values in pips. commission_pips_round_trip covers both open and close.
+
+EURUSD:
+  spread_pips: 0.5
+  slippage_pips: 0.3
+  commission_pips_round_trip: 0.5
+
+GBPUSD:
+  spread_pips: 0.7
+  slippage_pips: 0.3
+  commission_pips_round_trip: 0.5
+
+USDJPY:
+  spread_pips: 0.6
+  slippage_pips: 0.3
+  commission_pips_round_trip: 0.5

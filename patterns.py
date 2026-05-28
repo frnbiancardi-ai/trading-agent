@@ -3,6 +3,119 @@
 Bar dict atteso: {'open': float, 'high': float, 'low': float, 'close': float, ...}
 Tutte le funzioni gestiscono input degenere (open == close, range nullo) senza crash.
 """
+from __future__ import annotations
+from dataclasses import dataclass
+from pathlib import Path
+import os
+import yaml
+
+
+@dataclass(frozen=True)
+class CalibrationAnchors:
+    """Ancore di calibrazione per mappare raw_score in [0,1]."""
+    min: float
+    typical: float
+    max: float
+
+
+@dataclass(frozen=True)
+class HammerCfg:
+    body_ratio_max: float
+    lower_shadow_body_min: float
+    upper_shadow_range_max: float
+    calibration: CalibrationAnchors
+
+
+@dataclass(frozen=True)
+class InvertedHammerCfg:
+    body_ratio_max: float
+    upper_shadow_body_min: float
+    lower_shadow_range_max: float
+    calibration: CalibrationAnchors
+
+
+@dataclass(frozen=True)
+class ShootingStarCfg:
+    body_ratio_max: float
+    upper_shadow_body_min: float
+    lower_shadow_range_max: float
+    calibration: CalibrationAnchors
+
+
+@dataclass(frozen=True)
+class EngulfingCfg:
+    min_engulfment_ratio: float
+    min_body_ratio: float
+    calibration: CalibrationAnchors
+
+
+@dataclass(frozen=True)
+class StarCfg:
+    trend_body_min_ratio: float
+    star_body_max_ratio: float
+    min_b3_penetration: float
+    calibration: CalibrationAnchors
+
+
+@dataclass(frozen=True)
+class KeyReversalCfg:
+    min_extreme_break_pips: float
+    min_close_penetration_ratio: float
+    calibration: CalibrationAnchors
+
+
+@dataclass(frozen=True)
+class InsideBarCfg:
+    max_compression_ratio: float
+    calibration: CalibrationAnchors
+
+
+@dataclass(frozen=True)
+class PinBarCfg:
+    body_ratio_max: float
+    dominant_wick_ratio_min: float
+    calibration: CalibrationAnchors
+
+
+@dataclass(frozen=True)
+class DojiCfg:
+    body_tolerance: float
+
+
+@dataclass(frozen=True)
+class PatternConfig:
+    hammer: HammerCfg
+    inverted_hammer: InvertedHammerCfg
+    shooting_star: ShootingStarCfg
+    engulfing: EngulfingCfg
+    morning_star: StarCfg
+    evening_star: StarCfg
+    key_reversal: KeyReversalCfg
+    inside_bar: InsideBarCfg
+    pin_bar: PinBarCfg
+    doji: DojiCfg
+
+
+@dataclass(frozen=True)
+class PatternHit:
+    """Risultato di un detector calibrato.
+
+    name: identificatore pattern (es. 'hammer', 'morning_star')
+    bar_index: offset negativo dalla fine della lista bars (-1 = ultima)
+    span_bars: 1 single-bar, 2 engulfing/key_reversal, 3 stars
+    extreme_price: swing low (bullish) / swing high (bearish) lungo lo span
+    confidence: 0.0..1.0 calibrata
+    direction: 'bullish' | 'bearish' | 'neutral'
+    """
+    name: str
+    bar_index: int
+    span_bars: int
+    extreme_price: float
+    confidence: float
+    direction: str
+
+
+DEFAULT_CONFIG_PATH = Path("config/patterns.yaml")
 
 
 def _body(bar: dict) -> float:
@@ -29,49 +142,96 @@ def _is_bearish(bar: dict) -> bool:
     return bar["close"] < bar["open"]
 
 
-def is_hammer(bar: dict) -> bool:
-    """Hammer: long lower shadow (>=2x body), upper shadow <=20% range, body <=40% range."""
+def is_hammer(bar: dict, cfg: HammerCfg) -> tuple[bool, float]:
+    """Hammer: long lower shadow, upper shadow piccola, body piccolo.
+
+    Restituisce (matched, raw_score). raw_score = lower_shadow / body.
+    Geometria parametrizzata da cfg (zero magic numbers).
+    """
     rng = _range(bar)
     body = _body(bar)
     if rng <= 0 or body <= 0:
-        return False
+        return False, 0.0
     lower = _lower_shadow(bar)
     upper = _upper_shadow(bar)
-    return lower >= 2.0 * body and upper <= 0.2 * rng and body <= 0.4 * rng
+    matched = (
+        body <= cfg.body_ratio_max * rng
+        and lower >= cfg.lower_shadow_body_min * body
+        and upper <= cfg.upper_shadow_range_max * rng
+    )
+    if not matched:
+        return False, 0.0
+    return True, lower / body
 
 
-def is_inverted_hammer(bar: dict) -> bool:
-    """Inverted hammer: long upper shadow (>=2x body), lower shadow <=20% range, body <=40% range."""
+def is_inverted_hammer(bar: dict, cfg: InvertedHammerCfg) -> tuple[bool, float]:
+    """Inverted hammer: long upper shadow, lower shadow piccola, body piccolo.
+
+    Restituisce (matched, raw_score). raw_score = upper_shadow / body.
+    """
     rng = _range(bar)
     body = _body(bar)
     if rng <= 0 or body <= 0:
-        return False
+        return False, 0.0
     lower = _lower_shadow(bar)
     upper = _upper_shadow(bar)
-    return upper >= 2.0 * body and lower <= 0.2 * rng and body <= 0.4 * rng
+    matched = (
+        body <= cfg.body_ratio_max * rng
+        and upper >= cfg.upper_shadow_body_min * body
+        and lower <= cfg.lower_shadow_range_max * rng
+    )
+    if not matched:
+        return False, 0.0
+    return True, upper / body
 
 
-def is_engulfing(prev_bar: dict, current_bar: dict, direction: str) -> bool:
-    """Engulfing: corpo corrente ingloba completamente corpo precedente.
+def is_engulfing(
+    prev_bar: dict,
+    current_bar: dict,
+    direction: str,
+    cfg: EngulfingCfg,
+) -> tuple[bool, float]:
+    """Engulfing: corpo corrente ingloba corpo precedente.
 
-    direction = 'bullish': prev bearish, curr bullish, curr.open <= prev.close, curr.close >= prev.open
-    direction = 'bearish': prev bullish, curr bearish, curr.open >= prev.close, curr.close <= prev.open
+    direction = 'bullish': prev bearish, curr bullish, curr.open <= prev.close,
+                           curr.close >= prev.open
+    direction = 'bearish': prev bullish, curr bearish, curr.open >= prev.close,
+                           curr.close <= prev.open
+    Restituisce (matched, raw_score). raw_score = body_curr / body_prev.
+    Gate addizionale: ogni body >= cfg.min_body_ratio del proprio range
+    (esclude doji-like che non costituiscono engulfing significativi).
     """
     direction = direction.lower()
-    if _body(prev_bar) <= 0 or _body(current_bar) <= 0:
-        return False
+    body_prev = _body(prev_bar)
+    body_curr = _body(current_bar)
+    rng_prev = _range(prev_bar)
+    rng_curr = _range(current_bar)
+    if body_prev <= 0 or body_curr <= 0 or rng_prev <= 0 or rng_curr <= 0:
+        return False, 0.0
+    if (body_prev / rng_prev) < cfg.min_body_ratio:
+        return False, 0.0
+    if (body_curr / rng_curr) < cfg.min_body_ratio:
+        return False, 0.0
 
     if direction == "bullish":
         if not (_is_bearish(prev_bar) and _is_bullish(current_bar)):
-            return False
-        return current_bar["open"] <= prev_bar["close"] and current_bar["close"] >= prev_bar["open"]
-
-    if direction == "bearish":
+            return False, 0.0
+        if not (current_bar["open"] <= prev_bar["close"]
+                and current_bar["close"] >= prev_bar["open"]):
+            return False, 0.0
+    elif direction == "bearish":
         if not (_is_bullish(prev_bar) and _is_bearish(current_bar)):
-            return False
-        return current_bar["open"] >= prev_bar["close"] and current_bar["close"] <= prev_bar["open"]
+            return False, 0.0
+        if not (current_bar["open"] >= prev_bar["close"]
+                and current_bar["close"] <= prev_bar["open"]):
+            return False, 0.0
+    else:
+        return False, 0.0
 
-    return False
+    ratio = body_curr / body_prev
+    if ratio < cfg.min_engulfment_ratio:
+        return False, 0.0
+    return True, ratio
 
 
 def is_doji(bar: dict, tolerance: float = 0.1) -> bool:
@@ -82,55 +242,500 @@ def is_doji(bar: dict, tolerance: float = 0.1) -> bool:
     return _body(bar) <= tolerance * rng
 
 
-def is_pin_bar(bar: dict, direction: str) -> bool:
-    """Pin bar: long wick opposto alla direzione, body piccolo (<=1/3 range).
+def is_pin_bar(
+    bar: dict,
+    direction: str,
+    cfg: PinBarCfg,
+) -> tuple[bool, float]:
+    """Pin bar: long wick opposto alla direzione, body piccolo.
 
-    direction = 'bullish': lower wick lungo (>= 2/3 range), close > open
-    direction = 'bearish': upper wick lungo (>= 2/3 range), close < open
+    direction = 'bullish': lower wick >= cfg.dominant_wick_ratio_min * range, close > open
+    direction = 'bearish': upper wick >= cfg.dominant_wick_ratio_min * range, close < open
+    Restituisce (matched, raw_score). raw_score = dominant_wick / range.
     """
     direction = direction.lower()
     rng = _range(bar)
     body = _body(bar)
     if rng <= 0:
-        return False
-    if body > rng / 3.0:
-        return False
+        return False, 0.0
+    if body > cfg.body_ratio_max * rng:
+        return False, 0.0
 
     if direction == "bullish":
-        return _lower_shadow(bar) >= 2.0 / 3.0 * rng and _is_bullish(bar)
-    if direction == "bearish":
-        return _upper_shadow(bar) >= 2.0 / 3.0 * rng and _is_bearish(bar)
-    return False
+        wick = _lower_shadow(bar)
+        if not _is_bullish(bar):
+            return False, 0.0
+    elif direction == "bearish":
+        wick = _upper_shadow(bar)
+        if not _is_bearish(bar):
+            return False, 0.0
+    else:
+        return False, 0.0
+
+    ratio = wick / rng
+    if ratio < cfg.dominant_wick_ratio_min:
+        return False, 0.0
+    return True, ratio
 
 
-def scan_patterns(bars: list[dict], last_n: int = 5) -> list[dict]:
-    """Scansiona ultime `last_n` candele e ritorna pattern riconosciuti.
+def is_shooting_star(bar: dict, cfg: ShootingStarCfg) -> tuple[bool, float]:
+    """Shooting star: long upper shadow, lower shadow piccolissima, body piccolo.
 
-    Each entry: {'pattern': str, 'bar_index': int (relativo a fine lista, -1 = ultima),
-                 'direction': 'bullish'|'bearish'|'neutral'}
+    Mirror geometrico di inverted_hammer ma soglie più stringenti
+    (body_ratio_max=0.3 vs 0.4) per privilegiare segnali bearish post-trend.
+    raw_score = upper_shadow / body.
+    """
+    rng = _range(bar)
+    body = _body(bar)
+    if rng <= 0 or body <= 0:
+        return False, 0.0
+    upper = _upper_shadow(bar)
+    lower = _lower_shadow(bar)
+    matched = (
+        body <= cfg.body_ratio_max * rng
+        and upper >= cfg.upper_shadow_body_min * body
+        and lower <= cfg.lower_shadow_range_max * rng
+    )
+    if not matched:
+        return False, 0.0
+    return True, upper / body
+
+
+def is_morning_star(b1: dict, b2: dict, b3: dict, cfg: StarCfg) -> tuple[bool, float]:
+    """Morning Star (3 bar, bullish): trend bearish -> indecisione -> reversal bullish.
+
+    Geometria (Murphy ch.10):
+    - b1: bearish, body grande (>= cfg.trend_body_min_ratio * range_b1)
+    - b2: small body (<= cfg.star_body_max_ratio * range_b2)
+    - b3: bullish, close oltre il midpoint del corpo di b1 (>= cfg.min_b3_penetration di body_b1)
+    raw_score = (b3.close - mid_body_b1) / body_b1 (penetrazione normalizzata).
+    Anchor = b3 (ultima barra). NESSUN look-ahead.
+    """
+    if b1["close"] >= b1["open"]:  # b1 deve essere bearish
+        return False, 0.0
+    rng1 = _range(b1)
+    body1 = b1["open"] - b1["close"]
+    if rng1 <= 0 or body1 <= 0:
+        return False, 0.0
+    if (body1 / rng1) < cfg.trend_body_min_ratio:
+        return False, 0.0
+
+    rng2 = _range(b2)
+    body2 = _body(b2)
+    if rng2 <= 0:
+        return False, 0.0
+    if (body2 / rng2) > cfg.star_body_max_ratio:
+        return False, 0.0
+
+    if b3["close"] <= b3["open"]:  # b3 deve essere bullish
+        return False, 0.0
+    rng3 = _range(b3)
+    body3 = _body(b3)
+    if rng3 <= 0 or body3 <= 0:
+        return False, 0.0
+
+    midpoint_b1 = (b1["open"] + b1["close"]) / 2.0
+    if b3["close"] <= midpoint_b1:
+        return False, 0.0
+    penetration = (b3["close"] - midpoint_b1) / body1
+    if penetration < cfg.min_b3_penetration:
+        return False, 0.0
+    return True, penetration
+
+
+def is_evening_star(b1: dict, b2: dict, b3: dict, cfg: StarCfg) -> tuple[bool, float]:
+    """Evening Star (3 bar, bearish): trend bullish -> indecisione -> reversal bearish.
+
+    Speculare di morning_star.
+    raw_score = (mid_body_b1 - b3.close) / body_b1.
+    Anchor = b3.
+    """
+    if b1["close"] <= b1["open"]:  # b1 deve essere bullish
+        return False, 0.0
+    rng1 = _range(b1)
+    body1 = b1["close"] - b1["open"]
+    if rng1 <= 0 or body1 <= 0:
+        return False, 0.0
+    if (body1 / rng1) < cfg.trend_body_min_ratio:
+        return False, 0.0
+
+    rng2 = _range(b2)
+    body2 = _body(b2)
+    if rng2 <= 0:
+        return False, 0.0
+    if (body2 / rng2) > cfg.star_body_max_ratio:
+        return False, 0.0
+
+    if b3["close"] >= b3["open"]:  # b3 deve essere bearish
+        return False, 0.0
+    rng3 = _range(b3)
+    body3 = _body(b3)
+    if rng3 <= 0 or body3 <= 0:
+        return False, 0.0
+
+    midpoint_b1 = (b1["open"] + b1["close"]) / 2.0
+    if b3["close"] >= midpoint_b1:
+        return False, 0.0
+    penetration = (midpoint_b1 - b3["close"]) / body1
+    if penetration < cfg.min_b3_penetration:
+        return False, 0.0
+    return True, penetration
+
+
+def is_key_reversal(
+    prev_bar: dict,
+    current_bar: dict,
+    direction: str,
+    cfg: KeyReversalCfg,
+) -> tuple[bool, float]:
+    """Key Reversal Bar (outside reversal, 2 bar).
+
+    direction='bullish': curr.low < prev.low AND curr.close > midpoint(prev)
+    direction='bearish': curr.high > prev.high AND curr.close < midpoint(prev)
+    raw_score = penetrazione del close oltre il midpoint normalizzata su range_prev.
+    """
+    direction = direction.lower()
+    rng_prev = _range(prev_bar)
+    if rng_prev <= 0:
+        return False, 0.0
+    midpoint_prev = (prev_bar["open"] + prev_bar["close"]) / 2.0
+
+    if direction == "bullish":
+        # outside break a ribasso, close di reversal sopra midpoint precedente
+        if not (current_bar["low"] < prev_bar["low"] - cfg.min_extreme_break_pips):
+            return False, 0.0
+        if current_bar["close"] <= midpoint_prev:
+            return False, 0.0
+        penetration = (current_bar["close"] - midpoint_prev) / rng_prev
+    elif direction == "bearish":
+        if not (current_bar["high"] > prev_bar["high"] + cfg.min_extreme_break_pips):
+            return False, 0.0
+        if current_bar["close"] >= midpoint_prev:
+            return False, 0.0
+        penetration = (midpoint_prev - current_bar["close"]) / rng_prev
+    else:
+        return False, 0.0
+
+    if penetration < cfg.min_close_penetration_ratio:
+        return False, 0.0
+    return True, penetration
+
+
+def is_inside_bar(
+    prev_bar: dict,
+    current_bar: dict,
+    cfg: InsideBarCfg,
+) -> tuple[bool, float]:
+    """Inside Bar: range corrente interamente contenuto nel range precedente.
+
+    curr.high <= prev.high AND curr.low >= prev.low.
+    raw_score = 1.0 - (range_curr / range_prev) — più compressione = score maggiore.
+    Direction = neutral (segnale di compressione, non di direzione).
+    """
+    rng_prev = _range(prev_bar)
+    rng_curr = _range(current_bar)
+    if rng_prev <= 0 or rng_curr <= 0:
+        return False, 0.0
+    if not (current_bar["high"] <= prev_bar["high"]
+            and current_bar["low"] >= prev_bar["low"]):
+        return False, 0.0
+    if rng_curr / rng_prev > cfg.max_compression_ratio:
+        return False, 0.0
+    raw = 1.0 - (rng_curr / rng_prev)
+    return True, raw
+
+
+def scan_patterns(
+    bars: list[dict],
+    last_n: int = 5,
+    cfg: "PatternConfig | None" = None,
+) -> list[PatternHit]:
+    """Scansiona ultime `last_n` barre e restituisce PatternHit calibrati.
+
+    cfg=None -> carica `config/patterns.yaml` di default. Tutti i detector
+    sono pure functions; questa funzione è un thin orchestrator.
     """
     if not bars:
         return []
+    if cfg is None:
+        cfg = load_pattern_config()
+
     n = len(bars)
     start = max(0, n - last_n)
-    out: list[dict] = []
+    out: list[PatternHit] = []
+
     for i in range(start, n):
         bar = bars[i]
-        rel = i - n  # -1, -2, ...
-        if is_hammer(bar):
-            out.append({"pattern": "hammer", "bar_index": rel, "direction": "bullish"})
-        if is_inverted_hammer(bar):
-            out.append({"pattern": "inverted_hammer", "bar_index": rel, "direction": "bullish"})
-        if is_doji(bar):
-            out.append({"pattern": "doji", "bar_index": rel, "direction": "neutral"})
-        if is_pin_bar(bar, "bullish"):
-            out.append({"pattern": "pin_bar", "bar_index": rel, "direction": "bullish"})
-        if is_pin_bar(bar, "bearish"):
-            out.append({"pattern": "pin_bar", "bar_index": rel, "direction": "bearish"})
-        if i > 0:
+        rel = i - n  # -1 = ultima barra
+
+        # -- 1-bar patterns --------------------------------------------------
+        ok, raw = is_hammer(bar, cfg.hammer)
+        if ok:
+            out.append(PatternHit(
+                name="hammer", bar_index=rel, span_bars=1,
+                extreme_price=bar["low"],
+                confidence=_calibrate(raw, cfg.hammer.calibration),
+                direction="bullish",
+            ))
+
+        ok, raw = is_inverted_hammer(bar, cfg.inverted_hammer)
+        if ok:
+            out.append(PatternHit(
+                name="inverted_hammer", bar_index=rel, span_bars=1,
+                extreme_price=bar["low"],
+                confidence=_calibrate(raw, cfg.inverted_hammer.calibration),
+                direction="bullish",
+            ))
+
+        ok, raw = is_shooting_star(bar, cfg.shooting_star)
+        if ok:
+            out.append(PatternHit(
+                name="shooting_star", bar_index=rel, span_bars=1,
+                extreme_price=bar["high"],
+                confidence=_calibrate(raw, cfg.shooting_star.calibration),
+                direction="bearish",
+            ))
+
+        if is_doji(bar, tolerance=cfg.doji.body_tolerance):
+            mid = (bar["high"] + bar["low"]) / 2.0
+            out.append(PatternHit(
+                name="doji", bar_index=rel, span_bars=1,
+                extreme_price=mid,
+                confidence=1.0,  # Doji non calibrato (CONTEXT)
+                direction="neutral",
+            ))
+
+        ok, raw = is_pin_bar(bar, "bullish", cfg.pin_bar)
+        if ok:
+            out.append(PatternHit(
+                name="pin_bar", bar_index=rel, span_bars=1,
+                extreme_price=bar["low"],
+                confidence=_calibrate(raw, cfg.pin_bar.calibration),
+                direction="bullish",
+            ))
+
+        ok, raw = is_pin_bar(bar, "bearish", cfg.pin_bar)
+        if ok:
+            out.append(PatternHit(
+                name="pin_bar", bar_index=rel, span_bars=1,
+                extreme_price=bar["high"],
+                confidence=_calibrate(raw, cfg.pin_bar.calibration),
+                direction="bearish",
+            ))
+
+        # -- 2-bar patterns --------------------------------------------------
+        if i >= 1:
             prev = bars[i - 1]
-            if is_engulfing(prev, bar, "bullish"):
-                out.append({"pattern": "engulfing", "bar_index": rel, "direction": "bullish"})
-            if is_engulfing(prev, bar, "bearish"):
-                out.append({"pattern": "engulfing", "bar_index": rel, "direction": "bearish"})
+
+            ok, raw = is_engulfing(prev, bar, "bullish", cfg.engulfing)
+            if ok:
+                out.append(PatternHit(
+                    name="engulfing", bar_index=rel, span_bars=2,
+                    extreme_price=min(prev["low"], bar["low"]),
+                    confidence=_calibrate(raw, cfg.engulfing.calibration),
+                    direction="bullish",
+                ))
+
+            ok, raw = is_engulfing(prev, bar, "bearish", cfg.engulfing)
+            if ok:
+                out.append(PatternHit(
+                    name="engulfing", bar_index=rel, span_bars=2,
+                    extreme_price=max(prev["high"], bar["high"]),
+                    confidence=_calibrate(raw, cfg.engulfing.calibration),
+                    direction="bearish",
+                ))
+
+            ok, raw = is_key_reversal(prev, bar, "bullish", cfg.key_reversal)
+            if ok:
+                out.append(PatternHit(
+                    name="key_reversal", bar_index=rel, span_bars=2,
+                    extreme_price=min(prev["low"], bar["low"]),
+                    confidence=_calibrate(raw, cfg.key_reversal.calibration),
+                    direction="bullish",
+                ))
+
+            ok, raw = is_key_reversal(prev, bar, "bearish", cfg.key_reversal)
+            if ok:
+                out.append(PatternHit(
+                    name="key_reversal", bar_index=rel, span_bars=2,
+                    extreme_price=max(prev["high"], bar["high"]),
+                    confidence=_calibrate(raw, cfg.key_reversal.calibration),
+                    direction="bearish",
+                ))
+
+            ok, raw = is_inside_bar(prev, bar, cfg.inside_bar)
+            if ok:
+                mid = (bar["high"] + bar["low"]) / 2.0
+                out.append(PatternHit(
+                    name="inside_bar", bar_index=rel, span_bars=2,
+                    extreme_price=mid,
+                    confidence=_calibrate(raw, cfg.inside_bar.calibration),
+                    direction="neutral",
+                ))
+
+        # -- 3-bar patterns --------------------------------------------------
+        if i >= 2:
+            b1, b2, b3 = bars[i - 2], bars[i - 1], bar
+
+            ok, raw = is_morning_star(b1, b2, b3, cfg.morning_star)
+            if ok:
+                out.append(PatternHit(
+                    name="morning_star", bar_index=rel, span_bars=3,
+                    extreme_price=min(b1["low"], b2["low"], b3["low"]),
+                    confidence=_calibrate(raw, cfg.morning_star.calibration),
+                    direction="bullish",
+                ))
+
+            ok, raw = is_evening_star(b1, b2, b3, cfg.evening_star)
+            if ok:
+                out.append(PatternHit(
+                    name="evening_star", bar_index=rel, span_bars=3,
+                    extreme_price=max(b1["high"], b2["high"], b3["high"]),
+                    confidence=_calibrate(raw, cfg.evening_star.calibration),
+                    direction="bearish",
+                ))
+
     return out
+
+
+def _calibrate(raw: float, anchors: CalibrationAnchors) -> float:
+    """Mappa raw score in [0,1] via interpolazione lineare a tratti.
+
+    raw <= min       -> 0.0
+    min < raw < typ  -> linear interp 0.0 -> 0.7
+    typ <= raw < max -> linear interp 0.7 -> 1.0
+    raw >= max       -> 1.0
+    Knee 0.7 a `typical` lascia headroom per hit sopra-tipici.
+    """
+    lo, typ, hi = anchors.min, anchors.typical, anchors.max
+    if raw <= lo:
+        return 0.0
+    if raw >= hi:
+        return 1.0
+    if raw < typ:
+        return 0.7 * (raw - lo) / (typ - lo)
+    return 0.7 + 0.3 * (raw - typ) / (hi - typ)
+
+
+def _anchors_from(raw: dict, pattern_name: str) -> CalibrationAnchors:
+    """Costruisce CalibrationAnchors validando min < typical < max."""
+    cal = raw.get("calibration")
+    if cal is None:
+        raise KeyError(f"missing 'calibration' for pattern {pattern_name!r}")
+    a = CalibrationAnchors(
+        min=float(cal["min"]),
+        typical=float(cal["typical"]),
+        max=float(cal["max"]),
+    )
+    if not (a.min < a.typical < a.max):
+        raise ValueError(
+            f"invalid anchors for {pattern_name!r}: require min<typical<max, "
+            f"got min={a.min} typical={a.typical} max={a.max}"
+        )
+    return a
+
+
+def _build_pattern_config(raw: dict) -> PatternConfig:
+    """Marshalling raw YAML -> PatternConfig nidificato.
+
+    Solleva KeyError per chiavi mancanti, ValueError per ancore invalide.
+    """
+    required = [
+        "hammer", "inverted_hammer", "shooting_star", "engulfing",
+        "morning_star", "evening_star", "key_reversal", "inside_bar",
+        "pin_bar", "doji",
+    ]
+    for key in required:
+        if key not in raw:
+            raise KeyError(f"missing pattern config: {key!r}")
+
+    h = raw["hammer"]; hg = h["geometry"]
+    hammer = HammerCfg(
+        body_ratio_max=float(hg["body_ratio_max"]),
+        lower_shadow_body_min=float(hg["lower_shadow_body_min"]),
+        upper_shadow_range_max=float(hg["upper_shadow_range_max"]),
+        calibration=_anchors_from(h, "hammer"),
+    )
+
+    ih = raw["inverted_hammer"]; ihg = ih["geometry"]
+    inverted_hammer = InvertedHammerCfg(
+        body_ratio_max=float(ihg["body_ratio_max"]),
+        upper_shadow_body_min=float(ihg["upper_shadow_body_min"]),
+        lower_shadow_range_max=float(ihg["lower_shadow_range_max"]),
+        calibration=_anchors_from(ih, "inverted_hammer"),
+    )
+
+    ss = raw["shooting_star"]; ssg = ss["geometry"]
+    shooting_star = ShootingStarCfg(
+        body_ratio_max=float(ssg["body_ratio_max"]),
+        upper_shadow_body_min=float(ssg["upper_shadow_body_min"]),
+        lower_shadow_range_max=float(ssg["lower_shadow_range_max"]),
+        calibration=_anchors_from(ss, "shooting_star"),
+    )
+
+    e = raw["engulfing"]; eg = e["geometry"]
+    engulfing = EngulfingCfg(
+        min_engulfment_ratio=float(eg["min_engulfment_ratio"]),
+        min_body_ratio=float(eg["min_body_ratio"]),
+        calibration=_anchors_from(e, "engulfing"),
+    )
+
+    ms = raw["morning_star"]; msg = ms["geometry"]
+    morning_star = StarCfg(
+        trend_body_min_ratio=float(msg["trend_body_min_ratio"]),
+        star_body_max_ratio=float(msg["star_body_max_ratio"]),
+        min_b3_penetration=float(msg["min_b3_penetration"]),
+        calibration=_anchors_from(ms, "morning_star"),
+    )
+
+    es = raw["evening_star"]; esg = es["geometry"]
+    evening_star = StarCfg(
+        trend_body_min_ratio=float(esg["trend_body_min_ratio"]),
+        star_body_max_ratio=float(esg["star_body_max_ratio"]),
+        min_b3_penetration=float(esg["min_b3_penetration"]),
+        calibration=_anchors_from(es, "evening_star"),
+    )
+
+    kr = raw["key_reversal"]; krg = kr["geometry"]
+    key_reversal = KeyReversalCfg(
+        min_extreme_break_pips=float(krg["min_extreme_break_pips"]),
+        min_close_penetration_ratio=float(krg["min_close_penetration_ratio"]),
+        calibration=_anchors_from(kr, "key_reversal"),
+    )
+
+    ib = raw["inside_bar"]; ibg = ib["geometry"]
+    inside_bar = InsideBarCfg(
+        max_compression_ratio=float(ibg["max_compression_ratio"]),
+        calibration=_anchors_from(ib, "inside_bar"),
+    )
+
+    pb = raw["pin_bar"]; pbg = pb["geometry"]
+    pin_bar = PinBarCfg(
+        body_ratio_max=float(pbg["body_ratio_max"]),
+        dominant_wick_ratio_min=float(pbg["dominant_wick_ratio_min"]),
+        calibration=_anchors_from(pb, "pin_bar"),
+    )
+
+    dj = raw["doji"]; djg = dj["geometry"]
+    doji = DojiCfg(body_tolerance=float(djg["body_tolerance"]))
+
+    return PatternConfig(
+        hammer=hammer, inverted_hammer=inverted_hammer, shooting_star=shooting_star,
+        engulfing=engulfing, morning_star=morning_star, evening_star=evening_star,
+        key_reversal=key_reversal, inside_bar=inside_bar, pin_bar=pin_bar, doji=doji,
+    )
+
+
+def load_pattern_config(path: str | Path | None = None) -> PatternConfig:
+    """Carica PatternConfig da YAML.
+
+    Precedenza: parametro `path` > env `PATTERNS_CONFIG_PATH` > DEFAULT_CONFIG_PATH.
+    Solleva KeyError per pattern mancanti, ValueError per ancore invalide
+    (min >= typical o typical >= max). Mirror di backtest.costs.load_cost_model.
+    """
+    if path is None:
+        path = os.environ.get("PATTERNS_CONFIG_PATH") or DEFAULT_CONFIG_PATH
+    path = Path(path)
+    with open(path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    return _build_pattern_config(raw)

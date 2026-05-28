@@ -1,0 +1,424 @@
+[
+  {
+    "bar_offset": -200,
+    "csv": "data/historical/EURUSD/M15.csv",
+    "expected_mix": "READY",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777595400"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0004442442971304661,
+        "ema_50": 1.172174367645387,
+        "factors": {},
+        "grade": null,
+        "last_close": 1.17298,
+        "pip_size": 0.0001,
+        "rationale_parts": {},
+        "risk_reward": 0.0,
+        "rsi_14": 51.224761895877805,
+        "setup_name": "C_compression",
+        "sma_20": 1.1732865000000003,
+        "sma_50": 1.1722693999999998
+      },
+      "reason": "second_compression_bar_waiting_third",
+      "setup_type": "FORMING",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.17415,
+        "support": 1.16552
+      },
+      "symbol": "EURUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 1,
+    "symbol": "EURUSD"
+  },
+  {
+    "bar_offset": -350,
+    "csv": "data/historical/EURUSD/M15.csv",
+    "expected_mix": "READY",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777460400"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.00048298396810574437,
+        "ema_50": 1.1704869466646746,
+        "factors": {},
+        "grade": null,
+        "last_close": 1.17017,
+        "pip_size": 0.0001,
+        "rationale_parts": {},
+        "risk_reward": 0.0,
+        "rsi_14": 48.274938949199964,
+        "setup_name": null,
+        "sma_20": 1.1700819999999987,
+        "sma_50": 1.1707523999999996
+      },
+      "reason": "no_breakout_detected",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.17206,
+        "support": 1.16776
+      },
+      "symbol": "EURUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 2,
+    "symbol": "EURUSD"
+  },
+  {
+    "bar_offset": -500,
+    "csv": "data/historical/EURUSD/M15.csv",
+    "expected_mix": "READY",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777325400"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0004219191633039668,
+        "ema_50": 1.1729382338176513,
+        "factors": {},
+        "grade": null,
+        "last_close": 1.17234,
+        "pip_size": 0.0001,
+        "rationale_parts": {},
+        "risk_reward": 0.0,
+        "rsi_14": 42.724520003764624,
+        "setup_name": "C_compression",
+        "sma_20": 1.1724485000000002,
+        "sma_50": 1.1735630000000001
+      },
+      "reason": "second_compression_bar_waiting_third",
+      "setup_type": "FORMING",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.1755,
+        "support": 1.16912
+      },
+      "symbol": "EURUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 3,
+    "symbol": "EURUSD"
+  },
+  {
+    "bar_offset": -200,
+    "csv": "data/historical/GBPUSD/M15.csv",
+    "expected_mix": "FORMING",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777593600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": "SELL",
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0006019646426637338,
+        "ema_50": 1.3573953164607524,
+        "factors": {},
+        "grade": null,
+        "last_close": 1.36053,
+        "pip_size": 0.0001,
+        "rationale_parts": {},
+        "risk_reward": 0.0,
+        "rsi_14": 64.18910155471733,
+        "setup_name": "B_reversal",
+        "sma_20": 1.3604040000000002,
+        "sma_50": 1.357158599999999
+      },
+      "reason": "at_sr_zone_waiting_pattern",
+      "setup_type": "FORMING",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.36117,
+        "support": 1.34543
+      },
+      "symbol": "GBPUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 4,
+    "symbol": "GBPUSD"
+  },
+  {
+    "bar_offset": -400,
+    "csv": "data/historical/GBPUSD/M15.csv",
+    "expected_mix": "FORMING",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777413600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0005155191193608848,
+        "ema_50": 1.3511044136082897,
+        "factors": {},
+        "grade": null,
+        "last_close": 1.35202,
+        "pip_size": 0.0001,
+        "rationale_parts": {},
+        "risk_reward": 0.0,
+        "rsi_14": 61.21214623068413,
+        "setup_name": "C_compression",
+        "sma_20": 1.3516559999999997,
+        "sma_50": 1.3502175999999997
+      },
+      "reason": "second_compression_bar_waiting_third",
+      "setup_type": "FORMING",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.35413,
+        "support": 1.34633
+      },
+      "symbol": "GBPUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 5,
+    "symbol": "GBPUSD"
+  },
+  {
+    "bar_offset": -150,
+    "csv": "data/historical/EURUSD/M15.csv",
+    "expected_mix": "NONE",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777640400"
+    },
+    "output": {
+      "confidence": 0.7,
+      "direction": "BUY",
+      "entry_price": 1.17587,
+      "indicators": {
+        "atr_14": 0.0006851437331945315,
+        "ema_50": 1.1736001924874808,
+        "factors": {
+          "momentum": true,
+          "setup_pattern": true,
+          "spread_session": true,
+          "trend_alignment": true,
+          "volatility_regime": false
+        },
+        "grade": "A",
+        "last_close": 1.17587,
+        "pip_size": 0.0001,
+        "rationale_parts": {
+          "atr_at_break": "0.00069",
+          "broken_level": "1.17583",
+          "grade": "A",
+          "rr": "5.45"
+        },
+        "risk_reward": 5.454,
+        "rsi_14": 66.2805490636727,
+        "setup_name": "A_breakout",
+        "sma_20": 1.1742540000000006,
+        "sma_50": 1.1734331999999998
+      },
+      "reason": "breakout_buy_level=1.17583",
+      "setup_type": "READY",
+      "stop_loss": 1.1755559425067221,
+      "support_resistance": {
+        "resistance": 1.17583,
+        "support": 1.1682
+      },
+      "symbol": "EURUSD",
+      "take_profit": 1.1775828593329862,
+      "timeframe": "M15"
+    },
+    "scenario_id": 6,
+    "symbol": "EURUSD"
+  },
+  {
+    "bar_offset": -200,
+    "csv": "data/historical/USDJPY/M15.csv",
+    "expected_mix": "NONE",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777593600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": "SELL",
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.11650825649564776,
+        "ema_50": 157.05481651683306,
+        "factors": {},
+        "grade": null,
+        "last_close": 156.776,
+        "pip_size": 0.01,
+        "rationale_parts": {},
+        "risk_reward": 0.0,
+        "rsi_14": 54.975675085945426,
+        "setup_name": "D_pullback",
+        "sma_20": 156.56144999999998,
+        "sma_50": 156.61065999999985
+      },
+      "reason": "trend_ok_pullback_not_in_zone",
+      "setup_type": "FORMING",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 160.725,
+        "support": 155.569
+      },
+      "symbol": "USDJPY",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 7,
+    "symbol": "USDJPY"
+  },
+  {
+    "bar_offset": -350,
+    "csv": "data/historical/USDJPY/M15.csv",
+    "expected_mix": "NONE",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777458600"
+    },
+    "output": {
+      "confidence": 0.55,
+      "direction": "BUY",
+      "entry_price": 159.811,
+      "indicators": {
+        "atr_14": 0.04689275065864452,
+        "ema_50": 159.66049134381063,
+        "factors": {
+          "momentum": true,
+          "setup_pattern": true,
+          "spread_session": false,
+          "trend_alignment": true,
+          "volatility_regime": false
+        },
+        "grade": "B",
+        "last_close": 159.811,
+        "pip_size": 0.01,
+        "rationale_parts": {
+          "atr_at_break": "0.04689",
+          "broken_level": "159.78700",
+          "grade": "B",
+          "rr": "2.74"
+        },
+        "risk_reward": 2.7418,
+        "rsi_14": 69.32836287911897,
+        "setup_name": "A_breakout",
+        "sma_20": 159.7082999999999,
+        "sma_50": 159.6415800000001
+      },
+      "reason": "breakout_buy_level=159.78700",
+      "setup_type": "READY",
+      "stop_loss": 159.76824289973655,
+      "support_resistance": {
+        "resistance": 159.787,
+        "support": 159.418
+      },
+      "symbol": "USDJPY",
+      "take_profit": 159.9282318766466,
+      "timeframe": "M15"
+    },
+    "scenario_id": 8,
+    "symbol": "USDJPY"
+  },
+  {
+    "bar_offset": -300,
+    "csv": "data/historical/GBPUSD/M15.csv",
+    "expected_mix": "NONE",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777503600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": null,
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.0008184801460693216,
+        "ema_50": 1.348618693659081,
+        "factors": {},
+        "grade": null,
+        "last_close": 1.34758,
+        "pip_size": 0.0001,
+        "rationale_parts": {},
+        "risk_reward": 0.0,
+        "rsi_14": 46.02364838785597,
+        "setup_name": null,
+        "sma_20": 1.3476190000000006,
+        "sma_50": 1.3488671999999997
+      },
+      "reason": "no_breakout_detected",
+      "setup_type": "NONE",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 1.35282,
+        "support": 1.34579
+      },
+      "symbol": "GBPUSD",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 9,
+    "symbol": "GBPUSD"
+  },
+  {
+    "bar_offset": -500,
+    "csv": "data/historical/USDJPY/M15.csv",
+    "expected_mix": "mixed",
+    "input": {
+      "bar_count": 200,
+      "last_bar_time": "1777323600"
+    },
+    "output": {
+      "confidence": 0.0,
+      "direction": "BUY",
+      "entry_price": null,
+      "indicators": {
+        "atr_14": 0.052013217230240376,
+        "ema_50": 159.32299411647293,
+        "factors": {},
+        "grade": null,
+        "last_close": 159.413,
+        "pip_size": 0.01,
+        "rationale_parts": {},
+        "risk_reward": 0.0,
+        "rsi_14": 58.932099673254235,
+        "setup_name": "D_pullback",
+        "sma_20": 159.37665000000004,
+        "sma_50": 159.2629599999999
+      },
+      "reason": "trend_ok_pullback_not_in_zone",
+      "setup_type": "FORMING",
+      "stop_loss": null,
+      "support_resistance": {
+        "resistance": 159.597,
+        "support": 159.095
+      },
+      "symbol": "USDJPY",
+      "take_profit": null,
+      "timeframe": "M15"
+    },
+    "scenario_id": 10,
+    "symbol": "USDJPY"
+  }
+]

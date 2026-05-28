@@ -8,6 +8,7 @@ import pytest
 from datetime import datetime, timezone
 
 from models import AccountState, SentimentAnalysis, TechnicalSetup, TradeProposal
+from patterns import PatternHit
 from strategy import IntradayStrategy
 
 
@@ -39,6 +40,9 @@ def _make_cfg(**overrides):
     cfg.SENTIMENT_MIN_STRENGTH_FILTER = 0.6
     cfg.SENTIMENT_BOOST_FACTOR = 0.15
     cfg.SENTIMENT_CONFLICT_ACTION = "delay"
+    # Phase 4 plan-07: il nuovo shim usa ctx.profile = cfg.RISK_MODE → deve essere
+    # una delle 3 chiavi in config/strategy.yaml profile_filters (non un MagicMock auto).
+    cfg.RISK_MODE = "MODERATE"
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg
@@ -95,171 +99,34 @@ def _bullish_breakout_bars(n: int = 100) -> list[dict]:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# identify_entry_setup
+# Legacy tests REMOVED in Phase 4 plan-07 (Category C — architectural):
+#
+# I seguenti test asserivano contro metodi privati del legacy IntradayStrategy
+# che NON sono più presenti nel nuovo shim Wave 3 (sostituiti dalla pipeline
+# pure-fn evaluate_proposal_for_bar):
+#
+#   - test_identify_entry_setup_ready_buy
+#   - test_identify_entry_setup_ready_sell
+#   - test_identify_entry_setup_forming_near_resistance
+#   - test_identify_entry_setup_none_weak_trend
+#   - test_identify_entry_setup_none_overbought
+#     → coperti dai detector pure-fn in tests/test_strategy_setups.py
+#       (test_detect_a_breakout_*, test_detect_d_pullback_*, ecc.)
+#
+#   - test_build_trade_proposal_valid_buy
+#   - test_build_trade_proposal_rejects_non_ready
+#     → coperti da tests/test_strategy_proposal.py (draft_to_trade_proposal)
+#
+#   - test_confidence_in_range_0_1
+#   - test_confidence_higher_with_aligned_pattern
+#   - test_confidence_above_threshold_for_strong_setup
+#     → coperti da tests/test_strategy_confluence.py (compute_confidence + adjusters)
+#
+# I 12 test rimossi sono test di metodi privati del legacy (._score_confidence,
+# .identify_entry_setup, .build_trade_proposal). Il nuovo shim espone solo l'API
+# pubblica analyze_symbol — la copertura unit test è migrata sui moduli puri
+# corrispondenti (più granulare e pure-fn).
 # ──────────────────────────────────────────────────────────────────────────────
-
-
-def test_identify_entry_setup_ready_buy():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-
-    indicators = {
-        "sma_20": 1.1010, "sma_50": 1.0980, "rsi_14": 60.0,
-        "atr_14": 0.0010, "atr_pips": 10.0,
-        "trend_strength": 0.80, "breakout": "CLEAN",
-        "patterns": [], "last_close": 1.1080, "pip_size": 0.0001,
-    }
-    sr = {"support": 1.0950, "resistance": 1.1050}
-    decision = strat.identify_entry_setup([], indicators, sr, [])
-
-    assert decision["type"] == "READY"
-    assert decision["direction"] == "BUY"
-
-
-def test_identify_entry_setup_ready_sell():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-
-    indicators = {
-        "sma_20": 1.0990, "sma_50": 1.1020, "rsi_14": 40.0,
-        "atr_14": 0.0010, "atr_pips": 10.0,
-        "trend_strength": 0.80, "breakout": "CLEAN",
-        "patterns": [], "last_close": 1.0920, "pip_size": 0.0001,
-    }
-    sr = {"support": 1.0950, "resistance": 1.1050}
-    decision = strat.identify_entry_setup([], indicators, sr, [])
-
-    assert decision["type"] == "READY"
-    assert decision["direction"] == "SELL"
-
-
-def test_identify_entry_setup_forming_near_resistance():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-
-    # last_close just below resistance, within tolerance
-    indicators = {
-        "sma_20": 1.1010, "sma_50": 1.0980, "rsi_14": 58.0,
-        "atr_14": 0.0010, "atr_pips": 10.0,
-        "trend_strength": 0.70, "breakout": "NONE",
-        "patterns": [], "last_close": 1.1048, "pip_size": 0.0001,
-    }
-    sr = {"support": 1.0950, "resistance": 1.1050}
-    decision = strat.identify_entry_setup([], indicators, sr, [])
-
-    assert decision["type"] == "FORMING"
-    assert decision["direction"] == "BUY"
-
-
-def test_identify_entry_setup_none_weak_trend():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-
-    indicators = {
-        "sma_20": 1.1000, "sma_50": 1.1000, "rsi_14": 50.0,
-        "atr_14": 0.0010, "atr_pips": 10.0,
-        "trend_strength": 0.20, "breakout": "NONE",
-        "patterns": [], "last_close": 1.1000, "pip_size": 0.0001,
-    }
-    sr = {"support": 1.0950, "resistance": 1.1050}
-    decision = strat.identify_entry_setup([], indicators, sr, [])
-
-    assert decision["type"] == "NONE"
-
-
-def test_identify_entry_setup_none_overbought():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-
-    indicators = {
-        "sma_20": 1.1010, "sma_50": 1.0980, "rsi_14": 80.0,
-        "atr_14": 0.0010, "atr_pips": 10.0,
-        "trend_strength": 0.80, "breakout": "CLEAN",
-        "patterns": [], "last_close": 1.1080, "pip_size": 0.0001,
-    }
-    sr = {"support": 1.0950, "resistance": 1.1050}
-    decision = strat.identify_entry_setup([], indicators, sr, [])
-
-    assert decision["type"] == "NONE"
-    assert "overbought" in decision["reason"]
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# build_trade_proposal
-# ──────────────────────────────────────────────────────────────────────────────
-
-
-def test_build_trade_proposal_valid_buy():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-    setup = TechnicalSetup(
-        symbol="EURUSD", timeframe="M15", setup_type="READY", direction="BUY",
-        entry_price=1.10800, stop_loss=1.10700, take_profit=1.10950,
-        confidence=0.72, reason="trend strong",
-        indicators={"risk_reward": 1.5}, support_resistance={"support": 1.0950, "resistance": 1.1050},
-    )
-    proposal = strat.build_trade_proposal("EURUSD", setup, account_state=_account())
-
-    assert isinstance(proposal, TradeProposal)
-    assert proposal.symbol == "EURUSD"
-    assert proposal.direction == "BUY"
-    assert proposal.entry_price == 1.10800
-    assert proposal.stop_loss_price == 1.10700
-    assert proposal.take_profit_price == 1.10950
-    assert proposal.comment == "python_strategy"
-    assert proposal.confidence == 0.72
-
-
-def test_build_trade_proposal_rejects_non_ready():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-    setup = TechnicalSetup(
-        symbol="EURUSD", timeframe="M15", setup_type="NONE", direction=None,
-        entry_price=None, stop_loss=None, take_profit=None,
-        confidence=0.0, reason="noop",
-    )
-    with pytest.raises(ValueError):
-        strat.build_trade_proposal("EURUSD", setup)
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Confidence
-# ──────────────────────────────────────────────────────────────────────────────
-
-
-def test_confidence_in_range_0_1():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-    score = strat._score_confidence(
-        trend_strength=0.8, patterns=[],
-        breakout="CLEAN", rr=2.0, direction="BUY",
-    )
-    assert 0.0 <= score <= 1.0
-
-
-def test_confidence_higher_with_aligned_pattern():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-    base = strat._score_confidence(
-        trend_strength=0.8, patterns=[], breakout="CLEAN", rr=2.0, direction="BUY",
-    )
-    boosted = strat._score_confidence(
-        trend_strength=0.8,
-        patterns=[{"pattern": "hammer", "bar_index": -1, "direction": "bullish"}],
-        breakout="CLEAN", rr=2.0, direction="BUY",
-    )
-    assert boosted > base
-
-
-def test_confidence_above_threshold_for_strong_setup():
-    cfg = _make_cfg()
-    strat = _make_strategy(cfg)
-    score = strat._score_confidence(
-        trend_strength=0.85,
-        patterns=[{"pattern": "hammer", "bar_index": -1, "direction": "bullish"}],
-        breakout="CLEAN", rr=2.5, direction="BUY",
-    )
-    assert score >= cfg.MIN_CONFIDENCE_TO_PROPOSE
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -428,14 +295,9 @@ def test_apply_sentiment_conflict_reduce_below_min_downgrades_to_none():
     assert out.setup_type == "NONE"
 
 
-def test_analyze_symbol_atr_out_of_range_returns_none():
-    cfg = _make_cfg(MAX_ATR_PIPS=2.0)
-    strat = _make_strategy(cfg)
-    strat.mt5.get_ohlc.return_value = _bullish_breakout_bars()
-    strat.mt5.get_symbol_info.return_value = SimpleNamespace(
-        bid=1.10800, ask=1.10810, point=0.00001, digits=5,
-    )
-
-    setup = strat.analyze_symbol("EURUSD", _account())
-    assert setup.setup_type == "NONE"
-    assert "atr_out_of_range" in setup.reason
+# Phase 4 plan-07 (Category C — architectural): test_analyze_symbol_atr_out_of_range_returns_none
+# REMOVED. Il legacy _analyze_technical aveva un gate binario "atr_pips > MAX_ATR_PIPS → NONE"
+# eseguito PRIMA del setup detection. Il nuovo motore Wave 3 NON ha questo gate globale —
+# la regolazione della volatilità è gestita dal factor `volatility_regime` del 5-factor
+# confluence (config/strategy.yaml schema D-08), che produce gradi più sfumati invece di
+# un cutoff binario. Il test legacy asseriva un comportamento intenzionalmente rimosso.

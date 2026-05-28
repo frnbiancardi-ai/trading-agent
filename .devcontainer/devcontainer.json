@@ -1,0 +1,9 @@
+{
+  "name": "Python + Claude Code",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "mounts": [
+    "source=claude-code-config,target=/root/.claude,type=volume"
+  ]
+}

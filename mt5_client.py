@@ -248,3 +248,159 @@ class Mt5Client:
                 f"comment={result.comment}"
             ),
         )
+
+    # ── Phase 6 Wave 1 wrappers (D-B1) ────────────────────────────────────────
+    # Aggiunti per supportare handlers/position.py (Wave 3) e trail_daemon.py (Wave 3).
+    # Pattern mirror di close_position (linee 191-250) con action/volume specifici.
+
+    @_retry(3)
+    def modify_position(
+        self,
+        position_id: int,
+        sl: float | None = None,
+        tp: float | None = None,
+    ) -> OrderResult:
+        """Modifica SL/TP di posizione esistente via TRADE_ACTION_SLTP (D-B1, Phase 6).
+
+        Mirror del pattern close_position (questo file linee 191-250) con
+        action=TRADE_ACTION_SLTP. Se sl/tp sono None, riusa i valori correnti
+        della posizione (no-op selective).
+
+        Note MQL5 footgun:
+            TRADE_ACTION_SLTP NON richiede `volume`/`type`/`price`/`type_filling`.
+            SL/TP devono essere float (str causa silent reject).
+        """
+        positions = mt5.positions_get(ticket=position_id) or []
+        if not positions:
+            return OrderResult(
+                success=False,
+                error_message=f"position {position_id} non trovata",
+            )
+        pos = positions[0]
+        request = {
+            "action": mt5.TRADE_ACTION_SLTP,
+            "symbol": pos.symbol,
+            "position": int(position_id),
+            "sl": float(sl) if sl is not None else float(pos.sl),
+            "tp": float(tp) if tp is not None else float(pos.tp),
+        }
+        result = mt5.order_send(request)
+        if result is None:
+            return OrderResult(
+                success=False,
+                error_message=f"order_send returned None: {mt5.last_error()}",
+            )
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            logger.info(
+                "Modify SL/TP OK ticket=%s sl=%s tp=%s",
+                position_id, sl, tp,
+            )
+            return OrderResult(
+                success=True,
+                order_id=getattr(result, "order", None),
+            )
+        return OrderResult(
+            success=False,
+            error_message=(
+                f"modify rejected retcode={result.retcode} "
+                f"comment={getattr(result, 'comment', '')}"
+            ),
+        )
+
+    @_retry(3)
+    def partial_close(self, position_id: int, lots: float) -> OrderResult:
+        """Chiude parzialmente la posizione mantenendo lo stesso ticket (D-B1, Phase 6).
+
+        Mirror del pattern close_position (linee 191-250) ma con volume=lots
+        invece di pos.volume. MT5 lascia residuo aperto sotto stesso ticket.
+        TenTrade demo: usa ORDER_FILLING_RETURN via resolve_filling_mode.
+        """
+        positions = mt5.positions_get(ticket=position_id) or []
+        if not positions:
+            return OrderResult(
+                success=False,
+                error_message=f"position {position_id} non trovata",
+            )
+        pos = positions[0]
+        if lots <= 0 or lots >= pos.volume:
+            return OrderResult(
+                success=False,
+                error_message=(
+                    f"partial volume non valido: lots={lots} "
+                    f"pos.volume={pos.volume}"
+                ),
+            )
+
+        tick = mt5.symbol_info_tick(pos.symbol)
+        if tick is None:
+            return OrderResult(
+                success=False,
+                error_message=(
+                    f"symbol_info_tick failed per {pos.symbol}: "
+                    f"{mt5.last_error()}"
+                ),
+            )
+
+        if pos.type == mt5.POSITION_TYPE_BUY:
+            order_type = mt5.ORDER_TYPE_SELL
+            price = tick.bid
+        else:
+            order_type = mt5.ORDER_TYPE_BUY
+            price = tick.ask
+
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": pos.symbol,
+            "volume": float(lots),
+            "type": order_type,
+            "position": int(position_id),
+            "price": price,
+            "deviation": 20,
+            "comment": "phase6_partial_close",
+            "type_filling": self.resolve_filling_mode(pos.symbol),
+            "type_time": mt5.ORDER_TIME_GTC,
+        }
+        result = mt5.order_send(request)
+        if result is None:
+            return OrderResult(
+                success=False,
+                error_message=f"order_send returned None: {mt5.last_error()}",
+            )
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            logger.info(
+                "Partial close OK ticket=%s lots=%.4f order=%s",
+                position_id, lots, getattr(result, "order", None),
+            )
+            return OrderResult(
+                success=True,
+                order_id=getattr(result, "order", None),
+            )
+        return OrderResult(
+            success=False,
+            error_message=(
+                f"partial close rejected retcode={result.retcode} "
+                f"comment={getattr(result, 'comment', '')}"
+            ),
+        )
+
+    def get_position(self, position_id: int) -> "PositionInfo | None":
+        """Wrapper su mt5.positions_get(ticket=...) -> PositionInfo | None (D-B1).
+
+        Consumato da handlers/position.py (Wave 3) e trail_daemon (Wave 3)
+        per leggere lo stato corrente di una posizione senza dover gestire
+        i dettagli del namedtuple MT5.
+        """
+        positions = mt5.positions_get(ticket=position_id) or []
+        if not positions:
+            return None
+        p = positions[0]
+        return PositionInfo(
+            symbol=p.symbol,
+            lots=p.volume,
+            direction="BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL",
+            entry_price=p.price_open,
+            stop_loss=p.sl,
+            take_profit=p.tp,
+            profit=p.profit,
+            ticket=int(getattr(p, "ticket", position_id)),
+        )

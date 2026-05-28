@@ -3,6 +3,10 @@ from datetime import date as _date, datetime
 from typing import Literal
 
 
+# Profili rischio — chiavi devono coincidere con risk_engine.PROFILES (D-04, RESEARCH Pitfall #6)
+RiskProfile = Literal["CONSERVATIVE", "MODERATE", "AGGRESSIVE"]
+
+
 @dataclass
 class TradeProposal:
     symbol: str
@@ -195,3 +199,34 @@ class SentimentAnalysis:
     relevant_news_count: int
     sample_headlines: list[str] = field(default_factory=list)
     timestamp: datetime | None = None
+
+
+# ─── Phase 1: Backtest broker abstraction (D-01) ───────────────────────────────
+from typing import Protocol, runtime_checkable
+
+
+@runtime_checkable
+class BrokerProtocol(Protocol):
+    """Minimal broker surface used by IntradayStrategy.
+
+    Both Mt5Client (live) and BacktestBroker (Phase 1) satisfy this Protocol
+    structurally. Scope intentionally narrow per D-01: only the four methods
+    strategy.py actually invokes today. get_symbol_info is NOT on the Protocol —
+    BacktestBroker exposes it as a non-Protocol method (research §BrokerProtocol).
+    """
+
+    def get_ohlc(self, symbol: str, timeframe: str, n_bars: int) -> list[dict]: ...
+
+    def send_order(
+        self,
+        symbol: str,
+        direction: str,
+        lots: float,
+        sl: float,
+        tp: float,
+        comment: str = "",
+    ) -> "OrderResult": ...
+
+    def get_account_state(self) -> "AccountState": ...
+
+    def close_position(self, position_id: int) -> "OrderResult": ...

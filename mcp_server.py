@@ -1,68 +1,85 @@
-"""
-mcp_server.py — Server MCP locale per trading-agent.
+"""Shim retrocompatibile per `python -m mcp_server`.
 
-Compatibile con mcp >= 1.27.0 (SDK ufficiale Anthropic). API verificata su 1.27.0:
-  from mcp.server import Server
-  from mcp.server.stdio import stdio_server
-  from mcp.types import Tool, TextContent
-  @server.list_tools() / @server.call_tool()
+Il vero codice vive in `mcp_tools/server.py` dopo lo split D-E1 della Phase 6.
+Questo file esiste solo per non rompere CLI/script esterni che lanciano
+`python -m mcp_server`, e per permettere ai test esistenti (test_mcp_tools_v2.py)
+di continuare a fare `import mcp_server` e monkeypatching di `mcp_server.mt5`,
+`mcp_server.cfg`, ecc.
 
-IMPORTANTE: il protocollo MCP usa stdin/stdout per JSON-RPC.
-Tutti i log devono finire su stderr o file (mai stdout) per non rompere il protocollo.
-Il logger configurato in `logger.py` scrive solo su file (RotatingFileHandler) — sicuro.
+Strategia retrocompatibilità:
+- I nomi pubblici sono re-esportati via `from mcp_tools.server import ...`
+- PEP 562 (__getattr__ + __setattr__ a livello modulo): quando monkeypatch
+  imposta `mcp_server.cfg = mock`, il set viene propagato ANCHE a
+  `mcp_tools.server.cfg` così le funzioni nel modulo reale vedono il mock.
 """
+from mcp_tools.server import (  # noqa: F401
+    cfg,
+    log,
+    mt5,
+    _mt5_ready,
+    server,
+    _bootstrap_mt5,
+    _bootstrap_state,
+    _serve,
+    _text,
+    _PROPOSAL_SCHEMA,
+    _PROPOSE_TRADE_SCHEMA,
+    list_tools,
+    call_tool,
+)
+from mcp_tools.handlers.account import (  # noqa: F401
+    handle_get_account_state,
+    handle_get_risk_profile,
+    handle_get_trade_history,
+)
+from mcp_tools.handlers.market import (
+    handle_get_market_snapshot as _market_snapshot,  # noqa: F401
+    handle_scan_symbol_candidates as _market_scan,
+    handle_get_symbol_indicators as _market_symbol_indicators,
+    handle_get_symbol_universe as _market_symbol_universe,
+)
+from mcp_tools.handlers.proposal import (
+    handle_propose_trade as _proposal_propose,
+    handle_evaluate_trade_proposal as _proposal_evaluate,  # noqa: F401
+    handle_submit_order_if_approved as _proposal_submit,  # noqa: F401
+)
+
 import asyncio
 import dataclasses
-import json
-import sqlite3
-from pathlib import Path
-from typing import Any
-
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
-
-from claude_agent import cheap_scan_symbol
-from config import Config
-from execution import run_once
-from indicators import compute_all
-from logger import init_logger
-from models import TradeProposal
-from mt5_client import Mt5Client
-from risk_engine import evaluate_trade
-
-# Singleton globali — inizializzati al boot del server (e non al solo import del modulo,
-# così i test possono importare mcp_server senza far partire MT5).
-cfg = Config()
-log = init_logger(cfg)
-mt5 = Mt5Client(cfg)
-_mt5_ready: bool = False
+import sys
 
 
-def _bootstrap_mt5() -> bool:
-    """Inizializza MT5. Chiamato dal main, NON dall'import del modulo."""
-    global _mt5_ready
-    try:
-        _mt5_ready = mt5.initialize() and mt5.login()
-    except Exception as exc:
-        log.exception("MCP server: errore durante inizializzazione MT5: %s", exc)
-        _mt5_ready = False
-    if not _mt5_ready:
-        log.error(
-            "MCP server: MT5 initialize/login fallito; le tool call falliranno "
-            "finché MT5 non è disponibile (controlla credenziali in .env)."
-        )
-    return _mt5_ready
+# ── Wrapper retrocompat per test legacy ───────────────────────────────────────
+# I test (tests/test_mcp_tools_v2.py) chiamano queste funzioni con la vecchia
+# signature posizionale. I nuovi handler in mcp_tools/handlers/{market,proposal}.py
+# hanno signature standardizzata (args: dict, mt5_client, cfg). I wrapper
+# qui sotto traducono la vecchia API alla nuova così i test pre-Phase 6 girano
+# senza modifiche.
+
+def handle_get_symbol_universe(filter_asset_class: str | None = None) -> dict:
+    """Shim legacy: deriva cfg dal modulo, delega al nuovo handler market."""
+    return _market_symbol_universe(cfg, filter_asset_class=filter_asset_class)
 
 
-server: Server = Server("trading-agent")
+def handle_scan_symbol_candidates(symbols: list[str], timeframe: str | None = None) -> dict:
+    """Shim legacy: costruisce args dict, delega al nuovo handler market."""
+    args = {"symbols": list(symbols or []), "timeframe": timeframe}
+    return _market_scan(args, mt5, cfg)
 
 
-def _text(payload: Any) -> list[TextContent]:
-    return [TextContent(type="text", text=json.dumps(payload, default=str, ensure_ascii=False))]
+def handle_get_symbol_indicators(symbol: str, timeframe: str | None = None) -> dict:
+    """Shim legacy: delega al nuovo handler market con kwargs."""
+    return _market_symbol_indicators(symbol, mt5, cfg, timeframe=timeframe)
 
 
-def _build_proposal(args: dict) -> TradeProposal:
+def handle_propose_trade(args: dict) -> dict:
+    """Shim legacy: aggiunge log/cfg dal modulo, delega al nuovo handler proposal."""
+    return _proposal_propose(args, log, cfg)
+
+
+def _build_proposal(args: dict):
+    """Shim legacy: costruisce TradeProposal (usato dai test legacy)."""
+    from models import TradeProposal
     return TradeProposal(
         symbol=args["symbol"],
         direction=args["direction"],
@@ -76,371 +93,33 @@ def _build_proposal(args: dict) -> TradeProposal:
     )
 
 
-_PROPOSAL_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "symbol": {"type": "string"},
-        "direction": {"type": "string", "enum": ["BUY", "SELL"]},
-        "entry_price": {"type": "number"},
-        "stop_loss_price": {"type": "number"},
-        "take_profit_price": {"type": "number"},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        "rationale": {"type": "string"},
-    },
-    "required": [
-        "symbol", "direction", "entry_price",
-        "stop_loss_price", "take_profit_price",
-        "confidence", "rationale",
-    ],
-}
-
-_PROPOSE_TRADE_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "symbol": {"type": "string"},
-        "timeframe": {"type": "string"},
-        "direction": {"type": "string", "enum": ["BUY", "SELL"]},
-        "entry_price": {"type": "number"},
-        "stop_loss_price": {"type": "number"},
-        "take_profit_price": {"type": "number"},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        "rationale": {"type": "string"},
-    },
-    "required": [
-        "symbol", "direction", "entry_price",
-        "stop_loss_price", "take_profit_price",
-        "confidence", "rationale",
-    ],
-}
+# ── PEP 562: propaga monkeypatch a mcp_tools.server ──────────────────────────
+# I test fanno `monkeypatch.setattr(mcp_server, "cfg", mock)`.
+# Dobbiamo propagare il set anche a `mcp_tools.server` così le funzioni
+# all'interno del modulo reale vedono il mock.
+_PROPAGATED_ATTRS = frozenset(["cfg", "mt5", "log", "_mt5_ready"])
 
 
-def handle_get_symbol_universe(filter_asset_class: str | None = None) -> dict:
-    """Restituisce l'universo dei simboli candidati dalla configurazione."""
-    symbols = list(getattr(cfg, "SYMBOLS", []) or [])
-    return {
-        "symbols": symbols,
-        "count": len(symbols),
-        "source": "config.SYMBOLS",
-        "filter_asset_class": filter_asset_class,
-    }
+class _ShimModule(sys.modules[__name__].__class__):
+    """Module con __setattr__ PEP 562 per propagare monkeypatch."""
+
+    def __setattr__(self, name: str, value) -> None:
+        super().__setattr__(name, value)
+        if name in _PROPAGATED_ATTRS:
+            import mcp_tools.server as _srv
+            try:
+                setattr(_srv, name, value)
+            except Exception:
+                pass
 
 
-def handle_scan_symbol_candidates(symbols: list[str], timeframe: str | None = None) -> dict:
-    """Cheap scan multi-symbol. Output compatto: nessun OHLC completo."""
-    tf = timeframe or cfg.TIMEFRAME
-    candidates = [
-        dataclasses.asdict(cheap_scan_symbol(mt5, tf, sym))
-        for sym in symbols
-    ]
-    return {
-        "timeframe": tf,
-        "count": len(candidates),
-        "candidates": candidates,
-    }
+sys.modules[__name__].__class__ = _ShimModule
 
 
-def handle_get_symbol_indicators(symbol: str, timeframe: str | None = None) -> dict:
-    """Indicatori approfonditi per un singolo simbolo. SMA(20), EMA(50), RSI(14), ATR(14)."""
-    tf = timeframe or cfg.TIMEFRAME
-    ohlc = mt5.get_ohlc(symbol, tf, 100)
-    if not ohlc:
-        return {"error": "no ohlc data", "symbol": symbol, "timeframe": tf}
-    indicators = compute_all(ohlc)
-    return {
-        "symbol": symbol,
-        "timeframe": tf,
-        "bars_used": len(ohlc),
-        "last_close": ohlc[-1]["close"],
-        "indicators": indicators,
-    }
-
-
-def handle_propose_trade(args: dict) -> dict:
-    """Formalizza una proposta finale dell'agente. NON esegue ordini, NON decide size."""
-    timeframe = args.get("timeframe") or cfg.TIMEFRAME
-    proposal = TradeProposal(
-        symbol=args["symbol"],
-        direction=args["direction"],
-        entry_price=float(args["entry_price"]),
-        stop_loss_price=float(args["stop_loss_price"]),
-        take_profit_price=float(args["take_profit_price"]),
-        timeframe=timeframe,
-        comment="mcp_propose_trade",
-        confidence=float(args["confidence"]),
-        rationale=args["rationale"],
-    )
-    log.info(
-        "MCP propose_trade formalized: symbol=%s direction=%s confidence=%.2f",
-        proposal.symbol, proposal.direction, proposal.confidence,
-    )
-    return {
-        "status": "proposed",
-        "executed": False,
-        "proposal": dataclasses.asdict(proposal),
-        "next_step": "call evaluate_trade_proposal or submit_order_if_approved to act on it",
-    }
-
-
-@server.list_tools()
-async def list_tools() -> list[Tool]:
-    return [
-        Tool(
-            name="get_account_state",
-            description=(
-                "Stato corrente del conto MT5: balance, equity, free_margin, "
-                "posizioni aperte, P&L realizzato della giornata."
-            ),
-            inputSchema={"type": "object", "properties": {}, "required": []},
-        ),
-        Tool(
-            name="get_market_snapshot",
-            description=(
-                "50 barre OHLC sul timeframe configurato + ultimo tick + indicatori "
-                "(sma_20, ema_50, rsi_14, atr_14) per il symbol indicato."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {"symbol": {"type": "string"}},
-                "required": ["symbol"],
-            },
-        ),
-        Tool(
-            name="evaluate_trade_proposal",
-            description=(
-                "Valuta una TradeProposal nel risk engine SENZA inviare ordini. "
-                "Ritorna la RiskDecision (approved/size_lots/reason)."
-            ),
-            inputSchema=_PROPOSAL_SCHEMA,
-        ),
-        Tool(
-            name="submit_order_if_approved",
-            description=(
-                "Flow completo: TradeProposal → risk engine → "
-                "(se approved e EXECUTION_MODE != shadow) → send_order. "
-                "Ritorna decision + execution_mode."
-            ),
-            inputSchema=_PROPOSAL_SCHEMA,
-        ),
-        Tool(
-            name="get_risk_profile",
-            description="Parametri correnti del risk engine (RISK_MODE, soglie SL, drawdown, EXECUTION_MODE, ecc.).",
-            inputSchema={"type": "object", "properties": {}, "required": []},
-        ),
-        Tool(
-            name="get_trade_history",
-            description="Ultime N decisioni dal trades_log (default 10).",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "n": {"type": "integer", "minimum": 1, "maximum": 100, "default": 10},
-                },
-                "required": [],
-            },
-        ),
-        Tool(
-            name="get_symbol_universe",
-            description=(
-                "Restituisce l'universo dei simboli candidati dalla configurazione "
-                "(cfg.SYMBOLS). Output compatto: lista, count, source."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "filter_asset_class": {"type": "string"},
-                },
-                "required": [],
-            },
-        ),
-        Tool(
-            name="scan_symbol_candidates",
-            description=(
-                "Cheap scan multi-symbol. Per ogni simbolo: trend_bias, momentum_bias, "
-                "volatility_state, spread_state, candidate_score, warnings. "
-                "Niente OHLC completi."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "symbols": {"type": "array", "items": {"type": "string"}},
-                    "timeframe": {"type": "string"},
-                },
-                "required": ["symbols"],
-            },
-        ),
-        Tool(
-            name="get_symbol_indicators",
-            description=(
-                "Deep analysis su un singolo simbolo: SMA(20), EMA(50), RSI(14), ATR(14) "
-                "calcolati su 100 barre. Tool dedicato alla shortlist."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "symbol": {"type": "string"},
-                    "timeframe": {"type": "string"},
-                },
-                "required": ["symbol"],
-            },
-        ),
-        Tool(
-            name="propose_trade",
-            description=(
-                "Formalizza la proposta finale dell'agente. NON esegue ordini e NON decide "
-                "la size. Per eseguire usare submit_order_if_approved; per ottenere il "
-                "verdetto del risk engine usare evaluate_trade_proposal."
-            ),
-            inputSchema=_PROPOSE_TRADE_SCHEMA,
-        ),
-        Tool(
-            name="close_position",
-            description=(
-                "Chiude esplicitamente la posizione MT5 con il ticket dato, senza aprire "
-                "una posizione opposta. Internamente usa Mt5Client.close_position "
-                "(order_send con campo 'position' valorizzato). In modalità DRY_RUN "
-                "non viene inviato alcun ordine reale."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "position_id": {
-                        "type": "integer",
-                        "description": "Ticket della posizione MT5 da chiudere",
-                    },
-                },
-                "required": ["position_id"],
-            },
-        ),
-    ]
-
-
-@server.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    try:
-        if name == "get_account_state":
-            state = mt5.get_account_state()
-            return _text(dataclasses.asdict(state))
-
-        if name == "get_market_snapshot":
-            symbol = arguments["symbol"]
-            ohlc = mt5.get_ohlc(symbol, cfg.TIMEFRAME, 50)
-            sym_info = mt5.get_symbol_info(symbol)
-            tick: dict = {}
-            if sym_info is not None:
-                tick = {
-                    "bid": getattr(sym_info, "bid", None),
-                    "ask": getattr(sym_info, "ask", None),
-                    "point": getattr(sym_info, "point", None),
-                    "digits": getattr(sym_info, "digits", None),
-                }
-            indicators = compute_all(ohlc) if ohlc else {}
-            return _text({
-                "symbol": symbol,
-                "timeframe": cfg.TIMEFRAME,
-                "ohlc": ohlc,
-                "tick": tick,
-                "indicators": indicators,
-            })
-
-        if name == "evaluate_trade_proposal":
-            proposal = _build_proposal(arguments)
-            account = mt5.get_account_state()
-            decision = evaluate_trade(proposal, account, mt5, cfg)
-            return _text(dataclasses.asdict(decision))
-
-        if name == "submit_order_if_approved":
-            proposal = _build_proposal(arguments)
-            decision = run_once(proposal.symbol, proposal, cfg, mt5, log)
-            return _text({
-                "decision": dataclasses.asdict(decision) if decision is not None else None,
-                "execution_mode": cfg.EXECUTION_MODE,
-                "note": "send_order eseguito solo se approved AND EXECUTION_MODE != shadow",
-            })
-
-        if name == "get_risk_profile":
-            return _text({
-                "RISK_MODE": cfg.RISK_MODE,
-                "RISK_AMOUNT_MODE": cfg.RISK_AMOUNT_MODE,
-                "RISK_PER_TRADE_PERCENT": cfg.RISK_PER_TRADE_PERCENT,
-                "RISK_PER_TRADE_AMOUNT": cfg.RISK_PER_TRADE_AMOUNT,
-                "MAX_DAILY_DRAWDOWN_PERCENT": cfg.MAX_DAILY_DRAWDOWN_PERCENT,
-                "MAX_LOTS_PER_TRADE": cfg.MAX_LOTS_PER_TRADE,
-                "MIN_SL_PIPS": cfg.MIN_SL_PIPS,
-                "MAX_SL_PIPS": cfg.MAX_SL_PIPS,
-                "USE_SESSION_FILTER": cfg.USE_SESSION_FILTER,
-                "SESSION_START_HOUR": cfg.SESSION_START_HOUR,
-                "SESSION_END_HOUR": cfg.SESSION_END_HOUR,
-                "EXECUTION_MODE": cfg.EXECUTION_MODE,
-                "TIMEFRAME": cfg.TIMEFRAME,
-            })
-
-        if name == "get_trade_history":
-            n = int(arguments.get("n", 10))
-            db_path = Path(cfg.LOG_FILE).parent / "trades.db"
-            with sqlite3.connect(db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cur = conn.execute(
-                    "SELECT id, timestamp, symbol, direction, size_lots, entry_price, "
-                    "stop_loss, take_profit, decision_reason, approved, pnl_realized "
-                    "FROM trades_log ORDER BY id DESC LIMIT ?",
-                    (n,),
-                )
-                rows = [dict(r) for r in cur.fetchall()]
-            return _text(rows)
-
-        if name == "get_symbol_universe":
-            return _text(handle_get_symbol_universe(
-                filter_asset_class=arguments.get("filter_asset_class"),
-            ))
-
-        if name == "scan_symbol_candidates":
-            return _text(handle_scan_symbol_candidates(
-                symbols=arguments.get("symbols") or [],
-                timeframe=arguments.get("timeframe"),
-            ))
-
-        if name == "get_symbol_indicators":
-            return _text(handle_get_symbol_indicators(
-                symbol=arguments["symbol"],
-                timeframe=arguments.get("timeframe"),
-            ))
-
-        if name == "propose_trade":
-            return _text(handle_propose_trade(arguments))
-
-        if name == "close_position":
-            position_id = int(arguments["position_id"])
-            if cfg.DRY_RUN:
-                log.info("MCP close_position DRY_RUN ticket=%d (nessun ordine reale)", position_id)
-                return _text({
-                    "success": True,
-                    "order_id": None,
-                    "error_message": None,
-                    "execution_mode": cfg.EXECUTION_MODE,
-                    "dry_run": True,
-                    "note": "DRY_RUN: nessun ordine inviato a MT5",
-                })
-            result = mt5.close_position(position_id)
-            return _text({
-                **dataclasses.asdict(result),
-                "execution_mode": cfg.EXECUTION_MODE,
-                "dry_run": False,
-            })
-
-        return _text({"error": f"unknown tool: {name}"})
-
-    except Exception as exc:
-        log.exception("MCP tool error: name=%s", name)
-        return _text({"error": str(exc), "tool": name})
-
-
-async def _serve() -> None:
-    log.info("MCP server starting (mt5_ready=%s)", _mt5_ready)
-    async with stdio_server() as (read, write):
-        await server.run(read, write, server.create_initialization_options())
-
-
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point per `python -m mcp_server`."""
     _bootstrap_mt5()
+    _bootstrap_state()
     try:
         asyncio.run(_serve())
     finally:
@@ -448,3 +127,7 @@ if __name__ == "__main__":
             mt5.shutdown()
         except Exception:
             pass
+
+
+if __name__ == "__main__":
+    main()

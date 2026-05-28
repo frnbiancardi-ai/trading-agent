@@ -19,10 +19,10 @@ C:\trading-agent\
 └── .orchestration/phase-prompts/
 
 ## Stato progetto
-- Branch: feature/python-pure-strategy
-- Fasi validate: 1–13
-- Fase corrente: 14 (Python Pure Strategy Engine)
-- Prossima: 15 (RSS News Sentiment)
+- Branch: feature/update-pythono-pure-strategy
+- Milestone corrente: v2-ml-backtest (11 fasi)
+- Fasi: tutte in PLANNING (nessun codice prodotto ancora). Phase 1 backtest engine 2/8 plan completi (BACK-01, BACK-03 in plan; codice non implementato). Phase 5 plan corrente.
+- Fonte canonica stato: `.planning/STATE.md` + `.planning/REQUIREMENTS.md` checkbox
 
 ## Regole fondamentali
 - EXECUTION_MODE=shadow default sempre

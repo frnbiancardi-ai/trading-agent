@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -65,7 +67,12 @@ class Config:
 
     # Risk
     RISK_PER_TRADE_PERCENT: float = float(os.getenv("RISK_PER_TRADE_PERCENT", "0.5"))
-    MAX_DAILY_DRAWDOWN_PERCENT: float = float(os.getenv("MAX_DAILY_DRAWDOWN_PERCENT", "2.0"))
+    # Default 20.0: il kill-switch giornaliero deve permettere ~5-10 trade perdenti
+    # prima di fermare la giornata. Su account ~€100 con RISK_PER_TRADE_PERCENT=2%
+    # (=€2/trade), 20% = €20 = 10 perdite — soglia operativa dichiarata dall'utente.
+    # Valore condiviso live + backtest + training ML (un solo regime di drawdown
+    # per evitare distribution shift fra train e inference).
+    MAX_DAILY_DRAWDOWN_PERCENT: float = float(os.getenv("MAX_DAILY_DRAWDOWN_PERCENT", "20.0"))
     MIN_SL_PIPS: int = int(os.getenv("MIN_SL_PIPS", "8"))
     MAX_SL_PIPS: int = int(os.getenv("MAX_SL_PIPS", "80"))
     RISK_MODE: str = os.getenv("RISK_MODE", "CONSERVATIVE")
@@ -96,6 +103,30 @@ class Config:
 
     # Execution
     EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "shadow")
+
+    # Phase 6 MCP (D-C1, D-D1, D-A4)
+    MCP_DEFAULT_BARS: int = int(os.getenv("MCP_DEFAULT_BARS", "200"))
+    # D-A4 cap=1: massimo backtest concorrenti gestiti dal JobQueue (Wave 2).
+    MCP_MAX_CONCURRENT_RUNS: int = int(os.getenv("MCP_MAX_CONCURRENT_RUNS", "1"))
+    # D-B2 trail daemon (Wave 3): timeframe usato dal daemon per ATR del trail
+    # + flag che vieta tightening dello SL non-favorable (BUY: candidate<=last_sl).
+    TRAIL_TICK_TIMEFRAME: str = os.getenv("TRAIL_TICK_TIMEFRAME", "M15")
+    TRAIL_FAVORABLE_ONLY: bool = _get_bool("TRAIL_FAVORABLE_ONLY", True)
+
+    # Phase 8 MCP ML (D-08-A1/B1/D3)
+    # ML_MODEL_PATH: bundle joblib Phase 7 Plan 07-05 D-15 path convention.
+    # Symlink models/classifier_v1_latest.pkl -> classifier_v1_{date}.pkl per
+    # swap rolling senza restart MCP server (caricamento singleton a bootstrap).
+    ML_MODEL_PATH: Path = Path(os.getenv("ML_MODEL_PATH", "models/classifier_v1_latest.pkl"))
+    # MCP_TRAINING_DATA_PATH: parquet baseline (D-08-B1 hardcoded data source enum-only).
+    MCP_TRAINING_DATA_PATH: Path = Path(os.getenv(
+        "MCP_TRAINING_DATA_PATH", "data/training/baseline_decisions/part-0.parquet",
+    ))
+    # MCP_ML_THRESHOLD_MARGIN_PCT: margine entro cui un trade rejected dal ML
+    # gate e' considerato "marginale" nella Degraded Slices Analysis (D-08-D4).
+    MCP_ML_THRESHOLD_MARGIN_PCT: float = float(os.getenv(
+        "MCP_ML_THRESHOLD_MARGIN_PCT", "0.05",
+    ))
 
     # Scheduler / Daily orchestrator (fase 13)
     OPERATING_TIMEZONE: str = os.getenv("OPERATING_TIMEZONE", "Europe/Rome")
