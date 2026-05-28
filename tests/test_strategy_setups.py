@@ -314,38 +314,79 @@ def test_detect_b_reversal_ready_at_support():
     assert 0.10 <= d.confidence <= 0.95
 
 
-def test_detect_b_reversal_counter_trend_gate():
-    """Counter-trend SELL a resistance + slope+ uptrend + grade B → NONE/counter_trend_below_A_grade.
+def test_detect_b_reversal_counter_trend_now_allowed():
+    """Post-fix 2026-05-19: il counter-trend gate D-07 è RIMOSSO.
 
-    regime=compressed → fa cadere volatility_regime per Setup B (allowed=normal/expanded);
-    insieme a trend_alignment False (slope+ contro SELL) → 3 True / 5 → grade B.
-    Counter-trend gate D-07 deve downgradare a NONE.
+    SELL a resistance con slope+ (counter-trend per design) + grade B + R:R ampio
+    → READY. Prima del fix questo scenario dava NONE/counter_trend_below_A_grade.
 
-    Logica liberale (PLAN spec): se per qualche motivo il grade calcolato è A/A+,
-    il gate consente READY/NONE; se grade è B/C, MUST essere NONE/counter_trend_below_A_grade.
+    Fattori SELL: trend_alignment False (slope+ contro SELL), setup_pattern True
+    (shooting_star bearish), momentum True (rsi=80>25), volatility_regime False
+    (regime=compressed ∉ [normal,expanded]), spread_session True → 3 True → grade B.
+    Support lontano (1.09000) → TP strutturale ampio → R:R ben sopra il floor MODERATE.
     """
     bars = _make_bars([1.10498] * 200)
     pattern = _make_pattern_hit(
         "shooting_star", "bearish", bar_index=-1, extreme_price=1.10520
     )
-    # slope+ → uptrend; SELL contro slope → counter-trend
-    # regime=compressed → reversal_required falso (allowed=normal/expanded)
-    # rsi=80 → momentum True per SELL (rsi > 25)
     ind = _stub_indicators_b(
         close_ref=1.10498, slope=0.0001, regime="compressed", rsi=80.0
     )
-    ctx = _stub_ctx(profile="MODERATE", resistance=1.10500, support=1.09500, close_ref=1.10498)
+    ctx = _stub_ctx(profile="MODERATE", resistance=1.10500, support=1.09000, close_ref=1.10498)
     ctx = replace(ctx, patterns=[pattern])
     d = detect_b_reversal(bars, ind, ctx)
-    if d.grade in ("A+", "A"):
-        # Gate consente: READY o NONE per altri motivi (es. R:R)
-        assert d.setup_type in ("READY", "NONE")
-    else:
-        # Grade B/C → counter-trend gate DEVE bloccare
-        assert d.setup_type == "NONE", f"expected NONE for counter-trend B/C, got {d.setup_type}"
-        assert d.reason == "counter_trend_below_A_grade", (
-            f"expected reason=counter_trend_below_A_grade, got {d.reason}"
-        )
+    # Il gate counter-trend non esiste più: MAI counter_trend_below_A_grade.
+    assert d.reason != "counter_trend_below_A_grade"
+    assert d.setup_type == "READY", f"expected READY, got {d.setup_type} reason={d.reason}"
+    assert d.direction == "SELL"
+    assert d.grade == "B"
+    # is_counter_trend deve restare tracciato per analisi ex-post.
+    assert d.setup_specific.get("is_counter_trend") is True
+
+
+def test_detect_b_reversal_reject_still_blocks():
+    """Reject (≤1 fattore True) deve ancora bloccare, indipendentemente dal trend.
+
+    SELL counter-trend con solo setup_pattern True (momentum False rsi=20<25,
+    volatility_regime False regime=compressed, spread_session False spread/atr=0.30>0.20,
+    trend_alignment False) → 1 True → reject → NONE/confluence_below_2_factors.
+    """
+    bars = _make_bars([1.10498] * 200)
+    pattern = _make_pattern_hit(
+        "shooting_star", "bearish", bar_index=-1, extreme_price=1.10520
+    )
+    ind = _stub_indicators_b(
+        close_ref=1.10498, slope=0.0001, regime="compressed", rsi=20.0
+    )
+    ctx = _stub_ctx(
+        profile="MODERATE", resistance=1.10500, support=1.09000,
+        close_ref=1.10498, spread_pips=3.0,  # spread/atr = 0.0003/0.0010 = 0.30 > 0.20
+    )
+    ctx = replace(ctx, patterns=[pattern])
+    d = detect_b_reversal(bars, ind, ctx)
+    assert d.setup_type == "NONE", f"expected NONE, got {d.setup_type} reason={d.reason}"
+    assert d.reason == "confluence_below_2_factors"
+
+
+def test_detect_b_reversal_rr_floor_still_blocks():
+    """R:R sotto il floor di profilo deve ancora bloccare.
+
+    SELL grade A (4 fattori True) ma TP strutturale (support 1.10450, vicinissimo
+    a entry) → reward ~0.00048 vs risk ~0.00052 → R:R ~0.9 < MODERATE 1.8 →
+    NONE/rr_below_profile_min_X.XX.
+    """
+    bars = _make_bars([1.10498] * 200)
+    pattern = _make_pattern_hit(
+        "shooting_star", "bearish", bar_index=-1, extreme_price=1.10520
+    )
+    ind = _stub_indicators_b(
+        close_ref=1.10498, slope=0.0001, regime="normal", rsi=80.0
+    )
+    ctx = _stub_ctx(profile="MODERATE", resistance=1.10500, support=1.10450, close_ref=1.10498)
+    ctx = replace(ctx, patterns=[pattern])
+    d = detect_b_reversal(bars, ind, ctx)
+    assert d.setup_type == "NONE", f"expected NONE, got {d.setup_type} reason={d.reason}"
+    assert d.reason.startswith("rr_below_profile_min")
 
 
 # ==========================================================================

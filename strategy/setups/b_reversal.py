@@ -2,13 +2,15 @@
 
 Identificazione: il prezzo si trova A LIVELLO (resistance per SELL, support per BUY) entro
 SR_TOLERANCE_PIPS, ed esiste un PatternHit recente (-3..-1) con direction concorde
-(bearish per SELL, bullish per BUY). 5-factor confluence + R:R floor + counter-trend gate
-(D-07): se direction oppone ema50_slope, il grade DEVE essere A o A+, altrimenti NONE.
+(bearish per SELL, bullish per BUY). 5-factor confluence + R:R floor.
+NOTA (2026-05-19): il counter-trend gate D-07 è stato RIMOSSO — Setup B è un reversal,
+quindi counter-trend per design; il gate bloccava il 100% dei candidati. Qualità ora
+protetta solo da reject (≤1 fattore) + R:R floor downstream.
 
 Trigger READY/FORMING/NONE:
-  - READY: prezzo at-level + PatternHit recente + grade ≥ B (o A/A+ se counter-trend)
+  - READY: prezzo at-level + PatternHit recente + grade ≥ B
   - FORMING: prezzo at-level ma nessun PatternHit recente
-  - NONE: lontano da S/R, oppure pattern presente ma counter-trend B/C, ecc.
+  - NONE: lontano da S/R, oppure reject (≤1 fattore), oppure R:R sotto floor.
 
 Campi ExtendedIndicators consumati (lettura difensiva via getattr):
   - atr_14[-1] (mandatory): bandwidth volatilità per buffer/cap SL
@@ -121,10 +123,9 @@ def detect_b_reversal(
       3. Cerca PatternHit con direction matching negli ultimi 3 bars (attribute access).
          Se assente → FORMING/at_sr_zone_waiting_pattern.
       4. score_factors → grade.
-      5. Counter-trend gate D-07: se direction oppone sign(ema50_slope) e grade NOT in {A+, A},
-         → NONE/counter_trend_below_A_grade.
-      6. grade=reject → NONE/confluence_below_2_factors.
-      7. _compute_levels_b → R:R floor → ProposalDraft READY.
+      5. grade=reject → NONE/confluence_below_2_factors.
+      6. _compute_levels_b → R:R floor → ProposalDraft READY.
+      (Counter-trend gate D-07 RIMOSSO 2026-05-19 — vedi docstring modulo.)
     """
     # --- Guard 1: storia minima ---
     if not bars or len(bars) < MIN_BARS:
@@ -194,29 +195,20 @@ def detect_b_reversal(
     factors = score_factors("B_reversal", indicators, ctx, direction)
     grade = grade_for(factors)
 
-    # --- Counter-trend gate D-07: PRIMA del check reject (più informativo per debug) ---
+    # --- Trend context (D-07 gate RIMOSSO — Setup B è reversal per design) ---
+    # NOTA: il counter-trend gate è stato rimosso il 2026-05-19. Diagnosi:
+    # bloccava il 100% dei candidati reversal perché grade strutturalmente ≤ C
+    # (trend_alignment sempre False per un reversal). Il counter-trend è feature
+    # del setup, non un rischio da gateare qui. Protezione qualità delegata a:
+    # reject (≤1 fattore True) + R:R floor downstream.
     slope = _last(getattr(indicators, "ema50_slope", None)) or 0.0
     trend_dir: str | None = None
     if slope > 0:
         trend_dir = "BUY"
     elif slope < 0:
         trend_dir = "SELL"
-
     is_counter_trend = trend_dir is not None and direction != trend_dir
-    if is_counter_trend and grade not in ("A+", "A"):
-        return ProposalDraft(
-            setup_type="NONE",
-            setup_name="B_reversal",
-            direction=direction,
-            factors=factors,
-            grade=grade,
-            reason="counter_trend_below_A_grade",
-            setup_specific={
-                "level": level,
-                "pattern_name": pattern_name,
-                "slope": slope,
-            },
-        )
+    # is_counter_trend resta tracciato in setup_specific per analisi ex-post.
 
     # --- Reject (≤1 fattore True) ---
     if grade == "reject":
