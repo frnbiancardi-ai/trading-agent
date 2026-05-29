@@ -32,6 +32,8 @@ from strategy.confluence import compute_confidence, grade_for, score_factors
 from strategy.proposal import (
     ProposalDraft,
     compute_levels_with_atr_cap,
+    confidence_meets_profile_floor,
+    grade_meets_profile_floor,
     rr_meets_profile_floor,
 )
 
@@ -258,10 +260,41 @@ def detect_b_reversal(
             },
         )
 
+    # --- Gate min_grade per profile (CRIT-3) ---
+    if not grade_meets_profile_floor(grade, ctx.profile):
+        return ProposalDraft(
+            setup_type="NONE",
+            setup_name="B_reversal",
+            direction=direction,
+            entry_price=entry,
+            stop_loss_price=sl,
+            take_profit_price=tp,
+            factors=factors,
+            grade=grade,
+            reason=f"grade_below_profile_min_{grade}",
+            setup_specific={"level": level, "pattern_name": pattern_name, "rr": rr_value},
+        )
+
     # --- Confidence calibrata ---
     confidence = compute_confidence(
         grade, ctx, "B_reversal", factors=factors, indicators=indicators
     )
+
+    # --- Gate min_confidence per profile (CRIT-3) ---
+    if not confidence_meets_profile_floor(confidence, ctx.profile):
+        return ProposalDraft(
+            setup_type="NONE",
+            setup_name="B_reversal",
+            direction=direction,
+            entry_price=entry,
+            stop_loss_price=sl,
+            take_profit_price=tp,
+            factors=factors,
+            grade=grade,
+            confidence=confidence,
+            reason=f"confidence_below_profile_min_{confidence:.2f}",
+            setup_specific={"level": level, "pattern_name": pattern_name, "rr": rr_value},
+        )
 
     return ProposalDraft(
         setup_type="READY",

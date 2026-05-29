@@ -231,6 +231,10 @@ def score_factors(
 
 _GRADE_FROM_COUNT = {5: "A+", 4: "A", 3: "B", 2: "C"}
 
+# Ordinamento totale dei grade (CRIT-3, 2026-05-29): per confrontare un grade con
+# profile_filters[profile].min_grade. reject < C < B < A < A+.
+_GRADE_RANK = {"reject": 0, "C": 1, "B": 2, "A": 3, "A+": 4}
+
 
 def grade_for(factors: dict[str, bool]) -> Grade:
     """Mappa numero fattori True → grade (D-08 grade_map).
@@ -238,6 +242,22 @@ def grade_for(factors: dict[str, bool]) -> Grade:
     5 → A+, 4 → A, 3 → B, 2 → C, ≤1 → reject.
     """
     n = sum(1 for v in factors.values() if v)
+    return _GRADE_FROM_COUNT.get(n, "reject")
+
+
+def grade_meets_min(grade: str, min_grade: str) -> bool:
+    """True se grade >= min_grade nell'ordine reject<C<B<A<A+ (CRIT-3)."""
+    return _GRADE_RANK.get(grade, 0) >= _GRADE_RANK.get(min_grade, 0)
+
+
+def grade_excluding_spread(factors: dict[str, bool]) -> Grade:
+    """Grade ricalcolato ignorando spread_session (SOLO diagnostica backtest, CRIT-3).
+
+    In backtest spread_session è True ~100% (baseline 1.0 pip < ATR) → 1 fattore
+    "regalato". Questa utility conta i fattori veri escludendo spread_session, per
+    misurare quanto il grade è "gonfiato". NON è un gate di produzione.
+    """
+    n = sum(1 for k, v in factors.items() if v and k != "spread_session")
     return _GRADE_FROM_COUNT.get(n, "reject")
 
 

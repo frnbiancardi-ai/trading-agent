@@ -180,6 +180,44 @@ def rr_meets_profile_floor(
     return (rr >= min_rr - 1e-9), round(rr, 4)
 
 
+def grade_meets_profile_floor(grade: str, profile: str, cfg=None) -> bool:
+    """True se grade >= profile_filters[profile].min_grade (CRIT-3, 2026-05-29).
+
+    Backward-compat: se min_grade non è definito per il profilo → True (nessun
+    filtro). Solleva ValueError per profilo non in profile_filters.
+    """
+    from strategy.confluence import grade_meets_min, load_strategy_config
+
+    cfg = cfg or load_strategy_config()
+    if profile not in cfg.profile_filters:
+        raise ValueError(
+            f"profile {profile!r} non in profile_filters: {list(cfg.profile_filters)}"
+        )
+    min_grade = cfg.profile_filters[profile].get("min_grade")
+    if min_grade is None:
+        return True
+    return grade_meets_min(grade, min_grade)
+
+
+def confidence_meets_profile_floor(confidence: float, profile: str, cfg=None) -> bool:
+    """True se confidence >= profile_filters[profile].min_confidence (CRIT-3).
+
+    Backward-compat: se min_confidence non è definito → True. Solleva ValueError
+    per profilo non in profile_filters.
+    """
+    from strategy.confluence import load_strategy_config
+
+    cfg = cfg or load_strategy_config()
+    if profile not in cfg.profile_filters:
+        raise ValueError(
+            f"profile {profile!r} non in profile_filters: {list(cfg.profile_filters)}"
+        )
+    min_conf = cfg.profile_filters[profile].get("min_confidence")
+    if min_conf is None:
+        return True
+    return confidence >= float(min_conf)
+
+
 def compute_levels_with_atr_cap(
     direction: str,
     entry: float,
