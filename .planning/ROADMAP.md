@@ -4,6 +4,22 @@
 **Granularity:** Standard (11 phases)
 **Strategy:** Brownfield — surgical extension of existing trading-agent codebase
 
+> ⚠️ **2026-05-29: Edge validation NO-GO. Phases 7-11 SUSPENDED** — they assume a
+> tradeable edge that 5-regime × 2-pair validation disproved (59/60 configs negative
+> even with the full design active: confluence repair + ENABLE_SETUP_* + min_grade).
+> A new exploratory **Edge Discovery** track (non-GSD) precedes any resumption — it
+> asks whether a raw statistical edge exists in the data at all before building
+> anything. The existing phases are valid work, only suspended. See STATE.md "Active
+> Work" (2026-05-29) + the report chain in `.planning/research/`
+> (audit-strategy-system, confluence-repair, disable-setup-b, validate-5y-mixed-regime,
+> activate-min-grade).
+
+## Pre-Phase-7: Edge Discovery (exploratory, non-GSD)
+
+| track | Goal | Status |
+|---|---|---|
+| Edge Discovery | Find whether an *atomic* statistical edge exists (forward-return of isolated signals: mean-reversion / session / volatility-regime), before assembling any strategy. Iterative, adaptive, non-GSD — each test decides the next. | 🔬 OPEN 2026-05-29 (batteria 1 in `scripts/edge_discovery/`; results in `.planning/research/`). Gates resumption of Phases 7-11. |
+
 ## Phase Summary
 
 | # | Phase | Goal | Requirements | Success Criteria |
@@ -14,11 +30,11 @@
 | 4 | Strategy Refactor | Setup A/B/C/D detectors as pure functions, 5-factor confluence, shared by live + backtest (8/8 plans ✅) | STRAT-01..09 | 5 |
 | 5 | Baseline Backtest ✓ COMPLETE 2026-05-12 (9/9 plans) | Run strategy-only backtest on 23.5y × 3 pairs × 3 TFs, produce metrics + ML training data (Plan 05-09 closed D-02 schema gap; parquet schema-v2 1076 × 59 PASS) | BACK-07, INT-01 | 4 |
 | 6 | MCP Tools (part 1) ✓ COMPLETE 2026-05-11 (4/4 plans Wave 0-3; Wave 4 deferred) | Backtest, position-management, multi-TF, session, correlation, pattern-catalog tools | MCP-01..03, MCP-09, MCP-11..12, MCP-14..17, MCP-R1..R3 | 4 |
-| 7 | ML Classifier | LightGBM trade-quality classifier with walk-forward training and calibration | ML-01..06, ML-10 | 5 |
-| 8 | MCP Tools (part 2) | ML training/inference/calibration tools, ML-aware risk evaluation | MCP-04..06, MCP-R4, INT-02 | 4 |
-| 9 | Failure Analysis + Drift | Failure clustering, drift monitor, retrain trigger, suggest_position_action | ML-07..09, MCP-07..08, MCP-18, INT-03 | 4 |
-| 10 | Intermarket + News | DXY/yields/commodities context + economic calendar blackout | MCP-10, MCP-13 | 3 |
-| 11 | Paper Deploy Gate | 30-day demo MT5 run with metric tolerance gate before live activation | DEPLOY-01..03 | 4 |
+| 7 | ML Classifier ⚠️ SUSPENDED 2026-05-29 | LightGBM trade-quality classifier with walk-forward training and calibration | ML-01..06, ML-10 | 5 |
+| 8 | MCP Tools (part 2) ⚠️ SUSPENDED 2026-05-29 | ML training/inference/calibration tools, ML-aware risk evaluation | MCP-04..06, MCP-R4, INT-02 | 4 |
+| 9 | Failure Analysis + Drift ⚠️ SUSPENDED 2026-05-29 | Failure clustering, drift monitor, retrain trigger, suggest_position_action | ML-07..09, MCP-07..08, MCP-18, INT-03 | 4 |
+| 10 | Intermarket + News ⚠️ SUSPENDED 2026-05-29 | DXY/yields/commodities context + economic calendar blackout | MCP-10, MCP-13 | 3 |
+| 11 | Paper Deploy Gate ⚠️ SUSPENDED 2026-05-29 | 30-day demo MT5 run with metric tolerance gate before live activation | DEPLOY-01..03 | 4 |
 
 **Coverage:** 73/73 v1 requirements mapped (100%).
 

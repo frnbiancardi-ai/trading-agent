@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2-ml-backtest
 milestone_name: v2-ml-backtest
 status: in_progress
-last_updated: "2026-05-18T00:00:00.000Z"
+last_updated: "2026-05-29T00:00:00.000Z"
 progress:
   total_phases: 11
   completed_phases: 6
   total_plans: 63
   completed_plans: 44
   percent: 70
-  blocking_finding: "Plan 05-10 NEGATIVE FINDING — strategy structurally negative-expectancy, Phase 7 BLOCKED awaiting new Strategy Rebuild phase"
+  blocking_finding: "Edge validation 2026-05-29 NO-GO — strategy has no edge in 59/60 configs across 5 regimes × 2 pairs even with full design active (confluence repair + min_grade). Phases 7-10 SUSPENDED. New Edge Discovery track opened (non-GSD, exploratory)."
 ---
 
 # Project State
@@ -21,8 +21,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 
 **Core value:** Every trade pre-filtered by a calibrated ML classifier whose probabilities match realized hit rate, trained on the agent's own decisions, improving with every cycle.
 
-**Current milestone:** v2-ml-backtest
-**Current focus:** Plan 05-10 NEGATIVE FINDING 2026-05-18 — strategia structurally negative-expectancy in 117 subset testati. Plan 05-09 baseline (1076 trades) era artefatto KS bug `f21abda`. **Phase 7 BLOCCATA** (plans-written validi architetturalmente, ma manca segnale separabile nel dataset). Prossimo: aprire nuova phase "Strategy Rebuild" via `forex-strategy-builder` skill (libri Murphy/Probo/StrategieOperative in `C:\trading-agent\libri\`). 4 nuove requirement STRAT-REBUILD-01..04 aperte in REQUIREMENTS.md. Gate sblocco Phase 7: expectancy >+2 USD/trade post-costi su subset n≥1000 + median PnL ≥0.
+**Current milestone:** v2-ml-backtest (Phases 7-10 SOSPESE 2026-05-29)
+**Current focus:** **EDGE DISCOVERY (esplorativo, non-GSD)** — vedi Active Work 2026-05-29. La fix-chain (audit → confluence repair → ENABLE_SETUP_* + disable B → min_grade) ha completato e validato il design originale: verdetto **NO-GO** (59/60 config negative su 5 regimi × 2 pair). L'edge della base-strategy non esiste; Phases 7-10 (ML/drift/intermarket) sospese perché assumono un edge smentito. Prossimo: cercare un edge atomico grezzo nei dati (forward-return di segnali isolati, partendo dalla famiglia mean-reversion regime-condizionata) prima di costruire qualunque cosa. Report in `.planning/research/`.
 
 **Active workflow:** vedi `.planning/RESUME-PLAN.md` (rev 4) — STEP 1-5 ✓ complete, STEP 6 `/gsd-plan-phase 8` ✓ COMPLETE 2026-05-12 (7 PLAN + PATTERNS, plan-check 2 iter PASS), STEP 7-12 (Phase 9-11 discuss+plan) ancora pending in parallelo. STEP 13 Phase 7 plan-write ✓.
 
@@ -38,10 +38,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 | 4 | Strategy Refactor | ✓ complete | 8/8 | 100% |
 | 5 | Baseline Backtest | ✓ complete (with caveat) | 10/10 | 100% (plan 05-09 plan-write + plan-execute ✓ 2026-05-12 TAINTED-BY-KS-BUG; plan 05-10 NEGATIVE FINDING ✓ 2026-05-18 — strategy structurally negative-expectancy, dataset 209k non utilizzabile per ML) |
 | 6 | MCP Tools (part 1) | ✓ complete | 4/4 | 100% (06-01..04 SUMMARY ✓ 2026-05-11; Wave 4 06-05 deferred post-Phase 7) |
-| 7 | ML Classifier | 🔴 BLOCKED | 0/6 | 0% (plans-written validi architetturalmente; BLOCKED 2026-05-18 awaiting STRAT-REBUILD-03 gate-pass — current dataset ha 75% chiusure in SL e edge negativo in tutti i subset testati, varianza intra-classe insufficiente per training) |
-| 8 | MCP Tools (part 2) | 🟡 in-progress | 1/7 | 14% (Wave 0 Plan 08-01 ✓ 2026-05-12 — MCP ML scaffolding 3 Tool schemas + stub handlers + ErrorCodes + env vars + xfail strict gate; Wave 1-5 hard-depend phase-7-complete) |
-| 9 | Failure Analysis + Drift | 🟢 plans-written | 0/7 | 0% (CONTEXT + RESEARCH + PATTERNS + VALIDATION + 7 PLAN.md ✓ 2026-05-12 via /gsd-plan-phase 9 commit `b1fad98`; ML-07/08/09 + MCP-07/08/18 + INT-03 coperti, 16 D-09-* decisioni) |
-| 10 | Intermarket + News | 🟡 context-gathered | 0/0 | 0% (CONTEXT.md ✓ 2026-05-13 via /gsd-discuss-phase 10 — 4 aree, 15 decisioni D-10-A0..A4 + B1..B6 + C0 + D1..D3; SC#3 DEVIATED post D-10-C0 drop blackout backtest) |
+| 7 | ML Classifier | 🔴 BLOCKED / SUSPENDED | 0/6 | 0% (SUSPENDED 2026-05-29 — no validated edge exists; ML would learn noise. Plans-written restano validi architetturalmente. Resumes only IF edge discovery finds a tradeable signal. Era BLOCKED 2026-05-18 awaiting Strategy Rebuild gate; ora la base-strategy è stata riparata e validata NO-GO su 5 regimi × 2 pair → l'assenza di edge è confermata, non un dataset-bug.) |
+| 8 | MCP Tools (part 2) | 🔴 SUSPENDED | 1/7 | 14% (SUSPENDED pending edge discovery — built on assumption of existing edge, now disproven. Wave 0 Plan 08-01 ✓ 2026-05-12 scaffolding resta valido; Wave 1-5 hard-depend Phase 7.) |
+| 9 | Failure Analysis + Drift | 🔴 SUSPENDED | 0/7 | 0% (SUSPENDED pending edge discovery — drift/retrain assume un edge da monitorare, ora smentito. 7 PLAN.md ✓ 2026-05-12 commit `b1fad98` restano validi se l'edge emerge.) |
+| 10 | Intermarket + News | 🔴 SUSPENDED | 0/0 | 0% (SUSPENDED pending edge discovery — built on assumption of existing edge, now disproven. CONTEXT.md ✓ 2026-05-13, 15 decisioni, resta valido come design.) |
 | 11 | Paper Deploy Gate | ○ pending | 0/0 | 0% |
 
 **Overall progress:** 6/11 phases complete · 1/7 plans in Phase 8 (Wave 0) · 44/63 plans overall (70%). **PATH BLOCKED 2026-05-18:** Phase 7 ML training (6 plans ready) → BLOCKED awaiting nuova phase "Strategy Rebuild" → ridurre re-test su parquet 05-10 benchmark → gate-pass STRAT-REBUILD-03 → sblocco Phase 7 → Phase 8 Wave 1-5 (6 plans ready) → Phase 9 (7 plans ready) → Phase 10-11. Milestone v2-ml-backtest deliverable rivedibile: il "calibrated ML classifier" finale richiede prima che la strategia base abbia segnale separabile, oggi non lo ha.
@@ -49,6 +49,20 @@ See: `.planning/PROJECT.md` (updated 2026-05-07)
 ---
 
 ## Active Work
+
+**2026-05-29 — EDGE VALIDATION NO-GO. Fix-chain completata, edge inesistente, Phases 7-10 SOSPESE, aperto track Edge Discovery (non-GSD).** Dopo il NEGATIVE FINDING 05-10, una catena di audit + fix chirurgici ha riparato e completato il design originale della strategia, poi lo ha validato onestamente — con verdetto NO-GO. Sequenza (tutti i report in `.planning/research/`):
+
+1. **Audit completo** (`audit-strategy-system-2026-05-28.md`): mappato il wiring reale. Trovati 3 bug CRITICAL: (CRIT-1) `volatility_regime` hard-coded a None in `build_ctx_live` → fattore 4 sempre False → A+ irraggiungibile ovunque; (CRIT-2) `spread_session` mai calcolabile in backtest (manca `SPREAD_BASELINE_PIPS`) → fattore 5 sempre False → grade ceiling B; (CRIT-3) `profile_filters.min_grade`/`min_confidence` DEAD (mai applicati, solo `min_rr` wired). Più: `build_ctx_backtest` morto, `indicators_full` mai consumato, confidence non gate nulla.
+2. **Confluence repair** (`confluence-repair-report-2026-05-28.md`, commit `0839078` su `fix/confluence-repair-regime-spread`): wired regime + spread. Grade ceiling B→A+; ma expectancy invariata (grade allora non gate-ava nulla).
+3. **ENABLE_SETUP_* + disable B** (`disable-setup-b-report-2026-05-29.md`, commit `207fd59`): meccanismo enable/disable per-setup (puro, via `ctx.enabled_setups`), B_reversal off di default (expectancy −52..−55/trade su Q1 2020).
+4. **Validazione 5y regime-misto** (`validate-5y-mixed-regime-report-2026-05-29.md`): B on/off su 2008/2014/2017/2020/2023 × EURUSD+GBPUSD. Verdetto CONDITIONAL: B NON è zavorra uniforme — è **regime-dipendente** (drag in trend/range, profittevole in alta-vol/reversion 2020/2023). Reconciliation: il "B zavorra" di Q1-2020 era un sotto-campione (sola gamba di crash).
+5. **min_grade activation** (`activate-min-grade-report-2026-05-29.md`, commit `b974fc4` su `feat/activate-min-grade`): attivato l'ultimo pezzo dead del design. Validazione 5y PRE/POST → **NO-GO**: 59/60 configurazioni negative anche col design completo. min_grade inerte per AGGRESSIVE (=floor reject), quasi-inerte per MODERATE, attivo solo per CONSERVATIVE dove riduce la perdita ma resta deeply negative E poggia su grade gonfiati dallo spread (solo ~30% reggono senza l'artefatto).
+
+**Verdetto**: l'edge della base-strategy (4 setup ATR-based) NON esiste su questi pair/TF, nemmeno col design completo finalmente attivo. La roadmap Phase 7-10 (ML/drift/intermarket) assume un edge da raffinare — assunto smentito. **Phases 7-10 SOSPESE.** Aperto nuovo track **Edge Discovery** (esplorativo, non-GSD): cerca se esiste un *edge atomico* grezzo nei dati (forward-return di segnali isolati) prima di costruire qualunque cosa. Indizio di partenza: la famiglia mean-reversion regime-condizionata (l'unico segnale di edge reale trovato, da Setup B in 2020/2023).
+
+**Il lavoro di fix NON è perso**: il codebase è ora pulito e corretto (D-07 rimosso, confluence riparata regime+spread, meccanismo ENABLE_SETUP_*, min_grade/min_confidence wired, gate puri STRAT-08) e l'infrastruttura (BacktestEngine deterministico, harness, 4 detector) è riutilizzabile immediatamente se l'edge discovery trova un segnale tradeable. Branch in catena: `fix/confluence-repair-regime-spread` → `feat/enable-setup-flags-disable-b` → `feat/activate-min-grade` → `research/edge-discovery`.
+
+---
 
 **Plan 05-10 NEGATIVE FINDING 2026-05-18 — Strategy core senza edge, Phase 7 BLOCKED, nuova phase Strategy Rebuild da aprire.** Diagnosi via `scripts/diag_decay_05_10.py` + `scripts/diag_decay_subset.py` sul parquet 209k del PC secondario. Due verità a cascata: (1) Plan 05-09 baseline (1076 trades) era artefatto del bug `f21abda` (KS giornaliero permanente in BacktestBroker, `starting_balance_of_day` hard-coded a `_initial_balance` invece di reset bar-rollover UTC); (2) Plan 05-10 (209k trades, fix applicato) ha rivelato che la strategia è strutturalmente negative-expectancy — win rate 24-27%, 73-83% chiusure in SL, expectancy aritmeticamente negativa. Subset edge-hunt su 117 combinazioni: zero gruppi 1-way/2-way positive; 2/27 nel 3-way (n≥100); 6/81 nel 4-way (n≥50) con max expectancy +0.524 USD/trade ma median PnL sempre negativo, edge sotto i costi reali. Direction bias nessuno (BUY -1.38, SELL -1.16). 27/27 run terminano con final_pnl ≈ -9840 USD (balance 10k → 160), morti per balance-exhaustion; ora di morte varia per turnover (M15 2004-2007, M30 2009-2013, H1 2015-2021). 4 nuove requirement STRAT-REBUILD-01..04 aperte in REQUIREMENTS.md. SUMMARY: `.planning/phases/05-baseline-backtest/05-10-SUMMARY.md`. Artefatti sul PC secondario NON pushati: parquet 81MB + 27 PNG rigenerate + report auto-generato `.planning/research/baseline-2026-05-13.md`. Phase 7 plans-written restano validi architetturalmente; il gate per sbloccare è STRAT-REBUILD-03 (almeno un detector con expectancy > +2 USD/trade post-costi reali AND median PnL ≥ 0 su subset n ≥ 1000). Next: `/gsd-phase add` per nuova phase "Strategy Rebuild" → `/gsd-discuss-phase` con skill `forex-strategy-builder` per estrarre 2-3 setup da Probo/Murphy/StrategieOperative (libri PDF in `C:\trading-agent\libri\`) → plan-write con criterio acceptance hard → execute → re-test su parquet 05-10 come benchmark → gate-pass → sblocco Phase 7 originale.
 
