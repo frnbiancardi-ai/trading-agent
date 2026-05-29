@@ -18,6 +18,11 @@ class StrategyContext:
     news_blackout_fn: Callable | None = None      # Phase 10 hook
     recent_trades: list = field(default_factory=list)
     spread_baseline_pips: float | None = None
+    # Set dei setup abilitati (nome canonico, es. "A_breakout"). None = tutti
+    # abilitati (backward-compat: chiamate/test che costruiscono il context senza
+    # questo campo mantengono il comportamento attuale). Popolato da build_ctx_live
+    # dai flag cfg.ENABLE_SETUP_* (2026-05-29).
+    enabled_setups: frozenset[str] | None = None
     # Campi privati per adapter (esclusi da compare/hash/repr)
     _bars: list = field(default_factory=list, compare=False, hash=False, repr=False)
     _indicators: object = field(default=None, compare=False, hash=False, repr=False)

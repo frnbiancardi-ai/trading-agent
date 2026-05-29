@@ -10,3 +10,12 @@ ALL_DETECTORS = [
     detect_c_compression,
     detect_d_pullback,
 ]
+
+# Mappa funzione detector → nome canonico setup (per il filtro enable/disable
+# in evaluate_proposal_for_bar, 2026-05-29). Esplicito anziché dedurre da __name__.
+DETECTOR_NAMES = {
+    detect_a_breakout: "A_breakout",
+    detect_b_reversal: "B_reversal",
+    detect_c_compression: "C_compression",
+    detect_d_pullback: "D_pullback",
+}

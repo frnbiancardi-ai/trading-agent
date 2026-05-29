@@ -233,6 +233,20 @@ def build_ctx_live(
         float(_spread_raw) if isinstance(_spread_raw, (int, float)) else None
     )
 
+    # Setup abilitati (2026-05-29): set costruito dai flag cfg.ENABLE_SETUP_*.
+    # L'orchestrator (evaluate_proposal_for_bar) filtra ALL_DETECTORS su questo set
+    # → la purezza STRAT-08 resta (i flag NON sono letti dentro orchestrator/detector).
+    enabled_setups = frozenset(
+        name
+        for name, on in (
+            ("A_breakout", getattr(cfg, "ENABLE_SETUP_A", True)),
+            ("B_reversal", getattr(cfg, "ENABLE_SETUP_B", True)),
+            ("C_compression", getattr(cfg, "ENABLE_SETUP_C", True)),
+            ("D_pullback", getattr(cfg, "ENABLE_SETUP_D", True)),
+        )
+        if on
+    )
+
     return StrategyContext(
         symbol=symbol,
         timeframe=cfg.INTRADAY_TIMEFRAME,
@@ -246,6 +260,7 @@ def build_ctx_live(
         news_blackout_fn=news_blackout_fn,
         recent_trades=recent_trades,
         spread_baseline_pips=spread_baseline_pips,
+        enabled_setups=enabled_setups,
         _bars=bars,
         _indicators=indicators,
     )

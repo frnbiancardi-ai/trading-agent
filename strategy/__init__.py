@@ -33,7 +33,7 @@ from strategy.confluence import (
     load_strategy_config,
     score_factors,
 )
-from strategy.setups import ALL_DETECTORS
+from strategy.setups import ALL_DETECTORS, DETECTOR_NAMES
 from strategy.risk_utils import (
     _pip_size,
     _pip_value_amount,
@@ -72,7 +72,21 @@ def evaluate_proposal_for_bar(
       4. Se tutti NONE: ritorna il primo (Setup A) con i drafts perdenti in
          setup_specific.losers per ML feature extraction (Phase 7).
     """
-    drafts = [detect(bars, indicators, ctx) for detect in ALL_DETECTORS]
+    # Filtro enable/disable (2026-05-29): ctx.enabled_setups è un frozenset di nomi
+    # canonici popolato da build_ctx_live dai flag cfg.ENABLE_SETUP_*. None =
+    # backward-compat (tutti i detector). I flag NON sono letti qui (purezza STRAT-08):
+    # arrivano solo via ctx.
+    enabled = getattr(ctx, "enabled_setups", None)
+    if enabled is None:
+        active = ALL_DETECTORS
+    else:
+        active = [d for d in ALL_DETECTORS if DETECTOR_NAMES.get(d) in enabled]
+
+    # Guard empty-set: se nessun setup è abilitato, evita il crash su drafts[0] a valle.
+    if not active:
+        return ProposalDraft(setup_type="NONE", reason="no_enabled_setups")
+
+    drafts = [detect(bars, indicators, ctx) for detect in active]
 
     ready = [d for d in drafts if d.setup_type == "READY"]
     if ready:

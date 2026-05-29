@@ -194,6 +194,14 @@ class Config:
     # multi-pair (costs.yaml: EURUSD 0.5 / GBPUSD 0.7 / USDJPY 0.6).
     SPREAD_BASELINE_PIPS: float = float(os.getenv("SPREAD_BASELINE_PIPS", "1.0"))
 
+    # Enable/disable per-setup (2026-05-29). B_reversal disabilitato di default:
+    # expectancy costantemente negativa (-52..-55 USD/trade su EURUSD H1 2020, 3 profili)
+    # con la confluence riparata (regime+spread wired). Riattivabile via env.
+    ENABLE_SETUP_A: bool = _get_bool("ENABLE_SETUP_A", True)
+    ENABLE_SETUP_B: bool = _get_bool("ENABLE_SETUP_B", False)
+    ENABLE_SETUP_C: bool = _get_bool("ENABLE_SETUP_C", True)
+    ENABLE_SETUP_D: bool = _get_bool("ENABLE_SETUP_D", True)
+
     # Pattern recognition
     ENABLE_CANDLESTICK_PATTERNS: bool = _get_bool("ENABLE_CANDLESTICK_PATTERNS", True)
     PATTERN_CONFIRMATION_BARS: int = max(1, int(os.getenv("PATTERN_CONFIRMATION_BARS", "2")))
