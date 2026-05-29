@@ -34,6 +34,9 @@ class Features:
     bb_lower: np.ndarray
     consec: np.ndarray      # +k se k barre consecutive up, -k se down (close vs close prev)
     hour: np.ndarray        # ora UTC del bar (0..23)
+    weekday: np.ndarray     # giorno settimana UTC (0=lun .. 6=dom) — per flat-by-friday
+    rv_short: np.ndarray    # realized vol = std log-return 20 bar (causale), NaN in warmup
+    rv_long: np.ndarray     # media 100-bar di rv_short (causale) — baseline per vol-spike
 
 
 def _ema(x: np.ndarray, span: int) -> np.ndarray:
@@ -99,6 +102,29 @@ def _consecutive(close: np.ndarray) -> np.ndarray:
     return out
 
 
+def _realized_vol(close: np.ndarray, short=20, long=100):
+    """rv_short = std rolling dei log-return (short bar); rv_long = media rolling
+    (long bar) di rv_short. Entrambi causali (solo dati ≤ i). NaN in warmup."""
+    n = len(close)
+    logret = np.zeros(n)
+    logret[1:] = np.log(close[1:] / close[:-1])
+    rv_s = np.full(n, np.nan)
+    for i in range(short, n):
+        rv_s[i] = logret[i - short + 1 : i + 1].std(ddof=0)
+    rv_l = np.full(n, np.nan)
+    for i in range(short + long, n):
+        w = rv_s[i - long + 1 : i + 1]
+        if not np.isnan(w).any():
+            rv_l[i] = w.mean()
+    return rv_s, rv_l
+
+
+def _weekday(t: np.ndarray) -> np.ndarray:
+    # 1970-01-01 (unix 0) era un giovedì (weekday=3). days_since_epoch + 3 mod 7.
+    days = (t // 86400)
+    return ((days + 3) % 7).astype(int)
+
+
 def compute_features(bars: list) -> Features:
     close = np.array([b.close for b in bars], dtype=float)
     high = np.array([b.high for b in bars], dtype=float)
@@ -107,11 +133,13 @@ def compute_features(bars: list) -> Features:
     t = np.array([int(b.time) for b in bars], dtype=np.int64)
     atr = _atr(high, low, close, 14)
     bbu, bbl = _bollinger(close, 20, 2.0)
+    rv_s, rv_l = _realized_vol(close, 20, 100)
     return Features(
         time=t, open=openp, high=high, low=low, close=close,
         ema20=_ema(close, 20), atr14=atr, atr_pctile=_atr_pctile(atr, 200),
         bb_upper=bbu, bb_lower=bbl, consec=_consecutive(close),
-        hour=((t // 3600) % 24).astype(int),
+        hour=((t // 3600) % 24).astype(int), weekday=_weekday(t),
+        rv_short=rv_s, rv_long=rv_l,
     )
 
 
@@ -177,6 +205,89 @@ def evaluate_signal(features: Features, signal_fn, horizon: int,
         "sharpe": round(mean / std, 4) if std > 0 else 0.0,
         "longs": longs, "shorts": shorts,
     }
+
+
+def evaluate_signal_intraday(features: Features, signal_fn, max_horizon: int,
+                             cost_pips: float, pip_size: float,
+                             lo: int = 250, hi: int | None = None,
+                             rollover_hour: int = 22, friday_cutoff_hour: int = 20,
+                             overnight: bool = False, swap_pips_per_night: float = 0.75) -> dict:
+    """Forward return con chiusura forzata intraday (vincolo NO-overnight / flat-by-friday).
+
+    Entra al bar i (close). Esce al PRIMO fra:
+      - i + max_horizon
+      - (se NOT overnight) primo bar j>i con hour>=rollover_hour, oppure venerdì hour>=friday_cutoff_hour
+    Skip entry se fired dentro la finestra di rollover (hour>=rollover_hour) o venerdì
+    dopo il cutoff → nessun trade intraday possibile.
+
+    overnight=True: ignora i cutoff (horizon pieno) ma sottrae swap_pips_per_night ×
+    notti UTC attraversate (stima conservativa del costo overnight).
+
+    Anti-leakage invariato: signal_fn vede solo ≤ i; l'uscita è OUTCOME, non input.
+    """
+    close, hour, wd, t = features.close, features.hour, features.weekday, features.time
+    n = len(close)
+    hi = (n - 1) if hi is None else min(hi, n - 1)
+    rets, held, nights_list = [], [], []
+    longs = shorts = skipped_window = 0
+    for i in range(lo, hi):
+        s = signal_fn(features, i)
+        if s == 0:
+            continue
+        if not overnight:
+            # niente entry nella finestra non-tradeable (chiuderebbe subito / overnight)
+            if hour[i] >= rollover_hour or (wd[i] == 4 and hour[i] >= friday_cutoff_hour):
+                skipped_window += 1
+                continue
+        exit_idx = min(i + max_horizon, n - 1)
+        if not overnight:
+            j = i + 1
+            while j <= exit_idx:
+                if hour[j] >= rollover_hour or (wd[j] == 4 and hour[j] >= friday_cutoff_hour):
+                    exit_idx = j
+                    break
+                j += 1
+        nights = int(t[exit_idx] // 86400 - t[i] // 86400)  # midnights UTC attraversati
+        fwd_pips = (close[exit_idx] - close[i]) / pip_size
+        r = s * fwd_pips - cost_pips
+        if overnight and nights > 0:
+            r -= swap_pips_per_night * nights
+        rets.append(r); held.append(exit_idx - i); nights_list.append(nights)
+        if s > 0:
+            longs += 1
+        else:
+            shorts += 1
+    a = np.array(rets, dtype=float)
+    nsig = len(a)
+    if nsig < 2:
+        return {"n_signals": nsig, "hit_rate": None, "mean_pips": None, "median_pips": None,
+                "t_stat": None, "sharpe": None, "bars_held_median": None,
+                "nights_median": None, "longs": longs, "shorts": shorts,
+                "skipped_window": skipped_window}
+    mean = float(a.mean()); std = float(a.std(ddof=1))
+    return {
+        "n_signals": nsig,
+        "hit_rate": round(100 * float((a > 0).mean()), 1),
+        "mean_pips": round(mean, 3),
+        "median_pips": round(float(np.median(a)), 3),
+        "t_stat": round(mean / (std / math.sqrt(nsig)), 2) if std > 0 else 0.0,
+        "sharpe": round(mean / std, 4) if std > 0 else 0.0,
+        "bars_held_median": float(np.median(held)),
+        "nights_median": float(np.median(nights_list)),
+        "longs": longs, "shorts": shorts, "skipped_window": skipped_window,
+    }
+
+
+def date_index_range(features: Features, start_iso: str, end_iso: str) -> tuple[int, int]:
+    """[lo, hi) indici dei bar con start <= bar.time < end (date ISO 'YYYY-MM-DD' UTC)."""
+    import datetime as _dt
+    lo_ts = int(_dt.datetime.fromisoformat(start_iso).replace(tzinfo=_dt.timezone.utc).timestamp())
+    hi_ts = int(_dt.datetime.fromisoformat(end_iso).replace(tzinfo=_dt.timezone.utc).timestamp())
+    t = features.time
+    idx = np.where((t >= lo_ts) & (t < hi_ts))[0]
+    if len(idx) == 0:
+        return (0, 0)
+    return (int(idx[0]), int(idx[-1]) + 1)
 
 
 def year_index_range(features: Features, year: int) -> tuple[int, int]:

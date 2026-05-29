@@ -138,6 +138,41 @@ def vol_expansion_fade(N=2.0):
     return fn
 
 
+# ── Batteria 2 — Panic fade (mean-reversion in vol estrema, gate crisi) ──────
+
+def vol_extreme_fade_pctile(N=2.0, pctile=0.90):
+    """Gate crisi = atr_pctile_200 > pctile. Fade dell'estensione > N×ATR da EMA20."""
+    def fn(f, i):
+        p = f.atr_pctile[i]
+        atr = f.atr14[i]
+        if np.isnan(p) or p <= pctile or np.isnan(atr) or atr <= 0:
+            return 0
+        dev = f.close[i] - f.ema20[i]
+        if dev > N * atr:
+            return -1
+        if dev < -N * atr:
+            return +1
+        return 0
+    return fn
+
+
+def vol_extreme_fade_dynamic(K=2.5, N=2.0):
+    """Gate crisi DINAMICO = realized-vol spike (rv_short > K×rv_long). Fade > N×ATR."""
+    def fn(f, i):
+        rs, rl, atr = f.rv_short[i], f.rv_long[i], f.atr14[i]
+        if np.isnan(rs) or np.isnan(rl) or rl <= 0 or rs <= K * rl:
+            return 0
+        if np.isnan(atr) or atr <= 0:
+            return 0
+        dev = f.close[i] - f.ema20[i]
+        if dev > N * atr:
+            return -1
+        if dev < -N * atr:
+            return +1
+        return 0
+    return fn
+
+
 # ── Famiglia 4 — Baseline di controllo (sanity) ──────────────────────────────
 
 def random_signal(seed=42):
