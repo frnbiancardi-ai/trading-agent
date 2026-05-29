@@ -1,0 +1,1382 @@
+{
+  "mr_consecutive_K4": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 13988,
+        "hit_rate": 50.3,
+        "mean_pips": -0.022,
+        "median_pips": 0.2,
+        "t_stat": -0.11,
+        "sharpe": -0.0009,
+        "longs": 6949,
+        "shorts": 7039,
+        "horizon": 3
+      },
+      "2008": {
+        "n_signals": 578,
+        "hit_rate": 53.5,
+        "mean_pips": 0.955,
+        "median_pips": 2.0,
+        "t_stat": 0.53,
+        "sharpe": 0.0222,
+        "longs": 271,
+        "shorts": 307,
+        "horizon": 3
+      },
+      "2014": {
+        "n_signals": 531,
+        "hit_rate": 50.1,
+        "mean_pips": -1.298,
+        "median_pips": 0.1,
+        "t_stat": -1.39,
+        "sharpe": -0.0604,
+        "longs": 309,
+        "shorts": 222,
+        "horizon": 3
+      },
+      "2017": {
+        "n_signals": 613,
+        "hit_rate": 51.7,
+        "mean_pips": -0.617,
+        "median_pips": 0.3,
+        "t_stat": -0.88,
+        "sharpe": -0.0357,
+        "longs": 300,
+        "shorts": 313,
+        "horizon": 3
+      },
+      "2020": {
+        "n_signals": 632,
+        "hit_rate": 46.8,
+        "mean_pips": -0.399,
+        "median_pips": -0.85,
+        "t_stat": -0.5,
+        "sharpe": -0.0199,
+        "longs": 287,
+        "shorts": 345,
+        "horizon": 3
+      },
+      "2023": {
+        "n_signals": 683,
+        "hit_rate": 47.0,
+        "mean_pips": -1.68,
+        "median_pips": -0.8,
+        "t_stat": -2.41,
+        "sharpe": -0.0924,
+        "longs": 328,
+        "shorts": 355,
+        "horizon": 3
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 13956,
+        "hit_rate": 49.5,
+        "mean_pips": -1.029,
+        "median_pips": -0.4,
+        "t_stat": -3.7,
+        "sharpe": -0.0313,
+        "longs": 6884,
+        "shorts": 7072,
+        "horizon": 3
+      },
+      "2008": {
+        "n_signals": 622,
+        "hit_rate": 47.3,
+        "mean_pips": -1.217,
+        "median_pips": -2.5,
+        "t_stat": -0.52,
+        "sharpe": -0.021,
+        "longs": 332,
+        "shorts": 290,
+        "horizon": 3
+      },
+      "2014": {
+        "n_signals": 437,
+        "hit_rate": 54.0,
+        "mean_pips": 1.5,
+        "median_pips": 1.5,
+        "t_stat": 1.46,
+        "sharpe": 0.0701,
+        "longs": 236,
+        "shorts": 201,
+        "horizon": 3
+      },
+      "2017": {
+        "n_signals": 691,
+        "hit_rate": 44.9,
+        "mean_pips": -3.47,
+        "median_pips": -1.5,
+        "t_stat": -3.8,
+        "sharpe": -0.1446,
+        "longs": 317,
+        "shorts": 374,
+        "horizon": 3
+      },
+      "2020": {
+        "n_signals": 634,
+        "hit_rate": 49.4,
+        "mean_pips": -1.718,
+        "median_pips": -0.55,
+        "t_stat": -1.32,
+        "sharpe": -0.0524,
+        "longs": 292,
+        "shorts": 342,
+        "horizon": 3
+      },
+      "2023": {
+        "n_signals": 704,
+        "hit_rate": 46.7,
+        "mean_pips": -0.974,
+        "median_pips": -1.0,
+        "t_stat": -1.12,
+        "sharpe": -0.0421,
+        "longs": 325,
+        "shorts": 379,
+        "horizon": 3
+      }
+    }
+  },
+  "mr_atr_extension_N2": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 19968,
+        "hit_rate": 49.2,
+        "mean_pips": -1.135,
+        "median_pips": -0.3,
+        "t_stat": -4.85,
+        "sharpe": -0.0343,
+        "longs": 9901,
+        "shorts": 10067,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 750,
+        "hit_rate": 45.1,
+        "mean_pips": -3.88,
+        "median_pips": -3.0,
+        "t_stat": -1.8,
+        "sharpe": -0.0658,
+        "longs": 377,
+        "shorts": 373,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 557,
+        "hit_rate": 53.0,
+        "mean_pips": -0.346,
+        "median_pips": 1.1,
+        "t_stat": -0.33,
+        "sharpe": -0.0138,
+        "longs": 377,
+        "shorts": 180,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 989,
+        "hit_rate": 46.1,
+        "mean_pips": -1.907,
+        "median_pips": -1.8,
+        "t_stat": -2.45,
+        "sharpe": -0.0779,
+        "longs": 388,
+        "shorts": 601,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 959,
+        "hit_rate": 50.8,
+        "mean_pips": 0.84,
+        "median_pips": 0.4,
+        "t_stat": 0.93,
+        "sharpe": 0.03,
+        "longs": 378,
+        "shorts": 581,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 1113,
+        "hit_rate": 49.4,
+        "mean_pips": -1.04,
+        "median_pips": -0.2,
+        "t_stat": -1.26,
+        "sharpe": -0.0377,
+        "longs": 500,
+        "shorts": 613,
+        "horizon": 5
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 20746,
+        "hit_rate": 48.9,
+        "mean_pips": -1.828,
+        "median_pips": -0.8,
+        "t_stat": -5.46,
+        "sharpe": -0.0379,
+        "longs": 10292,
+        "shorts": 10454,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 773,
+        "hit_rate": 50.7,
+        "mean_pips": 6.739,
+        "median_pips": 0.5,
+        "t_stat": 1.99,
+        "sharpe": 0.0716,
+        "longs": 462,
+        "shorts": 311,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 529,
+        "hit_rate": 49.5,
+        "mean_pips": -1.443,
+        "median_pips": -0.5,
+        "t_stat": -1.09,
+        "sharpe": -0.0475,
+        "longs": 315,
+        "shorts": 214,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 1006,
+        "hit_rate": 49.9,
+        "mean_pips": -1.378,
+        "median_pips": -0.05,
+        "t_stat": -1.17,
+        "sharpe": -0.037,
+        "longs": 451,
+        "shorts": 555,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 1037,
+        "hit_rate": 49.1,
+        "mean_pips": -1.067,
+        "median_pips": -0.9,
+        "t_stat": -0.67,
+        "sharpe": -0.0208,
+        "longs": 480,
+        "shorts": 557,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 1080,
+        "hit_rate": 50.9,
+        "mean_pips": -0.144,
+        "median_pips": 0.5,
+        "t_stat": -0.14,
+        "sharpe": -0.0042,
+        "longs": 513,
+        "shorts": 567,
+        "horizon": 5
+      }
+    }
+  },
+  "mr_bollinger_2sd": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 20513,
+        "hit_rate": 49.0,
+        "mean_pips": -0.753,
+        "median_pips": -0.4,
+        "t_stat": -2.99,
+        "sharpe": -0.0209,
+        "longs": 10249,
+        "shorts": 10264,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 903,
+        "hit_rate": 48.1,
+        "mean_pips": -1.46,
+        "median_pips": -1.0,
+        "t_stat": -0.71,
+        "sharpe": -0.0236,
+        "longs": 446,
+        "shorts": 457,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 927,
+        "hit_rate": 49.4,
+        "mean_pips": -0.783,
+        "median_pips": -0.1,
+        "t_stat": -0.87,
+        "sharpe": -0.0287,
+        "longs": 506,
+        "shorts": 421,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 857,
+        "hit_rate": 45.7,
+        "mean_pips": -2.696,
+        "median_pips": -1.9,
+        "t_stat": -3.07,
+        "sharpe": -0.1048,
+        "longs": 408,
+        "shorts": 449,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 858,
+        "hit_rate": 51.0,
+        "mean_pips": 1.495,
+        "median_pips": 0.65,
+        "t_stat": 1.59,
+        "sharpe": 0.0544,
+        "longs": 426,
+        "shorts": 432,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 922,
+        "hit_rate": 47.9,
+        "mean_pips": -2.348,
+        "median_pips": -1.45,
+        "t_stat": -2.52,
+        "sharpe": -0.083,
+        "longs": 450,
+        "shorts": 472,
+        "horizon": 5
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 21154,
+        "hit_rate": 49.2,
+        "mean_pips": -1.137,
+        "median_pips": -0.5,
+        "t_stat": -3.41,
+        "sharpe": -0.0234,
+        "longs": 10573,
+        "shorts": 10581,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 935,
+        "hit_rate": 50.2,
+        "mean_pips": 1.638,
+        "median_pips": 0.5,
+        "t_stat": 0.56,
+        "sharpe": 0.0183,
+        "longs": 526,
+        "shorts": 409,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 891,
+        "hit_rate": 49.6,
+        "mean_pips": -2.39,
+        "median_pips": -0.5,
+        "t_stat": -2.33,
+        "sharpe": -0.078,
+        "longs": 458,
+        "shorts": 433,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 862,
+        "hit_rate": 49.0,
+        "mean_pips": -1.99,
+        "median_pips": -0.9,
+        "t_stat": -1.58,
+        "sharpe": -0.0537,
+        "longs": 422,
+        "shorts": 440,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 897,
+        "hit_rate": 50.3,
+        "mean_pips": -2.475,
+        "median_pips": 0.2,
+        "t_stat": -1.57,
+        "sharpe": -0.0525,
+        "longs": 436,
+        "shorts": 461,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 924,
+        "hit_rate": 47.9,
+        "mean_pips": -1.651,
+        "median_pips": -1.1,
+        "t_stat": -1.37,
+        "sharpe": -0.0451,
+        "longs": 457,
+        "shorts": 467,
+        "horizon": 5
+      }
+    }
+  },
+  "session_london_open": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 12203,
+        "hit_rate": 44.4,
+        "mean_pips": -3.063,
+        "median_pips": -2.8,
+        "t_stat": -10.36,
+        "sharpe": -0.0937,
+        "longs": 12203,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2008": {
+        "n_signals": 524,
+        "hit_rate": 48.1,
+        "mean_pips": -3.303,
+        "median_pips": -1.5,
+        "t_stat": -1.41,
+        "sharpe": -0.0615,
+        "longs": 524,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2014": {
+        "n_signals": 522,
+        "hit_rate": 43.3,
+        "mean_pips": -3.644,
+        "median_pips": -2.15,
+        "t_stat": -3.29,
+        "sharpe": -0.1439,
+        "longs": 522,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2017": {
+        "n_signals": 516,
+        "hit_rate": 42.6,
+        "mean_pips": -2.584,
+        "median_pips": -2.8,
+        "t_stat": -2.62,
+        "sharpe": -0.1152,
+        "longs": 516,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2020": {
+        "n_signals": 524,
+        "hit_rate": 45.6,
+        "mean_pips": -1.576,
+        "median_pips": -2.0,
+        "t_stat": -1.35,
+        "sharpe": -0.0588,
+        "longs": 524,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2023": {
+        "n_signals": 518,
+        "hit_rate": 45.0,
+        "mean_pips": -2.566,
+        "median_pips": -3.45,
+        "t_stat": -2.28,
+        "sharpe": -0.1001,
+        "longs": 518,
+        "shorts": 0,
+        "horizon": 4
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 12199,
+        "hit_rate": 48.2,
+        "mean_pips": -2.02,
+        "median_pips": -1.5,
+        "t_stat": -5.03,
+        "sharpe": -0.0456,
+        "longs": 12199,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2008": {
+        "n_signals": 524,
+        "hit_rate": 51.9,
+        "mean_pips": -1.441,
+        "median_pips": 2.5,
+        "t_stat": -0.47,
+        "sharpe": -0.0206,
+        "longs": 524,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2014": {
+        "n_signals": 520,
+        "hit_rate": 44.8,
+        "mean_pips": -3.4,
+        "median_pips": -2.5,
+        "t_stat": -2.42,
+        "sharpe": -0.1063,
+        "longs": 520,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2017": {
+        "n_signals": 516,
+        "hit_rate": 46.9,
+        "mean_pips": -2.132,
+        "median_pips": -1.65,
+        "t_stat": -1.26,
+        "sharpe": -0.0554,
+        "longs": 516,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2020": {
+        "n_signals": 524,
+        "hit_rate": 50.8,
+        "mean_pips": -3.517,
+        "median_pips": 1.15,
+        "t_stat": -1.56,
+        "sharpe": -0.068,
+        "longs": 524,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2023": {
+        "n_signals": 518,
+        "hit_rate": 49.4,
+        "mean_pips": -2.208,
+        "median_pips": -0.6,
+        "t_stat": -1.53,
+        "sharpe": -0.0671,
+        "longs": 518,
+        "shorts": 0,
+        "horizon": 4
+      }
+    }
+  },
+  "session_ny_overlap": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 18310,
+        "hit_rate": 49.0,
+        "mean_pips": -0.056,
+        "median_pips": -0.3,
+        "t_stat": -0.22,
+        "sharpe": -0.0016,
+        "longs": 18310,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2008": {
+        "n_signals": 786,
+        "hit_rate": 49.9,
+        "mean_pips": -1.364,
+        "median_pips": -0.0,
+        "t_stat": -0.67,
+        "sharpe": -0.0238,
+        "longs": 786,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2014": {
+        "n_signals": 783,
+        "hit_rate": 43.7,
+        "mean_pips": -2.619,
+        "median_pips": -2.6,
+        "t_stat": -3.18,
+        "sharpe": -0.1136,
+        "longs": 783,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2017": {
+        "n_signals": 776,
+        "hit_rate": 50.1,
+        "mean_pips": 1.011,
+        "median_pips": 0.25,
+        "t_stat": 1.18,
+        "sharpe": 0.0422,
+        "longs": 776,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2020": {
+        "n_signals": 786,
+        "hit_rate": 45.9,
+        "mean_pips": -2.29,
+        "median_pips": -2.7,
+        "t_stat": -2.25,
+        "sharpe": -0.0804,
+        "longs": 786,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2023": {
+        "n_signals": 777,
+        "hit_rate": 48.6,
+        "mean_pips": -0.03,
+        "median_pips": -0.8,
+        "t_stat": -0.03,
+        "sharpe": -0.0012,
+        "longs": 777,
+        "shorts": 0,
+        "horizon": 4
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 18307,
+        "hit_rate": 48.8,
+        "mean_pips": -0.544,
+        "median_pips": -0.7,
+        "t_stat": -1.75,
+        "sharpe": -0.0129,
+        "longs": 18307,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2008": {
+        "n_signals": 786,
+        "hit_rate": 43.1,
+        "mean_pips": -6.211,
+        "median_pips": -8.5,
+        "t_stat": -2.23,
+        "sharpe": -0.0796,
+        "longs": 786,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2014": {
+        "n_signals": 779,
+        "hit_rate": 42.5,
+        "mean_pips": -3.913,
+        "median_pips": -3.5,
+        "t_stat": -4.44,
+        "sharpe": -0.159,
+        "longs": 779,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2017": {
+        "n_signals": 775,
+        "hit_rate": 51.2,
+        "mean_pips": 2.252,
+        "median_pips": 0.8,
+        "t_stat": 2.05,
+        "sharpe": 0.0738,
+        "longs": 775,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2020": {
+        "n_signals": 784,
+        "hit_rate": 47.2,
+        "mean_pips": -3.577,
+        "median_pips": -1.3,
+        "t_stat": -2.21,
+        "sharpe": -0.079,
+        "longs": 784,
+        "shorts": 0,
+        "horizon": 4
+      },
+      "2023": {
+        "n_signals": 777,
+        "hit_rate": 53.7,
+        "mean_pips": 2.179,
+        "median_pips": 2.7,
+        "t_stat": 1.82,
+        "sharpe": 0.0655,
+        "longs": 777,
+        "shorts": 0,
+        "horizon": 4
+      }
+    }
+  },
+  "session_asia_breakout": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 1986,
+        "hit_rate": 49.3,
+        "mean_pips": -1.399,
+        "median_pips": -0.25,
+        "t_stat": -1.52,
+        "sharpe": -0.0341,
+        "longs": 1036,
+        "shorts": 950,
+        "horizon": 6
+      },
+      "2008": {
+        "n_signals": 67,
+        "hit_rate": 37.3,
+        "mean_pips": -14.358,
+        "median_pips": -21.0,
+        "t_stat": -1.56,
+        "sharpe": -0.1901,
+        "longs": 33,
+        "shorts": 34,
+        "horizon": 6
+      },
+      "2014": {
+        "n_signals": 80,
+        "hit_rate": 48.8,
+        "mean_pips": -1.969,
+        "median_pips": -1.0,
+        "t_stat": -0.63,
+        "sharpe": -0.0706,
+        "longs": 40,
+        "shorts": 40,
+        "horizon": 6
+      },
+      "2017": {
+        "n_signals": 104,
+        "hit_rate": 52.9,
+        "mean_pips": -0.798,
+        "median_pips": 0.75,
+        "t_stat": -0.29,
+        "sharpe": -0.028,
+        "longs": 56,
+        "shorts": 48,
+        "horizon": 6
+      },
+      "2020": {
+        "n_signals": 99,
+        "hit_rate": 52.5,
+        "mean_pips": 3.573,
+        "median_pips": 3.3,
+        "t_stat": 0.97,
+        "sharpe": 0.0977,
+        "longs": 52,
+        "shorts": 47,
+        "horizon": 6
+      },
+      "2023": {
+        "n_signals": 90,
+        "hit_rate": 45.6,
+        "mean_pips": -3.866,
+        "median_pips": -4.35,
+        "t_stat": -1.11,
+        "sharpe": -0.1167,
+        "longs": 44,
+        "shorts": 46,
+        "horizon": 6
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 2109,
+        "hit_rate": 47.7,
+        "mean_pips": -2.042,
+        "median_pips": -2.5,
+        "t_stat": -1.66,
+        "sharpe": -0.0362,
+        "longs": 1044,
+        "shorts": 1065,
+        "horizon": 6
+      },
+      "2008": {
+        "n_signals": 74,
+        "hit_rate": 44.6,
+        "mean_pips": -7.878,
+        "median_pips": -10.0,
+        "t_stat": -0.67,
+        "sharpe": -0.0776,
+        "longs": 28,
+        "shorts": 46,
+        "horizon": 6
+      },
+      "2014": {
+        "n_signals": 67,
+        "hit_rate": 35.8,
+        "mean_pips": -1.037,
+        "median_pips": -8.5,
+        "t_stat": -0.25,
+        "sharpe": -0.0304,
+        "longs": 36,
+        "shorts": 31,
+        "horizon": 6
+      },
+      "2017": {
+        "n_signals": 96,
+        "hit_rate": 46.9,
+        "mean_pips": -3.846,
+        "median_pips": -1.35,
+        "t_stat": -0.9,
+        "sharpe": -0.0917,
+        "longs": 48,
+        "shorts": 48,
+        "horizon": 6
+      },
+      "2020": {
+        "n_signals": 102,
+        "hit_rate": 47.1,
+        "mean_pips": -1.473,
+        "median_pips": -2.95,
+        "t_stat": -0.28,
+        "sharpe": -0.0277,
+        "longs": 53,
+        "shorts": 49,
+        "horizon": 6
+      },
+      "2023": {
+        "n_signals": 95,
+        "hit_rate": 46.3,
+        "mean_pips": -2.802,
+        "median_pips": -5.7,
+        "t_stat": -0.65,
+        "sharpe": -0.0666,
+        "longs": 46,
+        "shorts": 49,
+        "horizon": 6
+      }
+    }
+  },
+  "vol_compression_break": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 5466,
+        "hit_rate": 48.1,
+        "mean_pips": -1.131,
+        "median_pips": -1.0,
+        "t_stat": -2.15,
+        "sharpe": -0.029,
+        "longs": 2767,
+        "shorts": 2699,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 276,
+        "hit_rate": 52.2,
+        "mean_pips": 3.196,
+        "median_pips": 2.5,
+        "t_stat": 0.85,
+        "sharpe": 0.0509,
+        "longs": 152,
+        "shorts": 124,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 254,
+        "hit_rate": 42.5,
+        "mean_pips": -1.747,
+        "median_pips": -3.05,
+        "t_stat": -0.94,
+        "sharpe": -0.0588,
+        "longs": 129,
+        "shorts": 125,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 226,
+        "hit_rate": 56.2,
+        "mean_pips": 5.0,
+        "median_pips": 2.6,
+        "t_stat": 3.07,
+        "sharpe": 0.2043,
+        "longs": 103,
+        "shorts": 123,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 240,
+        "hit_rate": 50.8,
+        "mean_pips": 0.242,
+        "median_pips": 0.6,
+        "t_stat": 0.12,
+        "sharpe": 0.0078,
+        "longs": 131,
+        "shorts": 109,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 207,
+        "hit_rate": 48.8,
+        "mean_pips": 2.475,
+        "median_pips": -1.5,
+        "t_stat": 1.01,
+        "sharpe": 0.0704,
+        "longs": 125,
+        "shorts": 82,
+        "horizon": 5
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 5880,
+        "hit_rate": 47.8,
+        "mean_pips": -2.043,
+        "median_pips": -2.15,
+        "t_stat": -3.13,
+        "sharpe": -0.0408,
+        "longs": 3004,
+        "shorts": 2876,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 234,
+        "hit_rate": 48.7,
+        "mean_pips": -3.833,
+        "median_pips": -3.0,
+        "t_stat": -0.54,
+        "sharpe": -0.0354,
+        "longs": 78,
+        "shorts": 156,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 223,
+        "hit_rate": 39.9,
+        "mean_pips": -0.617,
+        "median_pips": -5.5,
+        "t_stat": -0.24,
+        "sharpe": -0.016,
+        "longs": 116,
+        "shorts": 107,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 280,
+        "hit_rate": 45.7,
+        "mean_pips": -2.822,
+        "median_pips": -2.25,
+        "t_stat": -1.43,
+        "sharpe": -0.0853,
+        "longs": 142,
+        "shorts": 138,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 260,
+        "hit_rate": 47.7,
+        "mean_pips": -2.6,
+        "median_pips": -0.7,
+        "t_stat": -1.01,
+        "sharpe": -0.0626,
+        "longs": 158,
+        "shorts": 102,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 206,
+        "hit_rate": 45.1,
+        "mean_pips": -3.052,
+        "median_pips": -4.0,
+        "t_stat": -1.06,
+        "sharpe": -0.0739,
+        "longs": 114,
+        "shorts": 92,
+        "horizon": 5
+      }
+    }
+  },
+  "vol_expansion_fade_N2": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 7922,
+        "hit_rate": 48.6,
+        "mean_pips": -0.936,
+        "median_pips": -0.5,
+        "t_stat": -2.64,
+        "sharpe": -0.0297,
+        "longs": 3858,
+        "shorts": 4064,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 358,
+        "hit_rate": 48.6,
+        "mean_pips": 2.905,
+        "median_pips": -0.5,
+        "t_stat": 0.86,
+        "sharpe": 0.0456,
+        "longs": 172,
+        "shorts": 186,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 264,
+        "hit_rate": 50.0,
+        "mean_pips": -0.63,
+        "median_pips": 0.05,
+        "t_stat": -0.42,
+        "sharpe": -0.0259,
+        "longs": 176,
+        "shorts": 88,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 377,
+        "hit_rate": 51.5,
+        "mean_pips": -0.238,
+        "median_pips": 0.4,
+        "t_stat": -0.2,
+        "sharpe": -0.0102,
+        "longs": 120,
+        "shorts": 257,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 297,
+        "hit_rate": 57.2,
+        "mean_pips": 4.243,
+        "median_pips": 2.5,
+        "t_stat": 3.06,
+        "sharpe": 0.1775,
+        "longs": 121,
+        "shorts": 176,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 406,
+        "hit_rate": 46.3,
+        "mean_pips": -1.958,
+        "median_pips": -1.0,
+        "t_stat": -1.98,
+        "sharpe": -0.0984,
+        "longs": 187,
+        "shorts": 219,
+        "horizon": 5
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 7590,
+        "hit_rate": 49.5,
+        "mean_pips": -1.428,
+        "median_pips": -0.5,
+        "t_stat": -2.54,
+        "sharpe": -0.0292,
+        "longs": 3892,
+        "shorts": 3698,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 297,
+        "hit_rate": 53.5,
+        "mean_pips": 2.601,
+        "median_pips": 2.5,
+        "t_stat": 0.56,
+        "sharpe": 0.0327,
+        "longs": 164,
+        "shorts": 133,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 242,
+        "hit_rate": 42.6,
+        "mean_pips": -1.967,
+        "median_pips": -3.5,
+        "t_stat": -1.16,
+        "sharpe": -0.0743,
+        "longs": 148,
+        "shorts": 94,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 349,
+        "hit_rate": 53.6,
+        "mean_pips": -0.478,
+        "median_pips": 1.4,
+        "t_stat": -0.26,
+        "sharpe": -0.0138,
+        "longs": 146,
+        "shorts": 203,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 336,
+        "hit_rate": 50.9,
+        "mean_pips": 1.967,
+        "median_pips": 0.45,
+        "t_stat": 0.64,
+        "sharpe": 0.0349,
+        "longs": 184,
+        "shorts": 152,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 374,
+        "hit_rate": 47.1,
+        "mean_pips": -0.435,
+        "median_pips": -1.15,
+        "t_stat": -0.31,
+        "sharpe": -0.0159,
+        "longs": 187,
+        "shorts": 187,
+        "horizon": 5
+      }
+    }
+  },
+  "random_signal": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 99167,
+        "hit_rate": 47.2,
+        "mean_pips": -1.09,
+        "median_pips": -1.0,
+        "t_stat": -10.73,
+        "sharpe": -0.0341,
+        "longs": 49697,
+        "shorts": 49470,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 4356,
+        "hit_rate": 49.7,
+        "mean_pips": 0.11,
+        "median_pips": -0.0,
+        "t_stat": 0.13,
+        "sharpe": 0.002,
+        "longs": 2146,
+        "shorts": 2210,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 4294,
+        "hit_rate": 45.0,
+        "mean_pips": -1.547,
+        "median_pips": -1.3,
+        "t_stat": -4.57,
+        "sharpe": -0.0698,
+        "longs": 2179,
+        "shorts": 2115,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 4105,
+        "hit_rate": 47.3,
+        "mean_pips": -0.857,
+        "median_pips": -1.3,
+        "t_stat": -2.34,
+        "sharpe": -0.0365,
+        "longs": 2034,
+        "shorts": 2071,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 4195,
+        "hit_rate": 48.2,
+        "mean_pips": -0.582,
+        "median_pips": -0.6,
+        "t_stat": -1.52,
+        "sharpe": -0.0235,
+        "longs": 2083,
+        "shorts": 2112,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 4103,
+        "hit_rate": 47.0,
+        "mean_pips": -0.846,
+        "median_pips": -1.2,
+        "t_stat": -2.24,
+        "sharpe": -0.035,
+        "longs": 2028,
+        "shorts": 2075,
+        "horizon": 5
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 99145,
+        "hit_rate": 47.2,
+        "mean_pips": -1.468,
+        "median_pips": -1.5,
+        "t_stat": -11.37,
+        "sharpe": -0.0361,
+        "longs": 49685,
+        "shorts": 49460,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 4350,
+        "hit_rate": 48.7,
+        "mean_pips": -1.22,
+        "median_pips": -1.5,
+        "t_stat": -1.11,
+        "sharpe": -0.0168,
+        "longs": 2145,
+        "shorts": 2205,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 4284,
+        "hit_rate": 46.7,
+        "mean_pips": -1.242,
+        "median_pips": -1.5,
+        "t_stat": -3.15,
+        "sharpe": -0.0481,
+        "longs": 2169,
+        "shorts": 2115,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 4108,
+        "hit_rate": 47.3,
+        "mean_pips": -1.691,
+        "median_pips": -1.4,
+        "t_stat": -3.42,
+        "sharpe": -0.0533,
+        "longs": 2039,
+        "shorts": 2069,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 4184,
+        "hit_rate": 47.7,
+        "mean_pips": -0.837,
+        "median_pips": -1.35,
+        "t_stat": -1.22,
+        "sharpe": -0.0189,
+        "longs": 2081,
+        "shorts": 2103,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 4108,
+        "hit_rate": 45.9,
+        "mean_pips": -1.529,
+        "median_pips": -2.0,
+        "t_stat": -3.28,
+        "sharpe": -0.0512,
+        "longs": 2027,
+        "shorts": 2081,
+        "horizon": 5
+      }
+    }
+  },
+  "always_long": {
+    "EURUSD": {
+      "all": {
+        "n_signals": 148640,
+        "hit_rate": 47.7,
+        "mean_pips": -0.942,
+        "median_pips": -1.0,
+        "t_stat": -11.38,
+        "sharpe": -0.0295,
+        "longs": 148640,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 6568,
+        "hit_rate": 48.6,
+        "mean_pips": -1.47,
+        "median_pips": -1.0,
+        "t_stat": -2.14,
+        "sharpe": -0.0265,
+        "longs": 6568,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 6475,
+        "hit_rate": 44.7,
+        "mean_pips": -2.273,
+        "median_pips": -1.5,
+        "t_stat": -8.17,
+        "sharpe": -0.1015,
+        "longs": 6475,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 6206,
+        "hit_rate": 49.0,
+        "mean_pips": 0.197,
+        "median_pips": -0.3,
+        "t_stat": 0.67,
+        "sharpe": 0.0085,
+        "longs": 6206,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 6286,
+        "hit_rate": 49.2,
+        "mean_pips": -0.143,
+        "median_pips": -0.3,
+        "t_stat": -0.45,
+        "sharpe": -0.0056,
+        "longs": 6286,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 6213,
+        "hit_rate": 48.7,
+        "mean_pips": -0.735,
+        "median_pips": -0.4,
+        "t_stat": -2.45,
+        "sharpe": -0.031,
+        "longs": 6213,
+        "shorts": 0,
+        "horizon": 5
+      }
+    },
+    "GBPUSD": {
+      "all": {
+        "n_signals": 148604,
+        "hit_rate": 47.7,
+        "mean_pips": -1.568,
+        "median_pips": -1.5,
+        "t_stat": -14.8,
+        "sharpe": -0.0384,
+        "longs": 148604,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2008": {
+        "n_signals": 6558,
+        "hit_rate": 46.2,
+        "mean_pips": -5.468,
+        "median_pips": -3.5,
+        "t_stat": -6.05,
+        "sharpe": -0.0747,
+        "longs": 6558,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2014": {
+        "n_signals": 6467,
+        "hit_rate": 45.7,
+        "mean_pips": -2.256,
+        "median_pips": -1.5,
+        "t_stat": -6.96,
+        "sharpe": -0.0866,
+        "longs": 6467,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2017": {
+        "n_signals": 6202,
+        "hit_rate": 49.0,
+        "mean_pips": -0.572,
+        "median_pips": -0.5,
+        "t_stat": -1.43,
+        "sharpe": -0.0182,
+        "longs": 6202,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2020": {
+        "n_signals": 6280,
+        "hit_rate": 49.0,
+        "mean_pips": -1.165,
+        "median_pips": -0.6,
+        "t_stat": -2.06,
+        "sharpe": -0.026,
+        "longs": 6280,
+        "shorts": 0,
+        "horizon": 5
+      },
+      "2023": {
+        "n_signals": 6211,
+        "hit_rate": 48.2,
+        "mean_pips": -0.988,
+        "median_pips": -0.9,
+        "t_stat": -2.59,
+        "sharpe": -0.0328,
+        "longs": 6211,
+        "shorts": 0,
+        "horizon": 5
+      }
+    }
+  }
+}
