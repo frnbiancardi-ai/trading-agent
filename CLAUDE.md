@@ -1,28 +1,34 @@
 # Trading Agent — Project Memory
 
 ## Stack & ambiente
-- Python 3.12 64-bit, Windows
+- Python 3.12 64-bit. Runtime live: Windows + MT5; sviluppo/test anche in devcontainer Linux (deps MT5/apscheduler/feedparser/anthropic possono mancare → alcuni test non collezionano).
 - MetaTrader5 (TenTrade, demo)
-- Anthropic Claude API
-- APScheduler per scheduling intraday
+- Anthropic Claude API (solo explain_last_trades)
+- Scheduler H24 interno (`IntradayLoopScheduler`) nel path principale; APScheduler resta solo nella linea legacy v1.1.x
 
-## Struttura repo
-C:\trading-agent\
-├── .env, config.py, models.py
-├── mt5_client.py, risk_engine.py, execution.py
-├── indicators.py, patterns.py, logger.py
-├── strategy.py, scanner.py (fase 14)
-├── news_aggregator.py, sentiment.py (fase 15)
-├── claude_agent.py (solo explain_last_trades)
-├── scheduler.py, main.py, mcp_server.py
-├── prompts/, logs/, tests/
-└── .orchestration/phase-prompts/
+## Struttura repo (v2 — package, verificata 2026-05-30)
+trading-agent/
+├── config.py, models.py, logger.py
+├── mt5_client.py, risk_engine.py, execution.py, scheduler.py, scanner.py, main.py
+├── news_aggregator.py, sentiment.py (opt-in, ENABLE_NEWS_SENTIMENT=False di default)
+├── claude_agent.py (solo explain_last_trades, NON nel path-segnale live)
+├── strategy/        ← package puro: setups/{a_breakout,b_reversal,c_compression,d_pullback}, confluence, proposal, context, adapters/{live,backtest}, _shim
+├── indicators/      ← package puro: trend, momentum, volatility, structure, bars, volume, mtf, hurst, aggregate
+├── backtest/        ← engine, broker, costs, ledger, loader, metrics, walk_forward, baseline/*
+├── mcp_tools/       ← server + handlers/{account,market,proposal,position,backtest,ml(STUB)} + job_queue, trail_daemon
+├── patterns.py      ← catalogo pattern (PatternHit)
+├── scripts/edge_discovery/, scripts/data_acquisition/  ← track ricerca edge (non-GSD)
+├── prompts/, logs/, tests/ (~60 file), libri/ (PDF)
+└── .planning/ (STATE/ROADMAP/REQUIREMENTS + phases/) , .orchestration/phase-prompts/
+Nota: `indicators.py`/`patterns.py`/`strategy.py` monolitici sono LEGACY (architettura v1.x taggata v1.0.0→v1.2.1); il codice v2 vive nei package omonimi.
 
-## Stato progetto
-- Branch: feature/update-pythono-pure-strategy
-- Milestone corrente: v2-ml-backtest (11 fasi)
-- Fasi: tutte in PLANNING (nessun codice prodotto ancora). Phase 1 backtest engine 2/8 plan completi (BACK-01, BACK-03 in plan; codice non implementato). Phase 5 plan corrente.
-- Fonte canonica stato: `.planning/STATE.md` + `.planning/REQUIREMENTS.md` checkbox
+## Stato progetto (verificato 2026-05-30 — NON fidarsi di memorie più vecchie)
+- Branch di lavoro reale: **`research/edge-discovery`** (HEAD, 7 commit avanti `main`). `main` (`bdaf3ee`) contiene già le fasi 1–6 ma NON la fix-chain né il finding NO-GO → `main` è a sua volta stale.
+- Milestone v2-ml-backtest: **fasi 1–6 IMPLEMENTATE, testate e merged** (engine backtest, indicatori, pattern, strategia 4-setup, baseline, MCP tools parte 1). **Fasi 7–11 SOSPESE 2026-05-29** (solo PLAN.md; handler ML = stub `NotImplementedError`).
+- **Blocco di fondo: la strategia base NON ha edge** (verdetto NO-GO, 59/60 config negative). Le fasi 7–11 (ML/drift/intermarket) assumono un edge smentito. Track Edge Discovery aperto: 5 ipotesi (DXY/yield momentum, carry, COT) tutte falsificate con rigore.
+- Test: 6 moduli non collezionano per deps mancanti nell'ambiente (apscheduler/feedparser/anthropic); dei 500 restanti 477 pass / 2 fail / 13 skip / 8 xfail.
+- Bug: kill-switch broker RISOLTO; offset DST +6h fisso in `backtest/loader.py` APERTO. Policy dati nuovi: Dukascopy canonico (UTC).
+- Fonte canonica stato: `.planning/STATE.md` + `.planning/ROADMAP.md` + `.planning/REQUIREMENTS.md`. Analisi tecnica completa: `ANALISI-TECNICA-FUNZIONALE-2026-05-30.md`.
 
 ## Regole fondamentali
 - EXECUTION_MODE=shadow default sempre

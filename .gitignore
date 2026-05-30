@@ -15,3 +15,8 @@ logs/*.db-shm
 # Output artifacts from the deleted backtest_suite.py (D-03, plan 01-08)
 backtest_results.json
 backtest_trades.json
+
+# Runtime DB at repo root + local archives + scratch files
+/trades.db
+*.zip
+_tmp_*.py
